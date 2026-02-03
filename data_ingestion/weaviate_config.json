@@ -1,0 +1,27 @@
+{
+  "weaviate": {
+    "url": "",
+    "api_key": ""
+  },
+  "collection": {
+    "name": "test2"
+  },
+  "embedding": {
+    "vectorizer": "text2vec-huggingface",
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "huggingface_api_key": ""
+  },
+  "chunking": {
+    "words_per_chunk": 500,
+    "overlap_words": 50
+  },
+  "data": {
+    "cleaned_text_dir": "data/cleaned",
+    "images_base_dir": "data/extracted"
+  },
+  "ingestion": {
+    "ingest_text": true,
+    "ingest_images": true,
+    "batch_size": 200
+  }
+}

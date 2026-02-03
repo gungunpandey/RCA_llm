@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+
+# Logs
+logs/
+*.log
+
+# Data files
+data_2/
+data_old/
+milvus_data_ingester/
+pdfs/
+pdfs_pellet/
+
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
