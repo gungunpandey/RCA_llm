@@ -12,9 +12,8 @@ logs/
 *.log
 
 # Data files
-data_2/
+data/
 data_old/
-milvus_data_ingester/
 pdfs/
 pdfs_pellet/
 

@@ -15,6 +15,14 @@ try:
 except ImportError:  # pragma: no cover
     weaviate = None
 
+# Optional OCR dependencies for scanned documents
+try:
+    from pdf2image import convert_from_path
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS  (all relative to this script's directory)
@@ -49,6 +57,11 @@ LOGO_PAGE_THRESHOLD  = 3       # xref on this many pages → recurring logo
 MIN_DRAWINGS         = 100     # vector primitives to qualify as a diagram page
 MIN_DRAWING_COVERAGE = 30.0    # % of page area the drawing bbox must cover
 MAX_TEXT_FOR_DIAGRAM = 300     # chars – more = spec table, not a diagram
+
+# OCR fallback settings (for scanned documents)
+CONSECUTIVE_EMPTY_PAGES_THRESHOLD = 10   # switch to OCR after this many consecutive empty pages
+MIN_TEXT_LENGTH_FOR_VALID_PAGE    = 50   # chars – page with less text is considered "empty"
+OCR_DPI                           = 300  # resolution for converting PDF pages to images
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -203,6 +216,78 @@ def _is_vector_diagram(page) -> bool:
     return True
 
 
+def _check_for_scanned_document(pages_text: list) -> tuple:
+    """Check if the document appears to be scanned (too many empty pages).
+
+    Args:
+        pages_text: List of text content from each page.
+
+    Returns:
+        tuple: (is_scanned, total_empty_pages, max_consecutive_empty)
+    """
+    total_empty = 0
+    max_consecutive = 0
+    current_consecutive = 0
+
+    for text in pages_text:
+        if len(text.strip()) < MIN_TEXT_LENGTH_FOR_VALID_PAGE:
+            total_empty += 1
+            current_consecutive += 1
+            max_consecutive = max(max_consecutive, current_consecutive)
+        else:
+            current_consecutive = 0
+
+    is_scanned = max_consecutive >= CONSECUTIVE_EMPTY_PAGES_THRESHOLD
+    return is_scanned, total_empty, max_consecutive
+
+
+def _extract_text_with_ocr(pdf_path: str, log: logging.Logger) -> list:
+    """Extract text from PDF using OCR (for scanned documents).
+
+    Args:
+        pdf_path: Path to the PDF file.
+        log: Logger instance.
+
+    Returns:
+        List of (page_number, text) tuples, or empty list if OCR fails.
+    """
+    if not OCR_AVAILABLE:
+        log.error("OCR dependencies not available. Install: pip install pdf2image pytesseract")
+        log.error("Also install Tesseract OCR: https://github.com/tesseract-ocr/tesseract")
+        return []
+
+    log.info("  Starting OCR extraction for scanned document...")
+    pages_text = []
+
+    try:
+        images = convert_from_path(pdf_path, dpi=OCR_DPI)
+        log.info("  Converted PDF to %d images for OCR", len(images))
+
+        for i, image in enumerate(images):
+            page_num = i + 1
+            if page_num % 10 == 0 or page_num == len(images):
+                log.info("    OCR processing page %d/%d", page_num, len(images))
+
+            text = pytesseract.image_to_string(image, lang='eng')
+            pages_text.append((page_num, text.strip()))
+
+        log.info("  OCR extraction completed for %d pages", len(pages_text))
+
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "poppler" in error_msg or "page count" in error_msg:
+            log.error("  OCR failed: Poppler is not installed or not in PATH")
+            log.error("  Windows: Download from https://github.com/osber/poppler/releases")
+            log.error("           Extract and add 'bin' folder to system PATH")
+            log.error("  Or install via conda: conda install -c conda-forge poppler")
+        else:
+            log.error("  OCR extraction failed: %s", e)
+        # Return empty list instead of raising - fall back to standard extraction
+        return []
+
+    return pages_text
+
+
 def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
     """Extract text + images from one PDF into out_dir/."""
     doc = fitz.open(pdf_path)
@@ -211,79 +296,130 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
     # ── Text extraction using pdfplumber (better table handling) ──────
     text_path = os.path.join(out_dir, "text.txt")
     pdf_path_str = str(pdf_path)  # Convert to string for pdfplumber
+    extraction_method = "standard"
 
+    # First pass: standard extraction to check for scanned document
+    pages_content = []  # Store (page_num, content) tuples
     with pdfplumber.open(pdf_path_str) as pdf:
         total_pages = len(pdf.pages)
-        log.info("  Processing %d pages...", total_pages)
+        log.info("  Processing %d pages (standard extraction)...", total_pages)
+
+        for pn, page in enumerate(pdf.pages):
+            if pn % 20 == 0 or pn == total_pages - 1:
+                log.info("    Page %d/%d", pn + 1, total_pages)
+
+            page_content = []
+
+            # Extract tables from the page (with timeout to prevent hanging)
+            tables = _extract_tables_with_timeout(page)
+
+            if tables is None:
+                log.warning("    Table extraction timed out on page %d - using text only", pn + 1)
+                tables = []
+
+            if tables:
+                # Page has tables - extract them formatted
+                for table_idx, table in enumerate(tables):
+                    if not table or len(table) == 0:
+                        continue
+
+                    page_content.append(f"\n[TABLE {table_idx + 1}]")
+
+                    # Find max width for each column
+                    num_cols = max(len(row) for row in table)
+                    col_widths = [0] * num_cols
+
+                    for row in table:
+                        for i, cell in enumerate(row):
+                            if i < num_cols and cell:
+                                col_widths[i] = max(col_widths[i], len(str(cell)))
+
+                    # Write table rows
+                    for row_idx, row in enumerate(table):
+                        # Pad row to num_cols
+                        padded_row = list(row) + [None] * (num_cols - len(row))
+
+                        # Format cells with padding
+                        cells = []
+                        for i in range(num_cols):
+                            cell = str(padded_row[i] or "").strip()
+                            cells.append(cell.ljust(col_widths[i]))
+
+                        page_content.append("| " + " | ".join(cells) + " |")
+
+                        # Add separator after first row
+                        if row_idx == 0:
+                            separators = ["-" * col_widths[i] for i in range(num_cols)]
+                            page_content.append("| " + " | ".join(separators) + " |")
+
+                    page_content.append("")
+
+            # Extract all text (includes non-table text and table text)
+            text = page.extract_text()
+            if text:
+                page_content.append(text.strip())
+
+            pages_content.append((pn + 1, "\n".join(page_content)))
+
+    # Check if document appears to be scanned (too many empty pages)
+    just_text = [content for _, content in pages_content]
+    is_scanned, total_empty, max_consecutive = _check_for_scanned_document(just_text)
+
+    skip_text_file = False  # Flag to skip text file for scanned docs without OCR
+
+    if is_scanned:
+        log.warning("  Detected %d consecutive empty pages (threshold: %d) - document appears to be scanned",
+                    max_consecutive, CONSECUTIVE_EMPTY_PAGES_THRESHOLD)
+
+        if OCR_AVAILABLE:
+            log.info("  Falling back to OCR extraction...")
+            ocr_pages = _extract_text_with_ocr(pdf_path, log)
+            if ocr_pages:
+                extraction_method = "ocr"
+                pages_content = ocr_pages
+            else:
+                log.warning("  OCR failed - skipping text file for scanned document")
+                skip_text_file = True
+        else:
+            log.warning("  OCR not available - skipping text file for scanned document")
+            log.warning("  Install OCR: pip install pdf2image pytesseract")
+            log.warning("  Install Poppler: https://github.com/osber/poppler/releases")
+            skip_text_file = True
+    else:
+        log.info("  Standard extraction: %d empty pages, %d max consecutive", total_empty, max_consecutive)
+
+    # Write extracted text to file (skip for scanned docs without OCR)
+    if skip_text_file:
+        log.info("  Skipped text file (scanned document, OCR unavailable)")
+    else:
         with open(text_path, "w", encoding="utf-8") as f:
-            for pn, page in enumerate(pdf.pages):
-                if pn % 20 == 0 or pn == total_pages - 1:
-                    log.info("    Page %d/%d", pn + 1, total_pages)
-                f.write(f"===== Page {pn + 1} =====\n")
+            for page_num, content in pages_content:
+                f.write(f"===== Page {page_num} =====\n")
+                f.write(content.strip() + "\n\n")
+        log.info("Text -> %s (method: %s)", text_path, extraction_method)
 
-                # Extract tables from the page (with timeout to prevent hanging)
-                tables = _extract_tables_with_timeout(page)
-
-                if tables is None:
-                    log.warning("    Table extraction timed out on page %d - using text only", pn + 1)
-                    tables = []
-
-                if tables:
-                    # Page has tables - extract them formatted
-                    for table_idx, table in enumerate(tables):
-                        if not table or len(table) == 0:
-                            continue
-
-                        f.write(f"\n[TABLE {table_idx + 1}]\n")
-
-                        # Find max width for each column
-                        num_cols = max(len(row) for row in table)
-                        col_widths = [0] * num_cols
-
-                        for row in table:
-                            for i, cell in enumerate(row):
-                                if i < num_cols and cell:
-                                    col_widths[i] = max(col_widths[i], len(str(cell)))
-
-                        # Write table rows
-                        for row_idx, row in enumerate(table):
-                            # Pad row to num_cols
-                            padded_row = list(row) + [None] * (num_cols - len(row))
-
-                            # Format cells with padding
-                            cells = []
-                            for i in range(num_cols):
-                                cell = str(padded_row[i] or "").strip()
-                                cells.append(cell.ljust(col_widths[i]))
-
-                            f.write("| " + " | ".join(cells) + " |\n")
-
-                            # Add separator after first row
-                            if row_idx == 0:
-                                separators = ["-" * col_widths[i] for i in range(num_cols)]
-                                f.write("| " + " | ".join(separators) + " |\n")
-
-                        f.write("\n")
-
-                # Extract all text (includes non-table text and table text)
-                text = page.extract_text()
-                if text:
-                    f.write(text.strip() + "\n\n")
-
-    log.info("Text -> %s (with pdfplumber table extraction)", text_path)
-
-    # ── Images (two-phase) ────────────────────────────────────────────
+    # ── Images (three-phase) ────────────────────────────────────────────
     img_dir = os.path.join(out_dir, "images")
     os.makedirs(img_dir, exist_ok=True)
 
     logo_xrefs = _recurring_logo_xrefs(doc)
     log.info("Filtered %d recurring logo xref(s)", len(logo_xrefs))
 
+    # Build set of pages that contain "figure" (case-insensitive) for Phase 3
+    figure_pages = set()
+    for page_num, content in pages_content:
+        if "figure" in content.lower():
+            figure_pages.add(page_num)
+    if figure_pages:
+        log.info("Detected %d page(s) containing 'figure': %s", len(figure_pages), sorted(figure_pages))
+
     seen_xrefs: set = set()
-    n_embedded = n_rendered = 0
+    rendered_pages: set = set()  # Track pages already rendered as full-page images
+    n_embedded = n_rendered = n_figure = 0
 
     for pn in range(len(doc)):
         page = doc[pn]
+        page_num = pn + 1
         page_had_image = False
 
         # Phase 1 – extract embedded raster images (skip logos + tiny icons)
@@ -298,7 +434,7 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
                 continue
 
             ext = raw.get("ext", "png")
-            fname = f"diagram_p{pn + 1}_{n_embedded}.{ext}"
+            fname = f"diagram_p{page_num}_{n_embedded}.{ext}"
             with open(os.path.join(img_dir, fname), "wb") as f:
                 f.write(raw["image"])
 
@@ -309,13 +445,23 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
 
         # Phase 2 – render full page only for pure vector diagrams
         if not page_had_image and _is_vector_diagram(page):
-            fname = f"page_{pn + 1}_highres.png"
+            fname = f"page_{page_num}_highres.png"
             page.get_pixmap(dpi=300).save(os.path.join(img_dir, fname))
             n_rendered += 1
-            log.info("  Rendered: %s", fname)
+            rendered_pages.add(page_num)
+            log.info("  Rendered (vector): %s", fname)
+
+        # Phase 3 – render full page for pages containing "figure" text
+        # (captures diagrams with labels, even if text was already extracted)
+        if page_num in figure_pages and page_num not in rendered_pages:
+            fname = f"figure_p{page_num}.png"
+            page.get_pixmap(dpi=300).save(os.path.join(img_dir, fname))
+            n_figure += 1
+            rendered_pages.add(page_num)
+            log.info("  Rendered (figure): %s", fname)
 
     doc.close()
-    log.info("Images done — %d embedded, %d vector pages", n_embedded, n_rendered)
+    log.info("Images done — %d embedded, %d vector, %d figure pages", n_embedded, n_rendered, n_figure)
 
 
 def run_extraction(log: logging.Logger, force: bool = False, target_file: str = None) -> None:
@@ -533,7 +679,8 @@ def run_cleanup(log: logging.Logger, force: bool = False, target_file: str = Non
 # INGESTION PIPELINE
 # ═════════════════════════════════════════════════════════════════════════════
 _IMG_EMBEDDED_RE = re.compile(r"^diagram_p(\d+)_\d+\.")   # diagram_p6_2.png
-_IMG_RENDERED_RE = re.compile(r"^page_(\d+)_highres\.")    # page_11_highres.png
+_IMG_RENDERED_RE = re.compile(r"^page_(\d+)_highres\.")   # page_11_highres.png
+_IMG_FIGURE_RE   = re.compile(r"^figure_p(\d+)\.")        # figure_p5.png
 
 
 def _load_config() -> dict:
@@ -591,6 +738,9 @@ def _parse_image_filename(fname: str) -> tuple:
     m = _IMG_RENDERED_RE.match(fname)
     if m:
         return int(m.group(1)), "vector_render"
+    m = _IMG_FIGURE_RE.match(fname)
+    if m:
+        return int(m.group(1)), "figure_page"
     return None, None
 
 
@@ -630,6 +780,7 @@ def _create_collection(client, cfg: dict, log: logging.Logger):
             Property(name="chunkIndex",  data_type=DataType.INT),
             _skip("imageType"),
             _skip("imagePath"),
+            _skip("collectionName"),  # collection name from config for metadata tracking
         ],
     )
     log.info("Created collection '%s'", name)
@@ -645,6 +796,7 @@ def _ingest_text(collection, cfg: dict, status: dict, log: logging.Logger, force
 
     wpc  = cfg["chunking"]["words_per_chunk"]
     ovlp = cfg["chunking"]["overlap_words"]
+    collection_name = cfg["collection"]["name"]  # Get collection name from config
 
     with collection.batch.fixed_size(batch_size=cfg["ingestion"]["batch_size"]) as batch:
         for source_label in sorted(os.listdir(cleaned_dir)):
@@ -679,6 +831,7 @@ def _ingest_text(collection, cfg: dict, status: dict, log: logging.Logger, force
                             "sourceFolder": source_label,
                             "pageNumber":   page_num,
                             "chunkIndex":   idx,
+                            "collectionName": collection_name,
                         })
                         n_chunks += 1
 
@@ -698,6 +851,8 @@ def _ingest_images(collection, cfg: dict, status: dict, log: logging.Logger, for
     if not os.path.isdir(images_base):
         log.warning("Images base dir not found: %s", images_base)
         return
+
+    collection_name = cfg["collection"]["name"]  # Get collection name from config
 
     with collection.batch.fixed_size(batch_size=cfg["ingestion"]["batch_size"]) as batch:
         for source_label in sorted(os.listdir(images_base)):
@@ -738,6 +893,7 @@ def _ingest_images(collection, cfg: dict, status: dict, log: logging.Logger, for
                         "chunkIndex":   0,
                         "imageType":    img_type,
                         "imagePath":    rel_path,
+                        "collectionName": collection_name,
                     })
                     n_images += 1
 
