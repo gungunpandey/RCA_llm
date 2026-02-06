@@ -4,7 +4,7 @@
     "api_key": ""
   },
   "collection": {
-    "name": "test2"
+    "name": "pellet"
   },
   "embedding": {
     "vectorizer": "text2vec-huggingface",

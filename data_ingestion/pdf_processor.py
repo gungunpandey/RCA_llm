@@ -30,7 +30,7 @@ except ImportError:
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 PDF_SOURCES = [
-    # os.path.join(_HERE, "pdfs"),
+    # os.path.join(_HERE, "pdf"),
     os.path.join(_HERE, "pdfs_pellet"),
 ]
 
@@ -58,8 +58,14 @@ MIN_DRAWINGS         = 100     # vector primitives to qualify as a diagram page
 MIN_DRAWING_COVERAGE = 30.0    # % of page area the drawing bbox must cover
 MAX_TEXT_FOR_DIAGRAM = 300     # chars – more = spec table, not a diagram
 
+# Page rendering settings (for complex vector diagrams)
+PAGE_RENDER_TIMEOUT     = 30    # seconds – timeout for rendering a single page
+COMPLEX_DIAGRAM_THRESHOLD = 40  # drawing count – diagrams with more drawings use lower DPI
+HIGH_RES_DPI            = 300   # DPI for normal diagrams
+LOW_RES_DPI             = 150   # DPI for complex diagrams to avoid memory issues
+
 # OCR fallback settings (for scanned documents)
-CONSECUTIVE_EMPTY_PAGES_THRESHOLD = 10   # switch to OCR after this many consecutive empty pages
+CONSECUTIVE_EMPTY_PAGES_THRESHOLD = 3    # switch to OCR after this many consecutive empty pages
 MIN_TEXT_LENGTH_FOR_VALID_PAGE    = 50   # chars – page with less text is considered "empty"
 OCR_DPI                           = 300  # resolution for converting PDF pages to images
 
@@ -76,6 +82,100 @@ MIN_FRAGMENT_RUN      = 4      # consecutive single-word lines needed to trigger
 # ═════════════════════════════════════════════════════════════════════════════
 _PAGE_NUM_RE = re.compile(r"Page:\s*\d+\s*/\s*\d+")
 
+# Caption / label patterns – used by image-label extraction.
+# CN patterns are listed longest-first so the alternation matches greedily.
+_CAPTION_RE_CN = re.compile(
+    r'(?:附图|示意图|原理图|结构图|图)\s*[一二三四五六七八九十〇\d]*\s*[、.:：—–\-]*\s*[^\n]{0,50}'
+)
+_CAPTION_RE_EN = re.compile(
+    r'(?i)\b(?:figure|fig\.?|diagram|drawing|illustration)\s*[\d.]*[a-z]?\s*[.:—–\-]*\s*[^\n]{0,60}'
+)
+
+# CJK Unified Ideographs detector – used by OCR language selection
+_CJK_CHAR_RE = re.compile(r'[\u4e00-\u9fff]')
+
+# Pattern for detecting garbled text (random uppercase sequences)
+_GARBLED_UPPERCASE_RE = re.compile(r'[A-Z]{3,}')
+
+# Common English words to check for readable text
+_COMMON_ENGLISH_WORDS = {
+    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
+    'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+    'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+    'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+    'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'does', 'did',
+    'can', 'could', 'may', 'might', 'must', 'shall', 'should', 'will', 'would',
+}
+
+
+def _is_garbled_text(text: str) -> bool:
+    """Detect if text appears to be garbled (font encoding issues).
+
+    Signs of garbled text:
+    1. Contains CJK characters mixed with random uppercase sequences
+    2. Has excessive uppercase letters compared to lowercase
+    3. Very few common English words despite having lots of text
+    4. High ratio of uppercase sequences that don't form real words
+    5. Pure ASCII gibberish from font-encoded Chinese (e.g., "AAMAS RAMANA")
+
+    NOTE: This function is designed to detect SCANNED documents with garbled OCR,
+    not font encoding issues in normal PDFs (like "INtLOCUCTION"). Font encoding
+    issues should be extracted as-is, not trigger OCR.
+
+    Returns True if text appears garbled and should use OCR instead.
+    """
+    if len(text.strip()) < 50:
+        return False
+
+    cjk_chars = len(_CJK_CHAR_RE.findall(text))
+    uppercase_sequences = _GARBLED_UPPERCASE_RE.findall(text)
+    uppercase_chars = sum(len(seq) for seq in uppercase_sequences)
+
+    # Count uppercase vs lowercase letters
+    uppercase_count = sum(1 for c in text if c.isupper())
+    lowercase_count = sum(1 for c in text if c.islower())
+    total_alpha = uppercase_count + lowercase_count
+
+    # Case 1: CJK characters mixed with lots of uppercase garbage
+    if cjk_chars > 5 and uppercase_chars > 20:
+        if uppercase_chars > cjk_chars * 0.5:
+            return True
+
+    # Case 2: ANY CJK chars with significant uppercase sequences
+    if cjk_chars > 0 and uppercase_chars > 30:
+        return True
+
+    # Case 3: Pure ASCII gibberish (no CJK, but text doesn't look like English)
+    # This catches font-encoded Chinese that appears as random ASCII
+    if total_alpha > 100 and cjk_chars == 0:
+        # Normal English has ~2-5% uppercase; gibberish often has >30%
+        uppercase_ratio = uppercase_count / total_alpha if total_alpha > 0 else 0
+
+        # Check for common English words
+        words = text.lower().split()
+        common_word_count = sum(1 for w in words if w.strip('.,;:!?()[]') in _COMMON_ENGLISH_WORDS)
+        common_word_ratio = common_word_count / len(words) if words else 0
+
+        # Gibberish: high uppercase AND very few common English words
+        if uppercase_ratio > 0.4 and common_word_ratio < 0.05:
+            return True
+
+        # ENHANCED: More aggressive detection for random uppercase sequences
+        # Typical pattern: "AAMAS RAMANA FRABEF NERA" (font-encoded Chinese)
+        # - Many 3+ letter uppercase sequences
+        # - Very few recognizable English words
+        # - Lowered threshold from 0.1 to 0.15 for better detection
+        if len(uppercase_sequences) > 5 and common_word_ratio < 0.15:
+            return True
+        
+        # ENHANCED: Check for extremely low common word ratio even with moderate uppercase
+        # This catches cases where there's some lowercase but still gibberish
+        if uppercase_ratio > 0.25 and common_word_ratio < 0.1:
+            return True
+
+    return False
+
 
 def _extract_tables_with_timeout(page, timeout: int = TABLE_EXTRACTION_TIMEOUT):
     """Extract tables from a pdfplumber page with a timeout to prevent hanging."""
@@ -90,6 +190,96 @@ def _extract_tables_with_timeout(page, timeout: int = TABLE_EXTRACTION_TIMEOUT):
 def _normalize_header(line: str) -> str:
     """Lowercase + collapse 'Page: X/Y' so variable page numbers compare equal."""
     return _PAGE_NUM_RE.sub("Page: #/#", line.strip()).lower()
+
+
+# ── label / caption helpers ─────────────────────────────────────────────────
+def _sanitize_label(label: str) -> str:
+    """Turn a raw caption into a short, filesystem-safe string (≤ 40 chars)."""
+    if not label:
+        return ""
+    label = label.strip()
+    label = re.sub(r'[/\\:*?"<>|]', '', label)        # strip FS-unsafe chars
+    label = re.sub(r'[\s]+', '_', label)               # whitespace → _
+    label = label.strip('_.-')                         # trim edges
+    return label[:40].rstrip('_.-')
+
+
+def _extract_caption_from_text(text: str) -> str:
+    """Return the first figure/diagram caption found in *text*, or empty string.
+
+    Chinese patterns are tried first – they are more specific and avoid
+    false-positives on words like "configuration" that contain "fig".
+    """
+    for pat in (_CAPTION_RE_CN, _CAPTION_RE_EN):
+        m = pat.search(text)
+        if m:
+            return m.group(0).strip()
+    return ""
+
+
+def _find_image_label(page, xref: int) -> str:
+    """Return a sanitised label for an embedded raster image on a fitz *page*.
+
+    Resolution order:
+      1. Locate image rect → collect text-blocks within 60 pt vertically
+         (≥ 30 % horizontal overlap).  Prefer blocks *below* the image.
+      2. Among nearby blocks, return the first caption-pattern match.
+      3. If no pattern match, use the shortest nearby block (< 80 chars).
+      4. Final fallback: caption pattern anywhere on the page.
+    """
+    PROXIMITY_GAP = 60  # points above / below the image
+
+    # ── locate image bounding-box on page ──
+    img_rect = None
+    try:
+        rects = page.get_image_rects(xref)
+        if rects:
+            img_rect = rects[0]
+    except Exception:
+        pass  # older PyMuPDF – fall through to page-level search
+
+    if img_rect:
+        blocks = page.get_text("blocks")  # (x0, y0, x1, y1, text, block_no, block_type)
+        nearby_below: list = []
+        nearby_above: list = []
+
+        for blk in blocks:
+            if len(blk) < 5 or not blk[4].strip():
+                continue
+            bx0, by0, bx1, by1, txt = blk[:5]
+
+            # horizontal overlap ≥ 30 % of image width
+            h_overlap = min(img_rect.x1, bx1) - max(img_rect.x0, bx0)
+            if h_overlap < 0.3 * max(img_rect.width, 1):
+                continue
+
+            if img_rect.y1 <= by0 <= img_rect.y1 + PROXIMITY_GAP:
+                nearby_below.append((by0, txt.strip()))
+            elif img_rect.y0 - PROXIMITY_GAP <= by1 <= img_rect.y0:
+                nearby_above.append((by0, txt.strip()))
+
+        # captions below the image are the norm in technical manuals
+        nearby = sorted(nearby_below) + sorted(nearby_above)
+
+        # 1st priority: explicit caption pattern
+        for _, txt in nearby:
+            cap = _extract_caption_from_text(txt)
+            if cap:
+                return _sanitize_label(cap)
+
+        # 2nd priority: short nearby text block (likely an un-patterned label)
+        for _, txt in nearby:
+            if len(txt) < 80:
+                return _sanitize_label(txt)
+
+    # final fallback – regex scan of full page
+    cap = _extract_caption_from_text(page.get_text())
+    return _sanitize_label(cap)
+
+
+def _find_page_label(page) -> str:
+    """Caption for a full-page render (vector diagram / figure page)."""
+    return _sanitize_label(_extract_caption_from_text(page.get_text()))
 
 
 class _SafeStreamHandler(logging.StreamHandler):
@@ -216,6 +406,55 @@ def _is_vector_diagram(page) -> bool:
     return True
 
 
+def _safe_render_page(page, page_num: int, log: logging.Logger, dpi: int = None) -> tuple:
+    """Safely render a page to PNG with timeout and error handling.
+    
+    Args:
+        page: PyMuPDF page object
+        page_num: Page number (1-indexed) for logging
+        log: Logger instance
+        dpi: Optional DPI override. If None, uses adaptive DPI based on complexity.
+    
+    Returns:
+        tuple: (pixmap_or_none, success_bool, warning_message)
+               Returns (None, False, error_msg) if rendering fails
+    """
+    # Determine DPI based on diagram complexity if not specified
+    if dpi is None:
+        drawings = page.get_drawings()
+        num_drawings = len(drawings)
+        
+        if num_drawings > COMPLEX_DIAGRAM_THRESHOLD:
+            dpi = LOW_RES_DPI
+            log.info("  Page %d: Complex diagram detected (%d drawings) - using %d DPI",
+                     page_num, num_drawings, dpi)
+        else:
+            dpi = HIGH_RES_DPI
+    
+    # Render with timeout protection
+    def _render():
+        return page.get_pixmap(dpi=dpi)
+    
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_render)
+            try:
+                pixmap = future.result(timeout=PAGE_RENDER_TIMEOUT)
+                return pixmap, True, None
+            except FuturesTimeoutError:
+                warning = f"Page {page_num}: Rendering timed out after {PAGE_RENDER_TIMEOUT}s"
+                log.warning("  %s - skipping", warning)
+                return None, False, warning
+    except MemoryError as e:
+        warning = f"Page {page_num}: Out of memory during rendering"
+        log.warning("  %s - skipping", warning)
+        return None, False, warning
+    except Exception as e:
+        warning = f"Page {page_num}: Rendering failed - {type(e).__name__}: {e}"
+        log.warning("  %s - skipping", warning)
+        return None, False, warning
+
+
 def _check_for_scanned_document(pages_text: list) -> tuple:
     """Check if the document appears to be scanned (too many empty pages).
 
@@ -241,12 +480,14 @@ def _check_for_scanned_document(pages_text: list) -> tuple:
     return is_scanned, total_empty, max_consecutive
 
 
-def _extract_text_with_ocr(pdf_path: str, log: logging.Logger) -> list:
+
+def _extract_text_with_ocr(pdf_path: str, log: logging.Logger, lang: str = "eng") -> list:
     """Extract text from PDF using OCR (for scanned documents).
 
     Args:
         pdf_path: Path to the PDF file.
-        log: Logger instance.
+        log:      Logger instance.
+        lang:     Tesseract language string (e.g. 'eng', 'chi_sim', 'chi_sim+eng').
 
     Returns:
         List of (page_number, text) tuples, or empty list if OCR fails.
@@ -256,20 +497,61 @@ def _extract_text_with_ocr(pdf_path: str, log: logging.Logger) -> list:
         log.error("Also install Tesseract OCR: https://github.com/tesseract-ocr/tesseract")
         return []
 
-    log.info("  Starting OCR extraction for scanned document...")
+    log.info("  Starting OCR extraction (lang=%s) for scanned document...", lang)
     pages_text = []
 
+    # Process pages in batches to avoid MemoryError on large PDFs
+    OCR_BATCH_SIZE = 10
+
     try:
-        images = convert_from_path(pdf_path, dpi=OCR_DPI)
-        log.info("  Converted PDF to %d images for OCR", len(images))
+        # First, get total page count without loading images
+        from pdf2image.pdf2image import pdfinfo_from_path
+        try:
+            info = pdfinfo_from_path(pdf_path)
+            total_pages = info["Pages"]
+        except Exception:
+            # Fallback: use PyMuPDF to get page count
+            doc = fitz.open(pdf_path)
+            total_pages = len(doc)
+            doc.close()
 
-        for i, image in enumerate(images):
-            page_num = i + 1
-            if page_num % 10 == 0 or page_num == len(images):
-                log.info("    OCR processing page %d/%d", page_num, len(images))
+        log.info("  Processing %d pages in batches of %d...", total_pages, OCR_BATCH_SIZE)
 
-            text = pytesseract.image_to_string(image, lang='eng')
-            pages_text.append((page_num, text.strip()))
+        for batch_start in range(0, total_pages, OCR_BATCH_SIZE):
+            batch_end = min(batch_start + OCR_BATCH_SIZE, total_pages)
+            log.info("    Converting pages %d-%d to images...", batch_start + 1, batch_end)
+
+            # Convert only this batch of pages (first_page and last_page are 1-indexed)
+            images = convert_from_path(
+                pdf_path,
+                dpi=OCR_DPI,
+                first_page=batch_start + 1,
+                last_page=batch_end
+            )
+
+            for i, image in enumerate(images):
+                page_num = batch_start + i + 1
+                if page_num % 10 == 0 or page_num == total_pages:
+                    log.info("    OCR processing page %d/%d", page_num, total_pages)
+
+
+                # ── OCR with graceful language fallback ──
+                try:
+                    text = pytesseract.image_to_string(image, lang=lang)
+                except pytesseract.TesseractError as te:
+                    if "Failed loading language" in str(te):
+                        log.warning("  Tesseract language '%s' not installed — "
+                                    "falling back to 'eng'. Download tessdata from "
+                                    "https://github.com/tessdata/tessdata and place "
+                                    "in your Tesseract tessdata/ directory.", lang)
+                        text = pytesseract.image_to_string(image, lang="eng")
+                    else:
+                        raise
+
+                pages_text.append((page_num, text.strip()))
+
+            # Clear batch images from memory
+            del images
 
         log.info("  OCR extraction completed for %d pages", len(pages_text))
 
@@ -282,10 +564,122 @@ def _extract_text_with_ocr(pdf_path: str, log: logging.Logger) -> list:
             log.error("  Or install via conda: conda install -c conda-forge poppler")
         else:
             log.error("  OCR extraction failed: %s", e)
-        # Return empty list instead of raising - fall back to standard extraction
         return []
 
     return pages_text
+
+
+def _extract_single_page_with_ocr(pdf_path: str, page_num: int, log: logging.Logger, lang: str = "eng") -> str:
+    """Extract text from a single PDF page using OCR.
+    
+    Args:
+        pdf_path: Path to the PDF file.
+        page_num: Page number to extract (1-indexed).
+        log:      Logger instance.
+        lang:     Tesseract language string (e.g. 'eng', 'chi_sim', 'chi_sim+eng').
+    
+    Returns:
+        Extracted text from the page, or empty string if OCR fails.
+    """
+    if not OCR_AVAILABLE:
+        log.error("OCR dependencies not available. Install: pip install pdf2image pytesseract")
+        return ""
+    
+    try:
+        log.info("    Page %d: Using OCR extraction (problematic page)", page_num)
+        
+        # Convert only this specific page
+        images = convert_from_path(
+            pdf_path,
+            dpi=OCR_DPI,
+            first_page=page_num,
+            last_page=page_num
+        )
+        
+        if not images:
+            log.warning("    Page %d: Failed to convert to image for OCR", page_num)
+            return ""
+        
+        # OCR with graceful language fallback
+        try:
+            text = pytesseract.image_to_string(images[0], lang=lang)
+        except pytesseract.TesseractError as te:
+            if "Failed loading language" in str(te):
+                log.warning("  Tesseract language '%s' not installed — falling back to 'eng'", lang)
+                text = pytesseract.image_to_string(images[0], lang="eng")
+            else:
+                raise
+        
+        return text.strip()
+        
+    except Exception as e:
+        log.error("    Page %d: OCR extraction failed - %s", page_num, e)
+        return ""
+
+
+def _detect_ocr_language(doc, pdf_path: str = None) -> str:
+    """Choose the Tesseract language string based on document content.
+
+    Detection priority:
+      1. PDF metadata ``language`` field (works even for fully-scanned docs).
+      2. CJK vs Latin character counts in fitz text (first 10 pages).
+      3. Sample OCR on first page (for scanned docs with garbled embedded text).
+      4. Default ``'eng'``.
+    """
+    # 1. metadata hint
+    meta_lang = ((doc.metadata or {}).get("language") or "").lower()
+    if "zh" in meta_lang or "chi" in meta_lang or "中文" in meta_lang:
+        return "chi_sim+eng"
+
+    # 2. character-count heuristic from embedded text
+    cjk_count  = 0
+    latin_count = 0
+    for i in range(min(len(doc), 10)):
+        text = doc[i].get_text()
+        cjk_count  += len(_CJK_CHAR_RE.findall(text))
+        latin_count += sum(1 for ch in text if ch.isascii() and ch.isalpha())
+
+    if cjk_count > 20 and latin_count > 20:
+        return "chi_sim+eng"
+    if cjk_count > 20:
+        return "chi_sim"
+    
+    # 3. Sample OCR fallback for scanned documents
+    # If we have very little embedded text (likely scanned), try OCR on first page
+    # to detect the actual language
+    if OCR_AVAILABLE and pdf_path and (cjk_count == 0 and latin_count < 100):
+        try:
+            from pdf2image import convert_from_path
+            # Convert only first page at low DPI for quick detection
+            images = convert_from_path(pdf_path, dpi=150, first_page=1, last_page=1)
+            if images:
+                # Try OCR with Chinese to see if we get CJK characters
+                sample_text = pytesseract.image_to_string(images[0], lang="chi_sim+eng")
+                sample_cjk = len(_CJK_CHAR_RE.findall(sample_text))
+                
+                # If we found significant Chinese characters, use Chinese OCR
+                if sample_cjk > 10:
+                    return "chi_sim+eng"
+                elif sample_cjk > 0:
+                    return "chi_sim+eng"  # Even a few CJK chars suggest mixed content
+        except Exception:
+            pass  # Fallback to default if sample OCR fails
+    
+    return "eng"
+
+
+def _get_page_rotations(doc) -> dict:
+    """Return {page_index: rotation_degrees} for every page with non-zero /Rotate.
+
+    Works on both scanned and vector PDFs – any page whose metadata declares
+    a rotation will appear here so the caller can apply a fallback.
+    """
+    rotations: dict = {}
+    for i in range(len(doc)):
+        r = doc[i].rotation
+        if r != 0:
+            rotations[i] = r
+    return rotations
 
 
 def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
@@ -298,82 +692,74 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
     pdf_path_str = str(pdf_path)  # Convert to string for pdfplumber
     extraction_method = "standard"
 
-    # First pass: standard extraction to check for scanned document
+    # ── detect rotated pages (applies to ALL PDFs, not just scanned) ──
+    page_rotations = _get_page_rotations(doc)
+    if page_rotations:
+        log.info("  Rotated pages detected: %s",
+                 {k + 1: v for k, v in page_rotations.items()})
+
+    # ── Check for specific PDFs that require OCR (e.g., high-res diagrams) ──
+    # Format: {filename: "all"} for full OCR, or {filename: [page_nums]} for specific pages
+    pdf_filename = os.path.basename(pdf_path)
+    force_ocr_config = {
+        "ID&HR Fan_TLT_OEM Manual.pdf": [45],  # Page 45 has very high-resolution diagram (27796 drawings)
+    }
+    
+    # ── Pre-check first 3 pages to decide extraction method ──
+    # If all first 3 pages are empty OR have garbled text, use OCR
+    ocr_config = force_ocr_config.get(pdf_filename)
+    use_ocr = ocr_config == "all"  # Full OCR only if explicitly set to "all"
+    ocr_pages_only = ocr_config if isinstance(ocr_config, list) else []  # Specific pages for OCR
+    
+    if use_ocr:
+        log.info("  Forcing OCR extraction for entire PDF (contains problematic high-res diagrams)")
+    elif ocr_pages_only:
+        log.info("  Using OCR for specific pages: %s (rest will use standard extraction)", ocr_pages_only)
+    else:
+        with pdfplumber.open(pdf_path_str) as pdf:
+            total_pages = len(pdf.pages)
+            pages_to_check = min(3, total_pages)
+            log.info("  Checking first %d pages to determine extraction method...", pages_to_check)
+
+            empty_count = 0
+            garbled_count = 0
+            for pn in range(pages_to_check):
+                page = pdf.pages[pn]
+                text = page.extract_text() or ""
+                # Also try PyMuPDF for rotated pages
+                if len(text.strip()) < MIN_TEXT_LENGTH_FOR_VALID_PAGE and pn in page_rotations:
+                    text = doc[pn].get_text()
+
+                if len(text.strip()) < MIN_TEXT_LENGTH_FOR_VALID_PAGE:
+                    empty_count += 1
+                    log.info("    Page %d: empty (<%d chars)", pn + 1, MIN_TEXT_LENGTH_FOR_VALID_PAGE)
+                elif _is_garbled_text(text):
+                    garbled_count += 1
+                    log.info("    Page %d: garbled text detected (%d chars)", pn + 1, len(text.strip()))
+                else:
+                    log.info("    Page %d: has text (%d chars)", pn + 1, len(text.strip()))
+
+            if empty_count == pages_to_check:
+                log.info("  All first %d pages are empty - document appears to be scanned", pages_to_check)
+                use_ocr = True
+            # DISABLED: Garbled text detection was triggering OCR for normal PDFs with font encoding issues
+            # OCR extraction loses table structure, so we only use it for truly scanned documents
+            # The old script didn't have this check and successfully extracted tables
+            # elif garbled_count > 0:
+            #     log.info("  Detected garbled text in %d page(s) - using OCR for better extraction", garbled_count)
+            #     use_ocr = True
+            else:
+                log.info("  Found text in first %d pages - using standard extraction", pages_to_check)
+
     pages_content = []  # Store (page_num, content) tuples
-    with pdfplumber.open(pdf_path_str) as pdf:
-        total_pages = len(pdf.pages)
-        log.info("  Processing %d pages (standard extraction)...", total_pages)
-
-        for pn, page in enumerate(pdf.pages):
-            if pn % 20 == 0 or pn == total_pages - 1:
-                log.info("    Page %d/%d", pn + 1, total_pages)
-
-            page_content = []
-
-            # Extract tables from the page (with timeout to prevent hanging)
-            tables = _extract_tables_with_timeout(page)
-
-            if tables is None:
-                log.warning("    Table extraction timed out on page %d - using text only", pn + 1)
-                tables = []
-
-            if tables:
-                # Page has tables - extract them formatted
-                for table_idx, table in enumerate(tables):
-                    if not table or len(table) == 0:
-                        continue
-
-                    page_content.append(f"\n[TABLE {table_idx + 1}]")
-
-                    # Find max width for each column
-                    num_cols = max(len(row) for row in table)
-                    col_widths = [0] * num_cols
-
-                    for row in table:
-                        for i, cell in enumerate(row):
-                            if i < num_cols and cell:
-                                col_widths[i] = max(col_widths[i], len(str(cell)))
-
-                    # Write table rows
-                    for row_idx, row in enumerate(table):
-                        # Pad row to num_cols
-                        padded_row = list(row) + [None] * (num_cols - len(row))
-
-                        # Format cells with padding
-                        cells = []
-                        for i in range(num_cols):
-                            cell = str(padded_row[i] or "").strip()
-                            cells.append(cell.ljust(col_widths[i]))
-
-                        page_content.append("| " + " | ".join(cells) + " |")
-
-                        # Add separator after first row
-                        if row_idx == 0:
-                            separators = ["-" * col_widths[i] for i in range(num_cols)]
-                            page_content.append("| " + " | ".join(separators) + " |")
-
-                    page_content.append("")
-
-            # Extract all text (includes non-table text and table text)
-            text = page.extract_text()
-            if text:
-                page_content.append(text.strip())
-
-            pages_content.append((pn + 1, "\n".join(page_content)))
-
-    # Check if document appears to be scanned (too many empty pages)
-    just_text = [content for _, content in pages_content]
-    is_scanned, total_empty, max_consecutive = _check_for_scanned_document(just_text)
-
     skip_text_file = False  # Flag to skip text file for scanned docs without OCR
 
-    if is_scanned:
-        log.warning("  Detected %d consecutive empty pages (threshold: %d) - document appears to be scanned",
-                    max_consecutive, CONSECUTIVE_EMPTY_PAGES_THRESHOLD)
-
+    if use_ocr:
+        # Use OCR for scanned document
         if OCR_AVAILABLE:
-            log.info("  Falling back to OCR extraction...")
-            ocr_pages = _extract_text_with_ocr(pdf_path, log)
+            ocr_lang = _detect_ocr_language(doc, pdf_path)
+            log.info("  Detected OCR language: %s", ocr_lang)
+            ocr_pages = _extract_text_with_ocr(pdf_path, log, lang=ocr_lang)
             if ocr_pages:
                 extraction_method = "ocr"
                 pages_content = ocr_pages
@@ -386,7 +772,111 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
             log.warning("  Install Poppler: https://github.com/osber/poppler/releases")
             skip_text_file = True
     else:
-        log.info("  Standard extraction: %d empty pages, %d max consecutive", total_empty, max_consecutive)
+        # Standard extraction for normal PDFs (with optional page-specific OCR)
+        ocr_lang = None  # Detect language only if needed
+        
+        with pdfplumber.open(pdf_path_str) as pdf:
+            total_pages = len(pdf.pages)
+            log.info("  Processing %d pages (standard extraction)...", total_pages)
+
+            for pn, page in enumerate(pdf.pages):
+                page_num = pn + 1
+                
+                if pn % 20 == 0 or pn == total_pages - 1:
+                    log.info("    Page %d/%d", page_num, total_pages)
+
+                # ── Check if this specific page needs OCR ──
+                if page_num in ocr_pages_only:
+                    # Detect OCR language once if not already done
+                    if ocr_lang is None:
+                        ocr_lang = _detect_ocr_language(doc, pdf_path)
+                        log.info("  Detected OCR language: %s", ocr_lang)
+                    
+                    # Use OCR for this page
+                    ocr_text = _extract_single_page_with_ocr(pdf_path, page_num, log, lang=ocr_lang)
+                    pages_content.append((page_num, ocr_text))
+                    continue  # Skip standard extraction for this page
+
+                page_content = []
+
+                # Extract tables from the page (with timeout to prevent hanging)
+                tables = _extract_tables_with_timeout(page)
+
+                if tables is None:
+                    log.warning("    Table extraction timed out on page %d - using text only", page_num)
+                    tables = []
+                elif tables:
+                    log.info("    Page %d: Found %d table(s)", page_num, len(tables))
+                    for i, table in enumerate(tables):
+                        if table:
+                            rows = len(table)
+                            cols = max(len(row) for row in table) if table else 0
+                            log.debug("      Table %d: %d rows x %d cols", i+1, rows, cols)
+
+                if tables:
+                    # Page has tables - extract them formatted
+                    for table_idx, table in enumerate(tables):
+                        if not table or len(table) == 0:
+                            continue
+
+                        page_content.append(f"\n[TABLE {table_idx + 1}]")
+
+                        # Find max width for each column
+                        num_cols = max(len(row) for row in table)
+                        col_widths = [0] * num_cols
+
+                        for row in table:
+                            for i, cell in enumerate(row):
+                                if i < num_cols and cell:
+                                    col_widths[i] = max(col_widths[i], len(str(cell)))
+
+                        # Write table rows
+                        for row_idx, row in enumerate(table):
+                            # Pad row to num_cols
+                            padded_row = list(row) + [None] * (num_cols - len(row))
+
+                            # Format cells with padding
+                            cells = []
+                            for i in range(num_cols):
+                                cell = str(padded_row[i] or "").strip()
+                                cells.append(cell.ljust(col_widths[i]))
+
+                            page_content.append("| " + " | ".join(cells) + " |")
+
+                            # Add separator after first row
+                            if row_idx == 0:
+                                separators = ["-" * col_widths[i] for i in range(num_cols)]
+                                page_content.append("| " + " | ".join(separators) + " |")
+
+                        page_content.append("")
+
+                # Extract all text (includes non-table text and table text)
+                text = page.extract_text()
+                if text:
+                    page_content.append(text.strip())
+
+                # ── rotation fallback (all PDFs, not just scanned) ──
+                # If pdfplumber returned very little text but PyMuPDF knows the
+                # page is rotated, use fitz extraction which handles /Rotate
+                # reliably.  Catches metadata-rotated pages where pdfplumber /
+                # pdfminer mis-applies the angle.
+                if pn in page_rotations:
+                    plumber_out = "\n".join(page_content).strip()
+                    if len(plumber_out) < MIN_TEXT_LENGTH_FOR_VALID_PAGE:
+                        fitz_text = doc[pn].get_text().strip()
+                        if len(fitz_text) >= MIN_TEXT_LENGTH_FOR_VALID_PAGE:
+                            page_content = [fitz_text]
+                            log.info("    Page %d: rotation=%d° — pdfplumber "
+                                     "yielded %d chars, switched to PyMuPDF "
+                                     "(%d chars)",
+                                     page_num, page_rotations[pn],
+                                     len(plumber_out), len(fitz_text))
+
+                pages_content.append((page_num, "\n".join(page_content)))
+        
+        # Update extraction method if we used page-specific OCR
+        if ocr_pages_only:
+            extraction_method = f"standard+ocr(pages:{ocr_pages_only})"
 
     # Write extracted text to file (skip for scanned docs without OCR)
     if skip_text_file:
@@ -405,13 +895,15 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
     logo_xrefs = _recurring_logo_xrefs(doc)
     log.info("Filtered %d recurring logo xref(s)", len(logo_xrefs))
 
-    # Build set of pages that contain "figure" (case-insensitive) for Phase 3
+    # Build set of pages that contain a figure keyword for Phase 3
+    # (English "figure" + Chinese "图" covers the bulk of industrial manuals)
     figure_pages = set()
     for page_num, content in pages_content:
-        if "figure" in content.lower():
+        content_lower = content.lower()
+        if "figure" in content_lower or "图" in content:
             figure_pages.add(page_num)
     if figure_pages:
-        log.info("Detected %d page(s) containing 'figure': %s", len(figure_pages), sorted(figure_pages))
+        log.info("Detected %d page(s) containing figure keyword: %s", len(figure_pages), sorted(figure_pages))
 
     seen_xrefs: set = set()
     rendered_pages: set = set()  # Track pages already rendered as full-page images
@@ -434,7 +926,9 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
                 continue
 
             ext = raw.get("ext", "png")
-            fname = f"diagram_p{page_num}_{n_embedded}.{ext}"
+            label = _find_image_label(page, xref)
+            fname = (f"diagram_p{page_num}_{n_embedded}_{label}.{ext}"
+                     if label else f"diagram_p{page_num}_{n_embedded}.{ext}")
             with open(os.path.join(img_dir, fname), "wb") as f:
                 f.write(raw["image"])
 
@@ -445,20 +939,34 @@ def _extract_pdf(pdf_path: str, out_dir: str, log: logging.Logger) -> None:
 
         # Phase 2 – render full page only for pure vector diagrams
         if not page_had_image and _is_vector_diagram(page):
-            fname = f"page_{page_num}_highres.png"
-            page.get_pixmap(dpi=300).save(os.path.join(img_dir, fname))
-            n_rendered += 1
-            rendered_pages.add(page_num)
-            log.info("  Rendered (vector): %s", fname)
+            label = _find_page_label(page)
+            fname = (f"page_{page_num}_{label}_highres.png"
+                     if label else f"page_{page_num}_highres.png")
+            
+            # Use safe rendering with timeout and adaptive DPI
+            pixmap, success, warning = _safe_render_page(page, page_num, log)
+            if success and pixmap:
+                pixmap.save(os.path.join(img_dir, fname))
+                n_rendered += 1
+                rendered_pages.add(page_num)
+                log.info("  Rendered (vector): %s", fname)
+            # If rendering failed, warning already logged by _safe_render_page
 
-        # Phase 3 – render full page for pages containing "figure" text
+        # Phase 3 – render full page for pages containing a figure keyword
         # (captures diagrams with labels, even if text was already extracted)
         if page_num in figure_pages and page_num not in rendered_pages:
-            fname = f"figure_p{page_num}.png"
-            page.get_pixmap(dpi=300).save(os.path.join(img_dir, fname))
-            n_figure += 1
-            rendered_pages.add(page_num)
-            log.info("  Rendered (figure): %s", fname)
+            label = _find_page_label(page)
+            fname = (f"figure_p{page_num}_{label}.png"
+                     if label else f"figure_p{page_num}.png")
+            
+            # Use safe rendering with timeout and adaptive DPI
+            pixmap, success, warning = _safe_render_page(page, page_num, log)
+            if success and pixmap:
+                pixmap.save(os.path.join(img_dir, fname))
+                n_figure += 1
+                rendered_pages.add(page_num)
+                log.info("  Rendered (figure): %s", fname)
+            # If rendering failed, warning already logged by _safe_render_page
 
     doc.close()
     log.info("Images done — %d embedded, %d vector, %d figure pages", n_embedded, n_rendered, n_figure)
@@ -678,9 +1186,10 @@ def run_cleanup(log: logging.Logger, force: bool = False, target_file: str = Non
 # ═════════════════════════════════════════════════════════════════════════════
 # INGESTION PIPELINE
 # ═════════════════════════════════════════════════════════════════════════════
-_IMG_EMBEDDED_RE = re.compile(r"^diagram_p(\d+)_\d+\.")   # diagram_p6_2.png
-_IMG_RENDERED_RE = re.compile(r"^page_(\d+)_highres\.")   # page_11_highres.png
-_IMG_FIGURE_RE   = re.compile(r"^figure_p(\d+)\.")        # figure_p5.png
+# group(1) = page number, group(2) = optional sanitised label (may be None)
+_IMG_EMBEDDED_RE = re.compile(r"^diagram_p(\d+)_\d+(?:_([^.]+))?\.")   # diagram_p6_2.png  |  diagram_p6_2_Fig1.png
+_IMG_RENDERED_RE = re.compile(r"^page_(\d+)(?:_(.+))?_highres\.")      # page_11_highres.png  |  page_11_Fig1_highres.png
+_IMG_FIGURE_RE   = re.compile(r"^figure_p(\d+)(?:_([^.]+))?\.")        # figure_p5.png  |  figure_p5_Fig1.png
 
 
 def _load_config() -> dict:
@@ -731,17 +1240,21 @@ def _chunk_text(text: str, words_per_chunk: int, overlap: int) -> list:
 
 
 def _parse_image_filename(fname: str) -> tuple:
-    """Return (page_number, image_type) or (None, None) if unrecognised."""
+    """Return (page_number, image_type, label) or (None, None, None).
+
+    *label* is the sanitised caption embedded in the filename during extraction,
+    or an empty string when no caption was found.
+    """
     m = _IMG_EMBEDDED_RE.match(fname)
     if m:
-        return int(m.group(1)), "embedded"
+        return int(m.group(1)), "embedded", m.group(2) or ""
     m = _IMG_RENDERED_RE.match(fname)
     if m:
-        return int(m.group(1)), "vector_render"
+        return int(m.group(1)), "vector_render", m.group(2) or ""
     m = _IMG_FIGURE_RE.match(fname)
     if m:
-        return int(m.group(1)), "figure_page"
-    return None, None
+        return int(m.group(1)), "figure_page", m.group(2) or ""
+    return None, None, None
 
 
 def _create_collection(client, cfg: dict, log: logging.Logger):
@@ -876,16 +1389,25 @@ def _ingest_images(collection, cfg: dict, status: dict, log: logging.Logger, for
                 log.info("--- %s", key)
                 n_images = 0
                 for fname in sorted(os.listdir(img_dir)):
-                    page_num, img_type = _parse_image_filename(fname)
+                    page_num, img_type, label = _parse_image_filename(fname)
                     if page_num is None:
                         continue
+
+                    # Include the label in the searchable content string so
+                    # retrieval can match on the caption text.
+                    label_display = label.replace("_", " ") if label else ""
+                    content_str = (
+                        f"[{img_type} diagram] {label_display} — Page {page_num} from {pdf_stem}"
+                        if label_display
+                        else f"[{img_type} diagram] Page {page_num} from {pdf_stem}"
+                    )
 
                     rel_path = "/".join([
                         cfg["data"]["images_base_dir"],
                         source_label, pdf_stem, "images", fname,
                     ])
                     batch.add_object(properties={
-                        "content":      f"[{img_type} diagram] Page {page_num} from {pdf_stem}",
+                        "content":      content_str,
                         "chunkType":    "image",
                         "sourcePdf":    pdf_stem,
                         "sourceFolder": source_label,
