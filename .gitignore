@@ -12,4 +12,9 @@ logs/
 *.log
 
 # Data files
-milvus_data_ingester/
+frontend/docs/
+llm/agent_docker/
+llm/docs/
+llm/firmware_tools.py
+llm/check_pellet_properties.py
+llm/analysis_tools/

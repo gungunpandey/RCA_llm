@@ -1,0 +1,102 @@
+{
+  "scenarios": [
+    {
+      "id": "rotary_kiln_bearing",
+      "name": "Rotary Kiln Bearing Overheating",
+      "equipment_name": "Rotary Kiln",
+      "failure_description": "The rotary kiln support roller bearing temperature increased from normal 65°C to 95°C over 2 hours. Kiln was shut down as a precaution when temperature reached 100°C alarm setpoint.",
+      "symptoms": [
+        "Bearing temperature rising continuously",
+        "Unusual noise from bearing housing",
+        "Slight vibration increase detected",
+        "Lubrication oil level appears normal"
+      ],
+      "expected_root_cause": "Insufficient lubrication or bearing wear",
+      "complexity": "medium",
+      "equipment_type": "mechanical",
+      "relevant_pdfs": [
+        "Rotary Kiln_Hongda_OEM Manual.pdf",
+        "Rotary kiln and Annular cooler lubrication_Hongda_OEM Manual.pdf"
+      ]
+    },
+    {
+      "id": "id_fan_motor_trip",
+      "name": "ID&HR Fan Motor Overcurrent Trip",
+      "equipment_name": "ID&HR Fan",
+      "failure_description": "The induced draft fan motor tripped on overcurrent protection. Motor current was observed at 420A against rated 380A before trip. Fan was running normally before the incident.",
+      "symptoms": [
+        "Motor overcurrent alarm",
+        "Motor protection relay tripped",
+        "Fan vibration within normal limits",
+        "Inlet damper position at 75% open",
+        "System draft pressure higher than normal"
+      ],
+      "expected_root_cause": "Excessive system resistance or damper malfunction",
+      "complexity": "medium",
+      "equipment_type": "electrical",
+      "relevant_pdfs": [
+        "ID&HR Fan_TLT_OEM Manual.pdf"
+      ]
+    },
+    {
+      "id": "burner_flame_instability",
+      "name": "Burner Flame Instability",
+      "equipment_name": "Burner",
+      "failure_description": "The kiln burner flame became unstable with frequent flame detector alarms. Flame appeared yellow and smoky instead of the normal blue flame. Coal feed rate and air flow were at normal setpoints.",
+      "symptoms": [
+        "Flame detector frequent alarms",
+        "Yellow smoky flame instead of blue",
+        "Kiln temperature fluctuating ±20°C",
+        "Coal feed rate normal",
+        "Primary air flow normal",
+        "Secondary air temperature lower than normal"
+      ],
+      "expected_root_cause": "Poor combustion air-fuel ratio or burner nozzle blockage",
+      "complexity": "high",
+      "equipment_type": "process",
+      "relevant_pdfs": [
+        "Burner_Fives Combustion_OEM Manual.pdf"
+      ]
+    },
+    {
+      "id": "bucket_elevator_chain_break",
+      "name": "Bucket Elevator Chain Breakage",
+      "equipment_name": "Bucket Elevator",
+      "failure_description": "The bucket elevator chain broke during operation, causing material spillage and emergency shutdown. The chain had been in service for 18 months. Recent maintenance records show chain tension was adjusted 2 weeks ago.",
+      "symptoms": [
+        "Sudden loud noise during operation",
+        "Material spillage from casing",
+        "Chain found broken at one link",
+        "Some buckets damaged",
+        "Chain tension was recently adjusted",
+        "No unusual vibration before failure"
+      ],
+      "expected_root_cause": "Chain fatigue, overloading, or improper tension adjustment",
+      "complexity": "high",
+      "equipment_type": "mechanical",
+      "relevant_pdfs": [
+        "Bucket Elevator_Hongda_OEM Manual.pdf"
+      ]
+    },
+    {
+      "id": "esp_high_emission",
+      "name": "ESP High Emission Levels",
+      "equipment_name": "Electrostatic Precipitator (ESP)",
+      "failure_description": "Stack emission levels increased from normal 30 mg/Nm³ to 120 mg/Nm³. ESP secondary voltage and current readings are normal. Rapping system is operating as per schedule.",
+      "symptoms": [
+        "High stack emission readings",
+        "ESP voltage and current normal",
+        "Rapping system operating normally",
+        "Visible dust in stack gas",
+        "ESP hopper discharge normal",
+        "Gas flow rate unchanged"
+      ],
+      "expected_root_cause": "Electrode misalignment, gas distribution issue, or insulator contamination",
+      "complexity": "high",
+      "equipment_type": "electrical",
+      "relevant_pdfs": [
+        "ESP_Thermax_OEM Manual.pdf"
+      ]
+    }
+  ]
+}

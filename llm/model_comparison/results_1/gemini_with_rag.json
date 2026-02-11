@@ -1,0 +1,39 @@
+[
+  {
+    "scenario_id": "rotary_kiln_bearing",
+    "scenario_name": "Rotary Kiln Bearing Overheating",
+    "rag_docs_retrieved": 0,
+    "error": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The model is overloaded. Please try again later.', 'status': 'UNAVAILABLE'}}",
+    "root_cause": "Error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The model is overloaded. Please try again later.', 'status': 'UNAVAILABLE'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 2.630934000015259,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "Google Gemini 3 Flash"
+  },
+  {
+    "scenario_id": "id_fan_motor_trip",
+    "scenario_name": "ID&HR Fan Motor Overcurrent Trip",
+    "rag_docs_retrieved": 0,
+    "root_cause": "**Increased Mass Flow due to High Gas Density (Low Process Temperature) or Upstream Air Ingress.**",
+    "reasoning_steps": [
+      "1.  **Analyze the Electrical Trip:** The motor tripped at 420A, which is roughly 10.5% above the rated 380A. This indicates a sustained overload condition rather than a sudden mechanical seize or a short circuit (which would typically result in much higher instantaneous current).",
+      "2.  **Rule Out Mechanical Failure:** The fact that \"Fan vibration was within normal limits\" strongly suggests that the bearings, impeller balance, and coupling are intact. Mechanical failures that cause overcurrent usually manifest with high vibration or noise before the trip.",
+      "3.  **Analyze Process Data (The \"Smoking Gun\"):** The system draft pressure is \"higher than normal.\" In the context of an ID (Induced Draft) fan, \"higher draft\" usually refers to a more negative pressure (higher vacuum) at the inlet. This indicates the fan is moving a significant volume of gas. ",
+      "4.  **The Relationship between Density and Power:** Centrifugal fans are constant volume machines but variable mass flow machines. The power required by the fan motor is directly proportional to the density of the gas. ",
+      "    *   $Power \\propto Density \\times Flow \\times Pressure$.",
+      "5.  **Deduction of the Cause:** ",
+      "    *   If the flue gas being moved is colder than the design temperature (e.g., during a cold start-up or if an upstream heat exchanger/boiler is not yet at temperature), the gas is much denser. ",
+      "    *   A 75% damper opening on cold, dense air will frequently exceed the rated current of a motor designed to move hot, thin flue gas.",
+      "    *   Alternatively, a major leak/breach in the ductwork upstream (air ingress) would introduce cold ambient air, increasing the total mass flow and density, leading to the same overcurrent result."
+    ],
+    "confidence": 0.85,
+    "response_time_seconds": 13.11067271232605,
+    "tokens_used": 992,
+    "cost_usd": 0.0004395,
+    "raw_response": "ROOT CAUSE: **Increased Mass Flow due to High Gas Density (Low Process Temperature) or Upstream Air Ingress.**\n\nREASONING:\n1.  **Analyze the Electrical Trip:** The motor tripped at 420A, which is roughly 10.5% above the rated 380A. This indicates a sustained overload condition rather than a sudden mechanical seize or a short circuit (which would typically result in much higher instantaneous current).\n2.  **Rule Out Mechanical Failure:** The fact that \"Fan vibration was within normal limits\" strongly suggests that the bearings, impeller balance, and coupling are intact. Mechanical failures that cause overcurrent usually manifest with high vibration or noise before the trip.\n3.  **Analyze Process Data (The \"Smoking Gun\"):** The system draft pressure is \"higher than normal.\" In the context of an ID (Induced Draft) fan, \"higher draft\" usually refers to a more negative pressure (higher vacuum) at the inlet. This indicates the fan is moving a significant volume of gas. \n4.  **The Relationship between Density and Power:** Centrifugal fans are constant volume machines but variable mass flow machines. The power required by the fan motor is directly proportional to the density of the gas. \n    *   $Power \\propto Density \\times Flow \\times Pressure$.\n5.  **Deduction of the Cause:** \n    *   If the flue gas being moved is colder than the design temperature (e.g., during a cold start-up or if an upstream heat exchanger/boiler is not yet at temperature), the gas is much denser. \n    *   A 75% damper opening on cold, dense air will frequently exceed the rated current of a motor designed to move hot, thin flue gas.\n    *   Alternatively, a major leak/breach in the ductwork upstream (air ingress) would introduce cold ambient air, increasing the total mass flow and density, leading to the same overcurrent result.\n\nCONFIDENCE: **85%** (The missing 15% is due to the lack of specific gas temperature data and the exact definition of \"higher than normal\" draft).\n\nCORRECTIVE ACTIONS:\n1.  **Immediate Operational Check:** Verify the temperature of the gas at the fan inlet at the time of the trip. Compare it against the design specifications.\n2.  **Damper Control Optimization:** Implement a \"Current Limiting\" control loop in the DCS that automatically throttles the inlet damper if the motor current exceeds 95% of the Nameplate Rating (FLA), regardless of the draft demand.\n3.  **Inspection for Air Ingress:** Perform a \"smoke test\" or thermal imaging scan on the upstream ductwork and expansion joints to identify potential leaks that could be introducing cold air into the system.\n4.  **Review Start-up Procedures:** If the incident occurred during plant start-up, update the Standard Operating Procedure (SOP) to keep inlet dampers at a lower percentage (e.g., <30%) until the process gas temperature reaches a minimum threshold.\n5.  **Electrical Verification:** Perform an insulation resistance (megger) test and check terminal connections to ensure no \"soft\" electrical faults contributed to the trip, though this is secondary to the process analysis.",
+    "model": "Google Gemini 3 Flash"
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "scenario_id": "rotary_kiln_bearing",
+    "scenario_name": "Rotary Kiln Bearing Overheating",
+    "error": "Error code: 404 - {'error': {'code': 'DeploymentNotFound', 'message': 'The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.'}}",
+    "root_cause": "Error: Error code: 404 - {'error': {'code': 'DeploymentNotFound', 'message': 'The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 1.394853115081787,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "Azure OpenAI GPT-4"
+  },
+  {
+    "scenario_id": "id_fan_motor_trip",
+    "scenario_name": "ID&HR Fan Motor Overcurrent Trip",
+    "error": "Error code: 404 - {'error': {'code': 'DeploymentNotFound', 'message': 'The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.'}}",
+    "root_cause": "Error: Error code: 404 - {'error': {'code': 'DeploymentNotFound', 'message': 'The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 1.074061632156372,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "Azure OpenAI GPT-4"
+  }
+]

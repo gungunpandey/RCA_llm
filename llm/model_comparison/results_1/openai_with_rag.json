@@ -1,0 +1,30 @@
+[
+  {
+    "scenario_id": "rotary_kiln_bearing",
+    "scenario_name": "Rotary Kiln Bearing Overheating",
+    "rag_docs_retrieved": 0,
+    "error": "Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+    "root_cause": "Error: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 4.701951742172241,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "OpenAI GPT-4o"
+  },
+  {
+    "scenario_id": "id_fan_motor_trip",
+    "scenario_name": "ID&HR Fan Motor Overcurrent Trip",
+    "rag_docs_retrieved": 0,
+    "error": "Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+    "root_cause": "Error: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 2.83736252784729,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "OpenAI GPT-4o"
+  }
+]

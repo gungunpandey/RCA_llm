@@ -1,0 +1,33 @@
+[
+  {
+    "scenario_id": "rotary_kiln_bearing",
+    "scenario_name": "Rotary Kiln Bearing Overheating",
+    "root_cause": "**Failure of the Hydrodynamic Lubricant Film due to Water Contamination or Oil Degradation, leading to Bearing Surface Spalling (Metal-to-Metal Contact).**",
+    "reasoning_steps": [
+      "1.  **Rapid Temperature Gradient:** A rise from 65\u00b0C to 95\u00b0C in just 2 hours is a classic signature of a \"feedback loop\" failure. As the lubricant film fails, friction increases; this generates heat, which further lowers the oil's viscosity, leading to even more friction and rapid temperature escalation.",
+      "2.  **Noise and Vibration:** These symptoms are critical. \"Unusual noise\" and \"vibration increase\" indicate that physical damage to the bearing surfaces (spalling, pitting, or scuffing) has already begun. In a rotary kiln support roller, this often occurs when the oil can no longer maintain a wedge between the shaft (journal) and the bearing or within the rolling elements.",
+      "3.  **Normal Oil Level:** This symptom rules out a catastrophic leak or dry-running. However, it points toward a **quality** issue rather than a **quantity** issue. If the oil is contaminated with water (common in kilns due to cooling jacket leaks or condensation) or has undergone severe oxidation, the load-carrying capacity (viscosity) vanishes even if the sump looks full.",
+      "4.  **Kiln-Specific Factors (Axial Thrust):** Rotary kilns are designed to \"float\" between thrust rollers. If the kiln alignment shifts or if the \"skew\" of the support rollers is incorrect, the roller can be forced hard against its thrust face. This creates massive friction at the bearing ends, explaining the sudden heat and noise despite a normal oil level.",
+      "5.  **Conclusion:** The combination of noise, vibration, and rapid heat spike with a normal oil level most likely indicates that the oil's lubricating properties were compromised (likely by water or debris), causing the metal surfaces to touch and physically degrade."
+    ],
+    "confidence": 0.85,
+    "response_time_seconds": 20.027201414108276,
+    "tokens_used": 978,
+    "cost_usd": 0.00043875,
+    "raw_response": "ROOT CAUSE: **Failure of the Hydrodynamic Lubricant Film due to Water Contamination or Oil Degradation, leading to Bearing Surface Spalling (Metal-to-Metal Contact).**\n\nREASONING:\n1.  **Rapid Temperature Gradient:** A rise from 65\u00b0C to 95\u00b0C in just 2 hours is a classic signature of a \"feedback loop\" failure. As the lubricant film fails, friction increases; this generates heat, which further lowers the oil's viscosity, leading to even more friction and rapid temperature escalation.\n2.  **Noise and Vibration:** These symptoms are critical. \"Unusual noise\" and \"vibration increase\" indicate that physical damage to the bearing surfaces (spalling, pitting, or scuffing) has already begun. In a rotary kiln support roller, this often occurs when the oil can no longer maintain a wedge between the shaft (journal) and the bearing or within the rolling elements.\n3.  **Normal Oil Level:** This symptom rules out a catastrophic leak or dry-running. However, it points toward a **quality** issue rather than a **quantity** issue. If the oil is contaminated with water (common in kilns due to cooling jacket leaks or condensation) or has undergone severe oxidation, the load-carrying capacity (viscosity) vanishes even if the sump looks full.\n4.  **Kiln-Specific Factors (Axial Thrust):** Rotary kilns are designed to \"float\" between thrust rollers. If the kiln alignment shifts or if the \"skew\" of the support rollers is incorrect, the roller can be forced hard against its thrust face. This creates massive friction at the bearing ends, explaining the sudden heat and noise despite a normal oil level.\n5.  **Conclusion:** The combination of noise, vibration, and rapid heat spike with a normal oil level most likely indicates that the oil's lubricating properties were compromised (likely by water or debris), causing the metal surfaces to touch and physically degrade.\n\nCONFIDENCE: **85%** (The remaining 15% would depend on inspecting the oil for \"milky\" appearance/water or checking the kiln's axial position).\n\nCORRECTIVE ACTIONS:\n1.  **Immediate Oil Analysis:** Take an oil sample immediately to check for water content (Karl Fischer test), viscosity breakdown, and the presence of wear metals (iron/brass/babbitt).\n2.  **Visual Inspection:** Open the bearing housing inspection cover to check for \"glitter\" (metal flakes) in the oil or signs of \"wiping\" on the bearing surface.\n3.  **Check Cooling System:** Inspect the water-cooling jackets or internal cooling coils for leaks. Water entering the oil is the most common cause of sudden film failure in kiln bearings.\n4.  **Verify Kiln Alignment/Axial Float:** Check the position of the kiln relative to the thrust rollers. Ensure the kiln is not \"hard down\" or \"hard up\" on the thrust rollers, which places an unintended axial load on the support roller bearings.\n5.  **Flushing and Replacement:** If the bearing surface is not severely damaged, perform a full system flush and replace the lubricant with the correct high-viscosity ISO VG gear/bearing oil. If metal debris is found, the bearing must be pulled and replaced/refurbished before restarting.",
+    "model": "Google Gemini 3 Flash"
+  },
+  {
+    "scenario_id": "id_fan_motor_trip",
+    "scenario_name": "ID&HR Fan Motor Overcurrent Trip",
+    "error": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The model is overloaded. Please try again later.', 'status': 'UNAVAILABLE'}}",
+    "root_cause": "Error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The model is overloaded. Please try again later.', 'status': 'UNAVAILABLE'}}",
+    "reasoning_steps": [],
+    "confidence": 0.0,
+    "response_time_seconds": 5.078200817108154,
+    "tokens_used": 0,
+    "cost_usd": 0.0,
+    "raw_response": "",
+    "model": "Google Gemini 3 Flash"
+  }
+]
