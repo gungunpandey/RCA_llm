@@ -28,6 +28,25 @@ class FiveWhysResult(BaseModel):
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
 
 
+class DomainFinding(BaseModel):
+    """Single finding from a domain-specific agent."""
+    area: str = Field(..., description="Analysis area (e.g., 'Bearing Condition', 'Motor Protection')")
+    observation: str = Field(..., description="What was found")
+    severity: str = Field(..., description="Severity level: critical, warning, normal")
+    evidence: str = Field(..., description="Supporting evidence for this finding")
+
+
+class DomainAnalysisResult(BaseModel):
+    """Result from a domain-specific agent analysis."""
+    domain: str = Field(..., description="Domain: mechanical, electrical, or process")
+    findings: List[DomainFinding] = Field(..., description="Domain-specific observations")
+    root_cause_hypothesis: str = Field(..., description="Agent's root cause hypothesis")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in hypothesis")
+    recommended_checks: List[str] = Field(default_factory=list, description="Physical checks to verify")
+    documents_used: List[str] = Field(default_factory=list, description="RAG sources referenced")
+    analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
+
+
 class ToolResult(BaseModel):
     """Generic result from any RCA tool."""
     tool_name: str = Field(..., description="Name of the tool that was executed")

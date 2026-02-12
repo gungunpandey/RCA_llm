@@ -90,11 +90,15 @@ class RAGManager:
         
         try:
             # Use Weaviate v4 connection method with Auth class
-            from weaviate.classes.init import Auth
-            
+            from weaviate.classes.init import Auth, AdditionalConfig, Timeout
+
             self.client = weaviate.connect_to_weaviate_cloud(
                 cluster_url=self.config["weaviate"]["url"],
-                auth_credentials=Auth.api_key(self.config["weaviate"]["api_key"])
+                auth_credentials=Auth.api_key(self.config["weaviate"]["api_key"]),
+                skip_init_checks=True,
+                additional_config=AdditionalConfig(
+                    timeout=Timeout(init=30, query=60, insert=120)
+                ),
             )
             
             # Verify connection by checking if client is ready

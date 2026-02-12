@@ -11,6 +11,10 @@ venv/
 logs/
 *.log
 
+# Node
+node_modules/
+dist/
+
 # Data files
 frontend/docs/
 llm/agent_docker/
@@ -18,3 +22,6 @@ llm/docs/
 llm/firmware_tools.py
 llm/check_pellet_properties.py
 llm/analysis_tools/
+
+# Windows reserved names
+nul

@@ -1,0 +1,92 @@
+{
+  "scenarios": [
+    {
+      "id": "esp_high_emission",
+      "name": "ESP High Emission with TR Set Trip",
+      "equipment_name": "Electrostatic Precipitator (ESP)",
+      "failure_description": "Excessive stack emission opacity > 50mg/Nm3 despite normal inlet load. Ash discharge rotary valve was found stopped; clinker formation suspected in hopper.",
+      "symptoms": [
+        "TR Set 1 tripped on under-voltage",
+        "Hopper High Level Alarm active",
+        "Field 1 Spark Rate high"
+      ],
+      "error_codes": ["TR-UV-Trip", "HPR-Hi-Lvl"],
+      "operator_observations": "Ash discharge rotary valve was found stopped; clinker formation suspected in hopper.",
+      "expected_root_cause": "Hopper blockage due to clinker formation causing ash buildup and TR set trip",
+      "complexity": "high",
+      "equipment_type": "electrical",
+      "relevant_pdfs": ["ESP_Thermax_OEM Manual.pdf"]
+    },
+    {
+      "id": "kiln_main_drive_trip",
+      "name": "Rotary Kiln Main Drive Motor Trip",
+      "equipment_name": "Rotary Kiln",
+      "failure_description": "Main Drive Motor tripped during kiln rotation. Motor current spiked to 120% of rated FLA. Kiln shell temperature was uneven; red spot observed near tyre #2.",
+      "symptoms": [
+        "Motor current spiked to 120% of rated FLA",
+        "Auxiliary drive engaged automatically",
+        "Girth gear noise observed prior to trip"
+      ],
+      "error_codes": ["MTR-OC-Trip", "VFD-Fault-F012"],
+      "operator_observations": "Kiln shell temperature was uneven; red spot observed near tyre #2.",
+      "expected_root_cause": "Refractory lining damage causing shell deformation and increased mechanical load",
+      "complexity": "high",
+      "equipment_type": "mechanical",
+      "relevant_pdfs": [
+        "Rotary Kiln_Hongda_OEM Manual.pdf",
+        "Rotary kiln and Annular cooler lubrication_Hongda_OEM Manual.pdf"
+      ]
+    },
+    {
+      "id": "grate_hydraulic_failure",
+      "name": "Travelling Grate Hydraulic System Failure",
+      "equipment_name": "Travelling Grate",
+      "failure_description": "Grate movement stalled; hydraulic system pressure loss. Found oil leakage near the solenoid valve manifold; tank level low.",
+      "symptoms": [
+        "System pressure dropped below 80 bar",
+        "Hydraulic pump P-101 cavitation noise",
+        "Oil temperature high alarm (>60°C)"
+      ],
+      "error_codes": ["HYD-Low-Press", "OIL-Temp-Hi"],
+      "operator_observations": "Found oil leakage near the solenoid valve manifold; tank level low.",
+      "expected_root_cause": "Hydraulic oil leak at solenoid valve manifold causing low pressure and pump cavitation",
+      "complexity": "medium",
+      "equipment_type": "mechanical",
+      "relevant_pdfs": []
+    },
+    {
+      "id": "id_fan_vibration",
+      "name": "ID Fan High Vibration Trip",
+      "equipment_name": "ID Fan",
+      "failure_description": "High vibration on Drive End (DE) bearing requiring shutdown. Fan impeller was cleaned 2 days ago; suspect balance weights might have dislodged.",
+      "symptoms": [
+        "Vibration amplitude reached 12 mm/s RMS",
+        "Bearing temperature stable at 65°C",
+        "Phase angle shift observed"
+      ],
+      "error_codes": ["VIB-Hi-Hi-Trip"],
+      "operator_observations": "Fan impeller was cleaned 2 days ago; suspect balance weights might have dislodged.",
+      "expected_root_cause": "Impeller imbalance due to dislodged balance weights after recent cleaning",
+      "complexity": "medium",
+      "equipment_type": "mechanical",
+      "relevant_pdfs": ["ID&HR Fan_TLT_OEM Manual.pdf"]
+    },
+    {
+      "id": "cooler_fan_overload",
+      "name": "Grate Cooler Fan Thermal Overload Trip",
+      "equipment_name": "Grate Cooler Fan",
+      "failure_description": "Fan motor tripped on thermal overload after 2 hours of operation. Damper actuator linkage appears broken; fan was starting against full load.",
+      "symptoms": [
+        "Discharge damper stuck at 100% open",
+        "Motor body temperature high",
+        "Air flow rate lower than expected"
+      ],
+      "error_codes": ["TOL-Trip", "DMP-Pos-Err"],
+      "operator_observations": "Damper actuator linkage appears broken; fan was starting against full load.",
+      "expected_root_cause": "Broken damper actuator linkage causing fan to operate against full system resistance",
+      "complexity": "medium",
+      "equipment_type": "electrical",
+      "relevant_pdfs": []
+    }
+  ]
+}

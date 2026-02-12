@@ -65,7 +65,8 @@ async def test_five_whys():
     scenarios_path = os.path.join(
         os.path.dirname(__file__),
         "model_comparison",
-        "test_scenarios.json"
+        # "test_scenarios.json",
+        "test_scenarios_extended.json"
     )
     
     with open(scenarios_path, 'r') as f:

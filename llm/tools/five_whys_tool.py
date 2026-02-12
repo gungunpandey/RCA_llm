@@ -50,21 +50,31 @@ class FiveWhysTool(BaseTool):
         Returns:
             ToolResult containing FiveWhysResult
         """
+        # Optional callback for live status updates (used by SSE endpoint)
+        status_callback = kwargs.get('status_callback')
+
+        async def _send_status(msg: str):
+            if status_callback:
+                await status_callback(msg)
+
         async def _perform_analysis():
             # Step 1: Retrieve initial context from RAG
             self.logger.info(f"Starting 5 Whys analysis for {equipment_name}")
+            await _send_status("Searching OEM manuals for relevant context...")
             rag_docs = await self._retrieve_context(equipment_name, symptoms, top_k=5)
             rag_context = self._format_context(rag_docs)
-            
+
             # Collect document sources
             doc_sources = [doc.source for doc in rag_docs if hasattr(doc, 'source')]
-            
+            await _send_status(f"Retrieved {len(rag_docs)} relevant documents")
+
             # Step 2: Perform 5 progressive "why" iterations
             why_steps = []
             current_answer = failure_description
-            
+
             for step_num in range(1, 6):
                 self.logger.info(f"Generating Why #{step_num}")
+                await _send_status(f"Analyzing Why #{step_num} of 5...")
                 
                 # Generate why question and answer
                 why_result = await self._generate_why_step(
@@ -79,8 +89,10 @@ class FiveWhysTool(BaseTool):
                 
                 why_steps.append(why_result)
                 current_answer = why_result.answer
-            
+                await _send_status(f"Why #{step_num} complete — confidence {why_result.confidence*100:.0f}%")
+
             # Step 3: Extract root cause from final why
+            await _send_status("Compiling root cause and building report...")
             root_cause = why_steps[-1].answer
             root_cause_confidence = why_steps[-1].confidence
             
@@ -131,6 +143,14 @@ class FiveWhysTool(BaseTool):
         Returns:
             WhyStep with question, answer, and supporting documents
         """
+        # Build the question text ourselves (don't rely on LLM to generate it)
+        if step_number == 1:
+            why_question = f"Why did the {equipment_name} fail?"
+        else:
+            # Condense previous answer into a short "why" question
+            prev_short = previous_answer.split('.')[0].strip()[:120]
+            why_question = f"Why did {prev_short.rstrip('.')}?"
+
         # Build prompt for this why step
         if step_number == 1:
             prompt = f"""You are performing a 5 Whys Root Cause Analysis for industrial equipment failure.
@@ -144,26 +164,20 @@ Relevant Technical Documentation:
 
 This is Why #1 of the 5 Whys analysis.
 
-🚨 CRITICAL RULES FOR PLANT-CREDIBLE RCA:
+RULES:
 1. NEVER use HTTP/API errors (503, 404, 500, etc.) as plant failure modes
 2. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
-3. Base your answer on EVIDENCE:
-   - Measured data (sensor readings, alarms, trends)
-   - OEM manual rules (explicit causality statements)
-   - Documented procedures
-4. If inferring without direct evidence, state this clearly and use cautious language
-5. Cite specific document names and page numbers when available
+3. Back every claim with evidence (sensor data, OEM manual rules, or documented procedures)
+4. If inferring without direct evidence, say "Based on inference"
+5. Keep your answer CONCISE: 2-4 sentences. State the cause and the evidence. No lengthy explanations.
+6. Do NOT use markdown formatting (no ** or * for bold/italic)
 
-Task: Based on the failure description and symptoms, answer the question "Why did this failure occur?"
+Question: {why_question}
 
-Provide your response in the following format:
-
-QUESTION: Why did this failure occur?
-ANSWER: [Your detailed answer, citing specific documents by name when possible. If inferring, state "Based on inference" or "Likely due to"]
-SUPPORTING_DOCUMENTS: [List document names you referenced, e.g., "Rotary Kiln_Hongda_OEM Manual, ID&HR Fan_TLT_OEM Manual"]
-CONFIDENCE: [Your confidence level as a percentage, e.g., 85]
-
-Be specific and cite the technical documentation where applicable.
+Respond in EXACTLY this format:
+ANSWER: [2-4 concise sentences with evidence]
+SUPPORTING_DOCUMENTS: [Only full document names, e.g., "Rotary Kiln_Hongda_OEM Manual, ID&HR Fan_TLT_OEM Manual"]
+CONFIDENCE: [percentage, e.g., 85]
 """
         else:
             prompt = f"""You are performing a 5 Whys Root Cause Analysis for industrial equipment failure.
@@ -178,38 +192,31 @@ This is Why #{step_number} of the 5 Whys analysis.
 
 Previous Answer (Why #{step_number-1}): {previous_answer}
 
-🚨 CRITICAL RULES FOR PLANT-CREDIBLE RCA:
+RULES:
 1. NEVER use HTTP/API errors (503, 404, 500, etc.) as plant failure modes
 2. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
-3. Base your answer on EVIDENCE:
-   - Measured data (sensor readings, alarms, trends)
-   - OEM manual rules (explicit causality statements)
-   - Documented procedures
-4. If inferring without direct evidence, state this clearly and use cautious language
-5. For root cause (Why #5), focus on SYSTEMIC issues (procedures, design, governance), not just triggers
+3. Back every claim with evidence (sensor data, OEM manual rules, or documented procedures)
+4. If inferring without direct evidence, say "Based on inference"
+5. Keep your answer CONCISE: 2-4 sentences for Why #1-4, up to 5-6 sentences for Why #5. State the cause and evidence only.
+6. Do NOT use markdown formatting (no ** or * for bold/italic)
+7. Do NOT repeat document names inside the ANSWER. Put them only in SUPPORTING_DOCUMENTS.
+{"8. This is the FINAL why. Identify the SYSTEMIC ROOT CAUSE (poor design, missing procedure, inadequate governance), not just the immediate trigger." if is_final else ""}
 
-Task: Drill deeper by asking "Why did {previous_answer}?" and provide a detailed answer.
+Question: {why_question}
 
-{"🎯 This is the FINAL why. Your answer should identify the ROOT CAUSE - the systemic issue (poor design, missing procedure, inadequate governance) that allowed the failure, NOT just the immediate trigger." if is_final else ""}
-
-Provide your response in the following format:
-
-QUESTION: Why {previous_answer[:100]}...?
-ANSWER: [Your detailed answer, citing specific documents by name when possible. If inferring, state "Based on inference" or "Likely due to"]
-SUPPORTING_DOCUMENTS: [List document names you referenced, e.g., "Rotary Kiln_Hongda_OEM Manual, ID&HR Fan_TLT_OEM Manual"]
-CONFIDENCE: [Your confidence level as a percentage, e.g., 85]
-
-Be specific and cite the technical documentation where applicable.
+Respond in EXACTLY this format:
+ANSWER: [2-4 concise sentences with evidence]
+SUPPORTING_DOCUMENTS: [Only full document names, comma-separated]
+CONFIDENCE: [percentage, e.g., 85]
 """
         
         # Call LLM
         try:
-            # Use the LLM adapter's analyze_failure method
-            # (We'll adapt it for this use case)
             response = self._call_llm(prompt)
-            
-            # Parse response
-            question, answer, docs, confidence = self._parse_why_response(response, step_number)
+
+            # Parse response (question is built above, not parsed from LLM)
+            _, answer, docs, confidence = self._parse_why_response(response, step_number)
+            question = why_question
             
             # VALIDATION 1: Check for AI errors leaked into plant RCA
             is_valid, error_msg = PlantFailureModeValidator.validate_failure_mode(answer)
@@ -253,7 +260,7 @@ Be specific and cite the technical documentation where applicable.
             self.logger.error(f"Error generating why step {step_number}: {e}")
             return WhyStep(
                 step_number=step_number,
-                question=f"Why (step {step_number})?",
+                question=why_question,
                 answer=f"Error: {str(e)}",
                 supporting_documents=[],
                 confidence=0.0
@@ -301,24 +308,30 @@ Be specific and cite the technical documentation where applicable.
             Tuple of (question, answer, documents, confidence)
         """
         import re
-        
-        # Extract question
-        question_match = re.search(r'QUESTION:\s*(.+?)(?=\n|ANSWER:)', response, re.DOTALL | re.IGNORECASE)
+
+        # Extract question (kept for backward compat, caller overrides it)
+        question_match = re.search(r'QUESTION:\s*(.+?)(?=\nANSWER:|\n\n)', response, re.DOTALL | re.IGNORECASE)
         question = question_match.group(1).strip() if question_match else f"Why (step {step_number})?"
-        
-        # Extract answer
-        answer_match = re.search(r'ANSWER:\s*(.+?)(?=\nSUPPORTING_DOCUMENTS:|CONFIDENCE:|$)', response, re.DOTALL | re.IGNORECASE)
+
+        # Extract answer — look for ANSWER: label, then capture until SUPPORTING_DOCUMENTS or CONFIDENCE
+        answer_match = re.search(
+            r'ANSWER:\s*(.+?)(?=\nSUPPORTING[_ ]DOCUMENTS:|\nCONFIDENCE:|\Z)',
+            response, re.DOTALL | re.IGNORECASE
+        )
         answer = answer_match.group(1).strip() if answer_match else response[:500]
-        
+
         # Extract supporting documents
-        docs_match = re.search(r'SUPPORTING_DOCUMENTS:\s*(.+?)(?=\nCONFIDENCE:|$)', response, re.DOTALL | re.IGNORECASE)
+        docs_match = re.search(
+            r'SUPPORTING[_ ]DOCUMENTS:\s*(.+?)(?=\nCONFIDENCE:|\Z)',
+            response, re.DOTALL | re.IGNORECASE
+        )
         docs_text = docs_match.group(1).strip() if docs_match else ""
         docs = [d.strip() for d in docs_text.split(',') if d.strip()]
-        
+
         # Extract confidence
         conf_match = re.search(r'CONFIDENCE:\s*(\d+)', response, re.IGNORECASE)
         confidence = float(conf_match.group(1)) / 100.0 if conf_match else 0.7
-        
+
         return question, answer, docs, confidence
     
     async def _generate_corrective_actions(
