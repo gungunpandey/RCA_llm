@@ -32,6 +32,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 PDF_SOURCES = [
     # os.path.join(_HERE, "pdf"),
     os.path.join(_HERE, "pdfs_pellet"),
+    os.path.join(_HERE, "pdfs_pci"),
 ]
 
 DATA_DIR       = os.path.join(_HERE, "data")

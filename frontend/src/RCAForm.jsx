@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import RCAResult from './RCAResult'
 import DomainResult from './DomainResult'
+import DomainSummary from './DomainSummary'
 
 const INITIAL_STATE = {
   equipment_name: '',
@@ -84,7 +85,7 @@ function RCAForm() {
     }
   }
 
-  // --- Submit via SSE stream ---
+  // --- Submit via SSE stream (INTEGRATED PIPELINE) ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     setStatus('sending')
@@ -101,21 +102,40 @@ function RCAForm() {
     }
 
     try {
-      // 1. Run 5 Whys analysis
-      await readSSEStream('http://localhost:8000/analyze-stream', payload, {
-        onStatus: (d) => { setStatusMsg(d.message); setStatusLog(prev => [...prev, d.message]) },
-        onResult: (d) => { setResult(d); setStatus('success') },
-        onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
-      })
-
-      // 2. Run domain analysis (if toggled on)
       if (includeDomain) {
-        setDomainStatus('sending')
-        setDomainStatusMsg('Starting domain expert analysis...')
-        await readSSEStream('http://localhost:8000/analyze-domain-stream', payload, {
-          onStatus: (d) => { setDomainStatusMsg(d.message); setStatusLog(prev => [...prev, d.message]) },
-          onResult: (d) => { setDomainResult(d); setDomainStatus('success') },
-          onError: (d) => { setDomainResult({ error: d.detail }); setDomainStatus('error') },
+        // NEW: Use integrated pipeline (domain agents → 5 Whys)
+        await readSSEStream('http://localhost:8000/analyze-integrated-stream', payload, {
+          onStatus: (d) => {
+            const msg = d.message
+            setStatusMsg(msg)
+            setStatusLog(prev => [...prev, msg])
+
+            // Detect when domain analysis completes and 5 Whys starts
+            if (msg.includes('Domain analysis complete')) {
+              setDomainStatus('success')
+            }
+          },
+          onResult: (d) => {
+            // Integrated result contains both domain insights and 5 Whys
+            setResult(d)
+            setStatus('success')
+
+            // Extract domain insights for separate display
+            if (d.result && d.result.domain_insights) {
+              setDomainResult({
+                status: 'success',
+                result: d.result.domain_insights
+              })
+            }
+          },
+          onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
+        })
+      } else {
+        // Fallback: Use standalone 5 Whys (no domain analysis)
+        await readSSEStream('http://localhost:8000/analyze-stream', payload, {
+          onStatus: (d) => { setStatusMsg(d.message); setStatusLog(prev => [...prev, d.message]) },
+          onResult: (d) => { setResult(d); setStatus('success') },
+          onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
         })
       }
     } catch (err) {
@@ -293,8 +313,22 @@ function RCAForm() {
         </div>
       )}
 
+      {/* Show domain summary FIRST (if available) */}
+      {status === 'success' && result && result.result && result.result.domain_insights && (
+        <DomainSummary insights={result.result.domain_insights} />
+      )}
+
+      {/* Then show 5 Whys results */}
       {status === 'success' && result && (
-        <RCAResult data={result} />
+        <>
+          {result.result && result.result.domain_insights && (
+            <div className="section-divider">
+              <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
+              <p className="section-subtitle">Building on domain expert insights...</p>
+            </div>
+          )}
+          <RCAResult data={result} />
+        </>
       )}
 
       {/* Domain analysis status */}
@@ -313,7 +347,8 @@ function RCAForm() {
         </div>
       )}
 
-      {domainStatus === 'success' && domainResult && (
+      {/* Old domain result display (keep for backward compatibility with old endpoint) */}
+      {domainStatus === 'success' && domainResult && !result?.result?.domain_insights && (
         <DomainResult data={domainResult} />
       )}
     </div>

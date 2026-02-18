@@ -3,7 +3,11 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(wc:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vite build)",
+      "Bash(timeout 5 npx vite:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

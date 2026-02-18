@@ -4,11 +4,11 @@
 Implements the 5 Whys RCA methodology with RAG-enhanced analysis.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 
 from tools.base_tool import BaseTool
-from models.tool_results import ToolResult, FiveWhysResult, WhyStep
+from models.tool_results import ToolResult, FiveWhysResult, WhyStep, DomainInsightsSummary
 from tools.evidence_validator import (
     ConfidenceCalibrator,
     PlantFailureModeValidator,
@@ -36,16 +36,18 @@ class FiveWhysTool(BaseTool):
         failure_description: str,
         equipment_name: str,
         symptoms: List[str],
+        domain_insights: Optional[DomainInsightsSummary] = None,
         **kwargs
     ) -> ToolResult:
         """
-        Perform 5 Whys analysis.
+        Perform 5 Whys analysis with optional domain insights.
         
         Args:
             failure_description: Description of the failure
             equipment_name: Name of the equipment
             symptoms: List of observed symptoms
-            **kwargs: Additional parameters
+            domain_insights: Optional domain expert analysis results
+            **kwargs: Additional parameters (status_callback, etc.)
             
         Returns:
             ToolResult containing FiveWhysResult
@@ -60,13 +62,24 @@ class FiveWhysTool(BaseTool):
         async def _perform_analysis():
             # Step 1: Retrieve initial context from RAG
             self.logger.info(f"Starting 5 Whys analysis for {equipment_name}")
-            await _send_status("Searching OEM manuals for relevant context...")
+            
+            # Check if domain insights are provided
+            if domain_insights:
+                self.logger.info("Using domain insights from expert analysis")
+                await _send_status("Using domain expert analysis as foundation...")
+            else:
+                await _send_status("Searching OEM manuals for relevant context...")
+            
             rag_docs = await self._retrieve_context(equipment_name, symptoms, top_k=5)
             rag_context = self._format_context(rag_docs)
 
             # Collect document sources
             doc_sources = [doc.source for doc in rag_docs if hasattr(doc, 'source')]
-            await _send_status(f"Retrieved {len(rag_docs)} relevant documents")
+            
+            if domain_insights:
+                await _send_status(f"Retrieved {len(rag_docs)} OEM documents + domain expert insights")
+            else:
+                await _send_status(f"Retrieved {len(rag_docs)} relevant documents")
 
             # Step 2: Perform 5 progressive "why" iterations
             why_steps = []
@@ -84,6 +97,7 @@ class FiveWhysTool(BaseTool):
                     symptoms=symptoms,
                     previous_answer=current_answer,
                     rag_context=rag_context,
+                    domain_insights=domain_insights,
                     is_final=(step_num == 5)
                 )
                 
@@ -113,7 +127,7 @@ class FiveWhysTool(BaseTool):
                 documents_used=list(set(doc_sources))  # Remove duplicates, keep unique only
             )
             
-            return result.dict()
+            return result.model_dump()
         
         # Execute with timing and error handling
         return await self._execute_with_timing(_perform_analysis)
@@ -126,6 +140,7 @@ class FiveWhysTool(BaseTool):
         symptoms: List[str],
         previous_answer: str,
         rag_context: str,
+        domain_insights: Optional[DomainInsightsSummary] = None,
         is_final: bool = False
     ) -> WhyStep:
         """
@@ -138,6 +153,7 @@ class FiveWhysTool(BaseTool):
             symptoms: Observed symptoms
             previous_answer: Answer from previous why (or failure description for step 1)
             rag_context: RAG context documents
+            domain_insights: Optional domain expert analysis results
             is_final: Whether this is the final step (step 5)
             
         Returns:
@@ -151,14 +167,19 @@ class FiveWhysTool(BaseTool):
             prev_short = previous_answer.split('.')[0].strip()[:120]
             why_question = f"Why did {prev_short.rstrip('.')}?"
 
-        # Build prompt for this why step
+        # Build domain insights section if available
+        domain_section = ""
+        if domain_insights and domain_insights.key_findings:
+            domain_section = f"\n\nDOMAIN EXPERT ANALYSIS (Pre-Analysis):\nThe following domain experts have already analyzed this failure:\n\n{self._format_domain_insights(domain_insights)}\n"
+
+                # Build prompt for this why step
         if step_number == 1:
             prompt = f"""You are performing a 5 Whys Root Cause Analysis for industrial equipment failure.
 
 Equipment: {equipment_name}
 Failure Description: {failure_description}
 Observed Symptoms: {', '.join(symptoms)}
-
+{domain_section}
 Relevant Technical Documentation:
 {rag_context}
 
@@ -384,3 +405,17 @@ Be specific and reference procedures from the documentation where applicable.
         except Exception as e:
             self.logger.error(f"Error generating corrective actions: {e}")
             return [f"Error generating actions: {str(e)}"]
+
+    def _format_domain_insights(self, insights):
+        """Format domain insights for LLM prompt."""
+        sections = []
+        sections.append("KEY FINDINGS FROM DOMAIN EXPERTS:")
+        for finding in insights.key_findings[:5]:
+            sections.append(f"  • {finding}")
+        sections.append("\nSUSPECTED ROOT CAUSES:")
+        for rc in insights.suspected_root_causes:
+            sections.append(f"  • [{rc['domain'].upper()}] {rc['hypothesis']} (Confidence: {rc['confidence']*100:.0f}%)")
+        sections.append("\nRECOMMENDED VERIFICATION CHECKS:")
+        for check in insights.recommended_checks[:5]:
+            sections.append(f"  • {check}")
+        return "\n".join(sections)

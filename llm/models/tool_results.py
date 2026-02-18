@@ -47,6 +47,55 @@ class DomainAnalysisResult(BaseModel):
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
 
 
+class DomainInsightsSummary(BaseModel):
+    """
+    Aggregated insights from all domain agents.
+    
+    Used to provide domain-specific context to the 5 Whys analysis.
+    """
+    agents_analyzed: List[str] = Field(
+        ..., 
+        description="List of domain agents that ran (e.g., ['mechanical_agent', 'electrical_agent'])"
+    )
+    
+    domain_analyses: List[DomainAnalysisResult] = Field(
+        ...,
+        description="Full results from each domain agent"
+    )
+    
+    key_findings: List[str] = Field(
+        ...,
+        description="Top critical findings across all domains (max 10)"
+    )
+    
+    suspected_root_causes: List[Dict[str, Any]] = Field(
+        ...,
+        description="Hypotheses from each domain with confidence scores"
+    )
+    
+    recommended_checks: List[str] = Field(
+        ...,
+        description="Physical verification checks from all domains (max 10)"
+    )
+    
+    documents_used: List[str] = Field(
+        ...,
+        description="All OEM manuals referenced by domain agents"
+    )
+    
+    overall_confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Weighted average confidence across domains"
+    )
+    
+    analysis_timestamp: datetime = Field(
+        default_factory=datetime.now,
+        description="When domain analysis was performed"
+    )
+
+
 class ToolResult(BaseModel):
     """Generic result from any RCA tool."""
     tool_name: str = Field(..., description="Name of the tool that was executed")

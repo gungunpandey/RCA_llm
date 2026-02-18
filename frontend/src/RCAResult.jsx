@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 /**
  * Clean text coming from the LLM:
  *  1. Strip markdown bold/italic markers (** and *)
@@ -35,90 +37,162 @@ function filterDocs(docs) {
   })
 }
 
+/**
+ * Determine evidence badge based on confidence and answer text
+ */
+function getEvidenceBadge(confidence, answer) {
+  const text = answer.toLowerCase()
 
-function ConfidenceBar({ value }) {
-  const pct = Math.round(value * 100)
-  const color =
-    pct >= 85 ? '#34d399' :
-    pct >= 60 ? '#fbbf24' :
-    '#f87171'
+  if (text.includes('alarm') || text.includes('error code') || text.includes('trip')) {
+    return { label: 'From Alarm', icon: '✔', color: '#34d399' }
+  }
+  if (text.includes('oem manual') || text.includes('manufacturer') || text.includes('specification')) {
+    return { label: 'From Manual', icon: '✔', color: '#4a7cff' }
+  }
+  if (text.includes('observed') || text.includes('inspection') || text.includes('visual')) {
+    return { label: 'Observed', icon: '✔', color: '#34d399' }
+  }
+  if (text.includes('infer') || text.includes('likely') || text.includes('probable') || confidence < 0.7) {
+    return { label: 'Inferred', icon: '⚠', color: '#fbbf24' }
+  }
+
+  return { label: 'From Manual', icon: '✔', color: '#4a7cff' }
+}
+
+/**
+ * Extract immediate action items from 5 Whys steps
+ */
+function extractActionItems(whySteps) {
+  const actions = []
+
+  whySteps.forEach(step => {
+    const text = step.answer.toLowerCase()
+
+    // Extract check/inspect/verify actions
+    if (text.includes('check') || text.includes('inspect') || text.includes('verify')) {
+      const sentences = step.answer.split(/[.!?]/)
+      sentences.forEach(s => {
+        if (s.toLowerCase().includes('check') || s.toLowerCase().includes('inspect') || s.toLowerCase().includes('verify')) {
+          actions.push(s.trim())
+        }
+      })
+    }
+  })
+
+  return actions.slice(0, 3) // Top 3 actions
+}
+
+function EvidenceBadge({ confidence, answer }) {
+  const badge = getEvidenceBadge(confidence, answer)
 
   return (
-    <div className="confidence-bar">
-      <div className="confidence-track">
-        <div
-          className="confidence-fill"
-          style={{ width: `${pct}%`, background: color }}
-        />
-      </div>
-      <span className="confidence-label" style={{ color }}>{pct}%</span>
-    </div>
+    <span className="evidence-badge" style={{ borderColor: badge.color, color: badge.color }}>
+      <span className="evidence-icon">{badge.icon}</span>
+      {badge.label}
+    </span>
   )
 }
 
 function RCAResult({ data }) {
-  const r = data.result
+  const [whysExpanded, setWhysExpanded] = useState(false)
+
+  // Handle both old format (5 Whys only) and new format (integrated pipeline)
+  const r = data.result.five_whys_analysis || data.result
   const validDocs = filterDocs(r.documents_used)
+  const actionItems = extractActionItems(r.why_steps || [])
+
+  // Extract "why it tripped" from Why #1
+  const whyItTripped = r.why_steps?.[0]?.answer || r.root_cause
 
   return (
     <div className="rca-result">
 
-      {/* ── Header ── */}
-      <div className="rca-header">
-        <div className="rca-header-left">
-          <h2>{data.equipment_name}</h2>
-          <span className="rca-badge">{data.analysis_type.replace('_', ' ')}</span>
+      {/* ══════════════════════════════════════════════════════
+          TOP SUMMARY CARD (Operator-Friendly)
+          ══════════════════════════════════════════════════════ */}
+      <div className="summary-card-top">
+        <div className="summary-section">
+          <h3 className="summary-label">MOST LIKELY CAUSE</h3>
+          <p className="summary-main-text">{cleanText(r.root_cause)}</p>
+          <EvidenceBadge
+            confidence={r.root_cause_confidence}
+            answer={r.root_cause}
+          />
         </div>
-        <div className="rca-meta">
-          <span>{data.execution_time_seconds}s</span>
+
+        <div className="summary-section">
+          <h3 className="summary-label">WHY IT TRIPPED</h3>
+          <p className="summary-text">{cleanText(whyItTripped)}</p>
+        </div>
+
+        {actionItems.length > 0 && (
+          <div className="summary-section">
+            <h3 className="summary-label">WHAT TO CHECK NOW</h3>
+            <ul className="action-checklist">
+              {actionItems.map((action, i) => (
+                <li key={i}>{cleanText(action)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="summary-meta">
+          <span>{data.equipment_name}</span>
           <span className="dot" />
-          <span>{validDocs.length || 0} docs referenced</span>
+          <span>{data.execution_time_seconds}s analysis</span>
+          <span className="dot" />
+          <span>{validDocs.length || 0} docs</span>
         </div>
       </div>
 
-      {/* ── Root Cause Card ── */}
-      <div className="root-cause-card">
-        <div className="root-cause-header">
-          <h3>Root Cause</h3>
-          <ConfidenceBar value={r.root_cause_confidence} />
-        </div>
-        <p className="root-cause-text">{cleanText(r.root_cause)}</p>
-      </div>
+      {/* ══════════════════════════════════════════════════════
+          DETAILED ANALYSIS (Collapsible)
+          ══════════════════════════════════════════════════════ */}
+      <div className="detailed-analysis">
+        <button
+          className="expand-toggle"
+          onClick={() => setWhysExpanded(!whysExpanded)}
+        >
+          <span className="toggle-icon">{whysExpanded ? '▼' : '▶'}</span>
+          {whysExpanded ? 'Hide' : 'Show'} Detailed 5 Whys Analysis
+        </button>
 
-      {/* ── 5 Why Steps ── */}
-      <div className="whys-section">
-        <h3>5 Whys Analysis</h3>
-        <div className="whys-timeline">
-          {r.why_steps.map((step) => {
-            const stepDocs = filterDocs(step.supporting_documents)
-            return (
-              <div className="why-step" key={step.step_number}>
-                <div className="why-marker">
-                  <div className="why-number">{step.step_number}</div>
-                  {step.step_number < 5 && <div className="why-line" />}
-                </div>
-                <div className="why-body">
-                  <p className="why-question">{cleanText(step.question)}</p>
-                  <p className="why-answer">{cleanText(step.answer)}</p>
-                  <div className="why-footer">
-                    <ConfidenceBar value={step.confidence} />
-                    {stepDocs.length > 0 && (
-                      <div className="why-docs">
-                        {stepDocs.map((doc, i) => (
-                          <span className="doc-tag" key={i}>{doc}</span>
-                        ))}
-                      </div>
-                    )}
+        {whysExpanded && (
+          <div className="whys-timeline">
+            {r.why_steps?.map((step) => {
+              const stepDocs = filterDocs(step.supporting_documents)
+              return (
+                <div className="why-step" key={step.step_number}>
+                  <div className="why-marker">
+                    <div className="why-number">{step.step_number}</div>
+                    {step.step_number < 5 && <div className="why-line" />}
+                  </div>
+                  <div className="why-body">
+                    <p className="why-question">{cleanText(step.question)}</p>
+                    <p className="why-answer">{cleanText(step.answer)}</p>
+                    <div className="why-footer">
+                      <EvidenceBadge
+                        confidence={step.confidence}
+                        answer={step.answer}
+                      />
+                      {stepDocs.length > 0 && (
+                        <div className="why-docs">
+                          {stepDocs.map((doc, i) => (
+                            <span className="doc-tag" key={i}>{doc}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* ── Documents Used ── */}
-      {validDocs.length > 0 && (
+      {/* ── Documents Referenced (Collapsed by default) ── */}
+      {validDocs.length > 0 && whysExpanded && (
         <div className="docs-section">
           <h3>Documents Referenced</h3>
           <div className="doc-list">
@@ -126,18 +200,6 @@ function RCAResult({ data }) {
               <span className="doc-tag" key={i}>{doc}</span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* ── Corrective Actions ── */}
-      {r.corrective_actions?.length > 0 && (
-        <div className="actions-section">
-          <h3>Corrective Actions</h3>
-          <ol>
-            {r.corrective_actions.map((action, i) => (
-              <li key={i}>{cleanText(action)}</li>
-            ))}
-          </ol>
         </div>
       )}
     </div>

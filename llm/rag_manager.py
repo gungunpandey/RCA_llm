@@ -108,18 +108,18 @@ class RAGManager:
                 # Check if collection exists
                 try:
                     # Try with capital P first (Weaviate auto-capitalizes collection names)
-                    collection = self.client.collections.get("Pellet")
-                    logger.info(f"Collection 'Pellet' found")
+                    collection = self.client.collections.get("Rca")
+                    logger.info(f"Collection 'Rca' found")
                     
                     # Update collection name to match what exists
-                    self.collection_name = "Pellet"
+                    self.collection_name = "Rca"
                     
                 except Exception as e:
-                    logger.warning(f"Collection 'Pellet' not found, trying lowercase: {e}")
+                    logger.warning(f"Collection 'Rca' not found, trying lowercase: {e}")
                     try:
-                        collection = self.client.collections.get("pellet")
-                        logger.info(f"Collection 'pellet' found")
-                        self.collection_name = "pellet"
+                        collection = self.client.collections.get("rca")
+                        logger.info(f"Collection 'rca' found")
+                        self.collection_name = "rca"
                     except Exception as e2:
                         logger.warning(f"Collection '{self.collection_name}' not found: {e2}")
                         logger.warning("You may need to run the PDF ingestion first to create the collection")

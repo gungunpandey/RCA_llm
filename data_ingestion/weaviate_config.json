@@ -4,7 +4,7 @@
     "api_key": ""
   },
   "collection": {
-    "name": "pellet"
+    "name": "rca"
   },
   "embedding": {
     "vectorizer": "text2vec-huggingface",

@@ -80,6 +80,12 @@ async def lifespan(app: FastAPI):
     registry.register_tool("mechanical_agent", MechanicalAgent(llm_adapter=gemini, rag_manager=rag))
     registry.register_tool("electrical_agent", ElectricalAgent(llm_adapter=gemini, rag_manager=rag))
     registry.register_tool("process_agent", ProcessAgent(llm_adapter=gemini, rag_manager=rag))
+    
+    # 5. Integrated RCA pipeline (domain agents + 5 whys)
+    from tools.integrated_rca_tool import IntegratedRCATool
+    integrated_rca = IntegratedRCATool(llm_adapter=gemini, rag_manager=rag)
+    registry.register_tool("integrated_rca", integrated_rca)
+    
     logger.info(f"Tools & agents registered: {registry.list_tools()}")
 
     yield  # app is running
@@ -226,6 +232,98 @@ async def analyze_stream(req: AnalyzeRequest):
                         "status": "success",
                         "equipment_name": req.equipment_name,
                         "analysis_type": "5_whys",
+                        "execution_time_seconds": round(result.execution_time_seconds, 2),
+                        "tokens_used": result.tokens_used,
+                        "cost_usd": round(result.cost_usd, 6),
+                        "result": result.result,
+                    }, default=str)
+                    yield f"event: result\ndata: {payload}\n\n"
+                else:
+                    yield f"event: error\ndata: {json.dumps({'detail': result.error})}\n\n"
+                break
+
+            # Error
+            if isinstance(item, tuple) and item[0] == "__ERROR__":
+                yield f"event: error\ndata: {json.dumps({'detail': item[1]})}\n\n"
+                break
+
+            # Status update string
+            yield f"event: status\ndata: {json.dumps({'message': item})}\n\n"
+            await asyncio.sleep(0)  # force flush each event immediately
+
+        await task  # ensure task is fully done
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/analyze-integrated-stream")
+async def analyze_integrated_stream(req: AnalyzeRequest):
+    """
+    Run integrated RCA pipeline (domain agents + 5 Whys) with SSE streaming.
+    
+    Pipeline:
+    1. Domain agents analyze in parallel
+    2. Aggregate domain insights
+    3. Enhanced 5 Whys with domain context
+    4. Return comprehensive root cause
+    
+    SSE event types:
+      event: status   -> { "message": "..." }
+      event: result   -> full analysis JSON
+      event: error    -> { "detail": "..." }
+    """
+    if registry is None:
+        raise HTTPException(status_code=503, detail="Server still initializing")
+
+    failure_text = _build_failure_text(req)
+    status_queue: asyncio.Queue = asyncio.Queue()
+
+    async def _status_callback(msg: str):
+        await status_queue.put(msg)
+
+    async def _run_analysis():
+        """Run integrated analysis in background."""
+        try:
+            result = await registry.execute_tool(
+                name="integrated_rca",
+                failure_description=failure_text,
+                equipment_name=req.equipment_name,
+                symptoms=req.symptoms if req.symptoms else ["unspecified"],
+                status_callback=_status_callback,
+            )
+            await status_queue.put(("__RESULT__", result))
+        except Exception as e:
+            await status_queue.put(("__ERROR__", str(e)))
+
+    async def _event_generator():
+        # Flush browser / proxy buffers
+        padding = ":" + " " * 2048 + "\n\n"
+        yield padding
+        await asyncio.sleep(0)
+
+        # Start analysis as a background task
+        task = asyncio.create_task(_run_analysis())
+
+        # Yield SSE events as they arrive
+        while True:
+            item = await status_queue.get()
+
+            # Final result
+            if isinstance(item, tuple) and item[0] == "__RESULT__":
+                result = item[1]
+                if result.success:
+                    payload = json.dumps({
+                        "status": "success",
+                        "equipment_name": req.equipment_name,
+                        "analysis_type": "integrated_rca",
                         "execution_time_seconds": round(result.execution_time_seconds, 2),
                         "tokens_used": result.tokens_used,
                         "cost_usd": round(result.cost_usd, 6),

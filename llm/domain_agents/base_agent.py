@@ -140,7 +140,7 @@ class BaseAgent(BaseTool):
                 recommended_checks=checks,
                 documents_used=list(set(doc_sources)),
             )
-            return result.dict()
+            return result.model_dump()
 
         return await self._execute_with_timing(_perform_analysis)
 
