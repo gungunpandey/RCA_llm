@@ -25,6 +25,8 @@ class FiveWhysResult(BaseModel):
     root_cause_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in root cause")
     corrective_actions: List[str] = Field(default_factory=list, description="Recommended corrective actions")
     documents_used: List[str] = Field(default_factory=list, description="All documents referenced")
+    stopped_early: bool = Field(default=False, description="Whether analysis stopped before 5 steps due to causal sufficiency")
+    stop_reason: Optional[str] = Field(default=None, description="Reason for early stop, e.g. 'Causal sufficiency achieved at Why #3'")
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
 
 
@@ -111,3 +113,33 @@ class ToolResult(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
+
+
+# ── Fishbone (Ishikawa) Diagram Models ──────────────────────────────────────
+
+class FishboneCause(BaseModel):
+    """A single contributing cause within an Ishikawa category."""
+    category: str = Field(..., description="Ishikawa category: Man, Machine, Material, Method, Measurement, Environment")
+    cause: str = Field(..., description="The contributing cause (e.g. 'Inadequate lubrication schedule')")
+    sub_causes: List[str] = Field(default_factory=list, description="Deeper contributing factors under this cause")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this cause (0-1)")
+    evidence: str = Field(default="", description="Supporting evidence from documents or observations")
+
+
+class FishboneResult(BaseModel):
+    """Result from Fishbone (Ishikawa) Diagram analysis."""
+    categories: Dict[str, List[FishboneCause]] = Field(
+        ...,
+        description="Causes grouped by Ishikawa category (Man, Machine, Material, Method, Measurement, Environment)"
+    )
+    root_cause_confirmed: str = Field(
+        ...,
+        description="The root cause from 5 Whys that this fishbone analysis is built around"
+    )
+    primary_category: str = Field(
+        ...,
+        description="The Ishikawa category that contains the dominant contributing cause"
+    )
+    documents_used: List[str] = Field(default_factory=list, description="OEM manuals and docs referenced")
+    analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
+

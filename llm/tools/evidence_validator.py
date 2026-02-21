@@ -287,6 +287,95 @@ class EvidenceGate:
         )
 
 
+class CausalSufficiencyEvaluator:
+    """
+    Evaluates whether a candidate cause sufficiently explains all observations.
+
+    Implements the causal sufficiency stop rule:
+    A cause is a valid root cause when it fully explains all observations
+    without requiring additional assumptions. Escalation is only justified
+    when there are observations the current cause cannot explain.
+    """
+
+    @staticmethod
+    def _build_prompt(current_cause: str, observations: list, rag_context: str = "") -> str:
+        """Build the causal sufficiency evaluation prompt."""
+        obs_list = "\n".join(f"  - {obs}" for obs in observations)
+        rag_section = f"\nRelevant Technical Documentation:\n{rag_context}\n" if rag_context else ""
+
+        return f"""You are evaluating causal sufficiency for an industrial Root Cause Analysis.
+
+CANDIDATE CAUSE: {current_cause}
+
+OBSERVED SYMPTOMS/FAILURES:
+{obs_list}
+{rag_section}
+TASK: Determine whether the candidate cause FULLY explains ALL the observed symptoms listed above.
+
+For each observation, ask: "If the candidate cause occurred, would this symptom be expected?"
+- If YES for ALL observations -> the cause is SUFFICIENT (no need to dig deeper)
+- If NO for any observation -> the cause is INSUFFICIENT (further investigation needed)
+
+IMPORTANT: A cause is sufficient when it explains the observations. Do NOT reject a cause just because a "deeper" cause might exist. The goal is the LOWEST sufficient explanation, not the deepest.
+
+Respond in EXACTLY this format:
+SUFFICIENT: [yes/no]
+UNEXPLAINED: [comma-separated list of observations NOT explained, or "none"]
+JUSTIFICATION: [1-2 sentences explaining why the cause is or is not sufficient]"""
+
+    @staticmethod
+    def _parse_response(response: str) -> tuple:
+        """Parse the sufficiency evaluation response."""
+        import re
+
+        # Extract SUFFICIENT
+        suf_match = re.search(r'SUFFICIENT:\s*(yes|no)', response, re.IGNORECASE)
+        is_sufficient = suf_match.group(1).lower() == "yes" if suf_match else False
+
+        # Extract UNEXPLAINED
+        unexp_match = re.search(
+            r'UNEXPLAINED:\s*(.+?)(?=\nJUSTIFICATION:|\Z)',
+            response, re.DOTALL | re.IGNORECASE
+        )
+        unexplained_text = unexp_match.group(1).strip() if unexp_match else ""
+        if unexplained_text.lower() in ("none", "n/a", ""):
+            unexplained = []
+        else:
+            unexplained = [u.strip() for u in unexplained_text.split(',') if u.strip()]
+
+        # Extract JUSTIFICATION
+        just_match = re.search(r'JUSTIFICATION:\s*(.+)', response, re.DOTALL | re.IGNORECASE)
+        justification = just_match.group(1).strip() if just_match else "No justification provided"
+
+        return is_sufficient, unexplained, justification
+
+    @staticmethod
+    def evaluate_sync(llm_caller, current_cause: str, observations: list, rag_context: str = "") -> tuple:
+        """
+        Evaluate causal sufficiency using a synchronous LLM call.
+
+        Args:
+            llm_caller: Function that takes a prompt string and returns LLM response text
+            current_cause: The candidate root cause to evaluate
+            observations: List of observed symptoms/failures
+            rag_context: Optional RAG context for technical grounding
+
+        Returns:
+            (is_sufficient: bool, unexplained: list[str], justification: str)
+        """
+        if not observations:
+            return True, [], "No observations to explain"
+
+        prompt = CausalSufficiencyEvaluator._build_prompt(current_cause, observations, rag_context)
+
+        try:
+            response = llm_caller(prompt)
+            return CausalSufficiencyEvaluator._parse_response(response)
+        except Exception:
+            # On error, don't stop — allow escalation to continue
+            return False, observations, "Sufficiency evaluation failed, continuing analysis"
+
+
 # Example usage
 if __name__ == "__main__":
     # Test 1: Validate failure mode

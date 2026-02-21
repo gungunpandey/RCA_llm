@@ -29,11 +29,19 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-PDF_SOURCES = [
-    # os.path.join(_HERE, "pdf"),
-    os.path.join(_HERE, "pdfs_pellet"),
-    os.path.join(_HERE, "pdfs_pci"),
-]
+_PDFS_ROOT = os.path.join(_HERE, "pdfs")
+
+# Dynamically discover all subfolders inside pdfs/.
+# Each subfolder (e.g. pdfs/ESP/, pdfs/Kiln/) is added as a separate source
+# so PDFs from different machine companies are all picked up automatically.
+# If there are no subfolders, fall back to the root pdfs/ folder itself.
+_pdf_subdirs = [
+    os.path.join(_PDFS_ROOT, d)
+    for d in os.listdir(_PDFS_ROOT)
+    if os.path.isdir(os.path.join(_PDFS_ROOT, d))
+] if os.path.isdir(_PDFS_ROOT) else []
+
+PDF_SOURCES = _pdf_subdirs if _pdf_subdirs else [_PDFS_ROOT]
 
 DATA_DIR       = os.path.join(_HERE, "data")
 EXTRACTED_DIR  = os.path.join(DATA_DIR, "extracted")

@@ -14,9 +14,7 @@ logs/
 # Data files
 data/
 data_old/
-pdf/
-pdfs_pellet/
-pdfs_pci/
+pdfs/
 
 
 # IDE

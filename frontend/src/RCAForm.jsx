@@ -19,9 +19,11 @@ function RCAForm() {
   const [statusMsg, setStatusMsg] = useState('')
   const [statusLog, setStatusLog] = useState([])
   const [includeDomain, setIncludeDomain] = useState(true)
-  const [domainStatus, setDomainStatus] = useState(null) // null | 'sending' | 'success' | 'error'
+  const [domainStatus, setDomainStatus] = useState(null)
   const [domainResult, setDomainResult] = useState(null)
   const [domainStatusMsg, setDomainStatusMsg] = useState('')
+  // Progressive: set as soon as domain_insights SSE event arrives
+  const [domainInsights, setDomainInsights] = useState(null)
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -48,7 +50,7 @@ function RCAForm() {
   }
 
   // --- SSE stream reader (reusable for both endpoints) ---
-  const readSSEStream = async (url, payload, { onStatus, onResult, onError }) => {
+  const readSSEStream = async (url, payload, { onStatus, onResult, onError, onDomainInsights }) => {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -78,9 +80,19 @@ function RCAForm() {
         }
         if (!data) continue
 
-        if (eventType === 'status') onStatus(JSON.parse(data))
-        if (eventType === 'result') onResult(JSON.parse(data))
-        if (eventType === 'error') onError(JSON.parse(data))
+        try {
+          const parsed = JSON.parse(data)
+          if (eventType === 'status') onStatus(parsed)
+          if (eventType === 'result') onResult(parsed)
+          if (eventType === 'error') onError(parsed)
+          // Progressive domain insights — rendered immediately
+          if (eventType === 'domain_insights' && onDomainInsights) {
+            console.log('[SSE] domain_insights received:', parsed)
+            onDomainInsights(parsed)
+          }
+        } catch (parseErr) {
+          console.warn('[SSE] JSON parse error for event:', eventType, parseErr, data.slice(0, 200))
+        }
       }
     }
   }
@@ -92,6 +104,7 @@ function RCAForm() {
     setResult(null)
     setDomainResult(null)
     setDomainStatus(null)
+    setDomainInsights(null)   // clear previous domain insights
     setStatusMsg('Connecting to server...')
     setStatusLog([])
 
@@ -109,24 +122,15 @@ function RCAForm() {
             const msg = d.message
             setStatusMsg(msg)
             setStatusLog(prev => [...prev, msg])
-
-            // Detect when domain analysis completes and 5 Whys starts
-            if (msg.includes('Domain analysis complete')) {
-              setDomainStatus('success')
-            }
+          },
+          onDomainInsights: (d) => {
+            // Render DomainSummary immediately — 5 Whys is still running
+            setDomainInsights(d.domain_insights)
+            setStatusMsg('🎯 Domain analysis complete — running 5 Whys...')
           },
           onResult: (d) => {
-            // Integrated result contains both domain insights and 5 Whys
             setResult(d)
             setStatus('success')
-
-            // Extract domain insights for separate display
-            if (d.result && d.result.domain_insights) {
-              setDomainResult({
-                status: 'success',
-                result: d.result.domain_insights
-              })
-            }
           },
           onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
         })
@@ -154,6 +158,7 @@ function RCAForm() {
     setDomainStatus(null)
     setDomainResult(null)
     setDomainStatusMsg('')
+    setDomainInsights(null)
   }
 
   return (
@@ -313,15 +318,23 @@ function RCAForm() {
         </div>
       )}
 
-      {/* Show domain summary FIRST (if available) */}
-      {status === 'success' && result && result.result && result.result.domain_insights && (
-        <DomainSummary insights={result.result.domain_insights} />
+      {/* ── Progressive: show DomainSummary as soon as domain_insights event arrives ── */}
+      {domainInsights && (
+        <DomainSummary insights={domainInsights} />
       )}
 
-      {/* Then show 5 Whys results */}
+      {/* While 5 Whys is still running, show a status indicator below domain summary */}
+      {domainInsights && status === 'sending' && (
+        <div className="section-divider">
+          <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
+          <p className="section-subtitle">Running 5 Whys analysis using domain insights...</p>
+        </div>
+      )}
+
+      {/* Final 5 Whys result */}
       {status === 'success' && result && (
         <>
-          {result.result && result.result.domain_insights && (
+          {domainInsights && (
             <div className="section-divider">
               <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
               <p className="section-subtitle">Building on domain expert insights...</p>

@@ -114,10 +114,32 @@ function RCAResult({ data }) {
         <div className="summary-section">
           <h3 className="summary-label">MOST LIKELY CAUSE</h3>
           <p className="summary-main-text">{cleanText(r.root_cause)}</p>
-          <EvidenceBadge
-            confidence={r.root_cause_confidence}
-            answer={r.root_cause}
-          />
+          <div className="badge-confidence-row">
+            <EvidenceBadge
+              confidence={r.root_cause_confidence}
+              answer={r.root_cause}
+            />
+            {r.root_cause_confidence != null && (
+              <div className="confidence-bar-inline">
+                <div className="confidence-bar-track">
+                  <div
+                    className="confidence-bar-fill"
+                    style={{
+                      width: `${Math.round(r.root_cause_confidence * 100)}%`,
+                      background: r.root_cause_confidence >= 0.8
+                        ? '#34d399'
+                        : r.root_cause_confidence >= 0.6
+                          ? '#fbbf24'
+                          : '#f87171'
+                    }}
+                  />
+                </div>
+                <span className="confidence-bar-pct">
+                  {Math.round(r.root_cause_confidence * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="summary-section">
@@ -144,6 +166,13 @@ function RCAResult({ data }) {
           <span>{validDocs.length || 0} docs</span>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════
+          FISHBONE SECTION (Contributing Cause Map)
+          ══════════════════════════════════════════════════════ */}
+      {data.result?.fishbone_analysis && (
+        <FishboneSection fishbone={data.result.fishbone_analysis} />
+      )}
 
       {/* ══════════════════════════════════════════════════════
           DETAILED ANALYSIS (Collapsible)
@@ -206,4 +235,88 @@ function RCAResult({ data }) {
   )
 }
 
+// ── Category icon/color map ──────────────────────────────────────────────────
+const CATEGORY_META = {
+  Man: { icon: '👷', color: '#f59e0b' },
+  Machine: { icon: '⚙️', color: '#ef4444' },
+  Material: { icon: '📦', color: '#8b5cf6' },
+  Method: { icon: '📋', color: '#3b82f6' },
+  Measurement: { icon: '📊', color: '#06b6d4' },
+  Environment: { icon: '🌡️', color: '#10b981' },
+}
+
+function FishboneSection({ fishbone }) {
+  const [expanded, setExpanded] = useState(true)
+
+  if (!fishbone || !fishbone.categories) return null
+
+  const primaryCat = fishbone.primary_category
+
+  return (
+    <div className="fishbone-section">
+      <div className="fishbone-header">
+        <div>
+          <h3 className="fishbone-title">🦴 Contributing Cause Map</h3>
+          <p className="fishbone-subtitle">
+            Primary category: <strong style={{ color: CATEGORY_META[primaryCat]?.color || '#fff' }}>{primaryCat}</strong>
+          </p>
+        </div>
+        <button className="expand-toggle fishbone-toggle" onClick={() => setExpanded(!expanded)}>
+          <span className="toggle-icon">{expanded ? '▼' : '▶'}</span>
+          {expanded ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="fishbone-grid">
+          {Object.entries(CATEGORY_META).map(([cat, meta]) => {
+            const causes = fishbone.categories?.[cat] || []
+            const isPrimary = cat === primaryCat
+
+            return (
+              <div
+                key={cat}
+                className={`fishbone-card ${isPrimary ? 'fishbone-card--primary' : ''}`}
+                style={{ borderColor: isPrimary ? meta.color : undefined }}
+              >
+                <div className="fishbone-card-header" style={{ color: meta.color }}>
+                  <span className="fishbone-cat-icon">{meta.icon}</span>
+                  <span className="fishbone-cat-name">{cat}</span>
+                  {isPrimary && <span className="fishbone-primary-badge">PRIMARY</span>}
+                </div>
+
+                {causes.length === 0 ? (
+                  <p className="fishbone-no-cause">No significant causes identified</p>
+                ) : (
+                  <ul className="fishbone-causes">
+                    {causes.map((c, i) => (
+                      <li key={i} className="fishbone-cause-item">
+                        <span className="fishbone-cause-text">{c.cause}</span>
+                        {c.sub_causes?.length > 0 && (
+                          <ul className="fishbone-sub-causes">
+                            {c.sub_causes.slice(0, 2).map((sc, j) => (
+                              <li key={j}>{sc}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <span
+                          className="fishbone-conf"
+                          style={{ color: c.confidence >= 0.8 ? '#34d399' : c.confidence >= 0.6 ? '#fbbf24' : '#f87171' }}
+                        >
+                          {Math.round(c.confidence * 100)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default RCAResult
+

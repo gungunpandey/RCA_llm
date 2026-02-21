@@ -28,6 +28,7 @@ load_dotenv(os.path.join(LLM_DIR, ".env"))
 
 from tools.five_whys_tool import FiveWhysTool
 from tools.tool_registry import ToolRegistry
+from tools.fishbone_tool import FishboneTool
 from model_comparison.gemini_adapter import GeminiAdapter
 from rag_manager import RAGManager
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
@@ -73,15 +74,17 @@ async def lifespan(app: FastAPI):
 
     # 3. Tools
     five_whys = FiveWhysTool(llm_adapter=gemini, rag_manager=rag)
+    fishbone = FishboneTool(llm_adapter=gemini, rag_manager=rag)
     registry = ToolRegistry()
     registry.register_tool("5_whys", five_whys)
+    registry.register_tool("fishbone", fishbone)
 
     # 4. Domain agents
     registry.register_tool("mechanical_agent", MechanicalAgent(llm_adapter=gemini, rag_manager=rag))
     registry.register_tool("electrical_agent", ElectricalAgent(llm_adapter=gemini, rag_manager=rag))
     registry.register_tool("process_agent", ProcessAgent(llm_adapter=gemini, rag_manager=rag))
     
-    # 5. Integrated RCA pipeline (domain agents + 5 whys)
+    # 5. Integrated RCA pipeline (domain agents + 5 whys + fishbone)
     from tools.integrated_rca_tool import IntegratedRCATool
     integrated_rca = IntegratedRCATool(llm_adapter=gemini, rag_manager=rag)
     registry.register_tool("integrated_rca", integrated_rca)
@@ -339,11 +342,21 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
                 yield f"event: error\ndata: {json.dumps({'detail': item[1]})}\n\n"
                 break
 
+            # ── Intermediate: domain insights ready ──────────────────────────
+            # Emitted as soon as domain agents finish, before 5 Whys starts.
+            if isinstance(item, tuple) and item[0] == "__DOMAIN_INSIGHTS__":
+                # Use mode='json' to serialize datetimes as ISO strings (not Python datetime objects)
+                payload = json.dumps({"domain_insights": item[1]}, default=str)
+                yield f"event: domain_insights\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
             # Status update string
             yield f"event: status\ndata: {json.dumps({'message': item})}\n\n"
             await asyncio.sleep(0)  # force flush each event immediately
 
         await task  # ensure task is fully done
+
 
     return StreamingResponse(
         _event_generator(),

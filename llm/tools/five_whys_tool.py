@@ -13,7 +13,8 @@ from tools.evidence_validator import (
     ConfidenceCalibrator,
     PlantFailureModeValidator,
     EvidenceGate,
-    EvidenceType
+    EvidenceType,
+    CausalSufficiencyEvaluator
 )
 
 logger = logging.getLogger(__name__)
@@ -81,14 +82,16 @@ class FiveWhysTool(BaseTool):
             else:
                 await _send_status(f"Retrieved {len(rag_docs)} relevant documents")
 
-            # Step 2: Perform 5 progressive "why" iterations
+            # Step 2: Perform up to 5 progressive "why" iterations with causal sufficiency stop rule
             why_steps = []
             current_answer = failure_description
+            stopped_early = False
+            stop_reason = None
 
             for step_num in range(1, 6):
                 self.logger.info(f"Generating Why #{step_num}")
                 await _send_status(f"Analyzing Why #{step_num} of 5...")
-                
+
                 # Generate why question and answer
                 why_result = await self._generate_why_step(
                     step_number=step_num,
@@ -98,12 +101,36 @@ class FiveWhysTool(BaseTool):
                     previous_answer=current_answer,
                     rag_context=rag_context,
                     domain_insights=domain_insights,
-                    is_final=(step_num == 5)
+                    is_final=False  # No longer force systemic escalation
                 )
-                
+
                 why_steps.append(why_result)
                 current_answer = why_result.answer
                 await _send_status(f"Why #{step_num} complete — confidence {why_result.confidence*100:.0f}%")
+
+                # Causal sufficiency check: after step 2+, evaluate if current cause explains all observations
+                if step_num >= 2 and symptoms:
+                    await _send_status(f"Evaluating causal sufficiency at Why #{step_num}...")
+                    is_sufficient, unexplained, justification = CausalSufficiencyEvaluator.evaluate_sync(
+                        llm_caller=self._call_llm,
+                        current_cause=current_answer,
+                        observations=symptoms,
+                        rag_context=rag_context
+                    )
+
+                    if is_sufficient:
+                        stopped_early = True
+                        stop_reason = (
+                            f"Causal sufficiency achieved at Why #{step_num}: "
+                            f"cause explains all observed symptoms. {justification}"
+                        )
+                        self.logger.info(f"Stopping 5 Whys early: {stop_reason}")
+                        await _send_status(f"Root cause isolated at Why #{step_num} — all symptoms explained")
+                        break
+                    else:
+                        self.logger.info(
+                            f"Why #{step_num} insufficient — unexplained: {unexplained}. Continuing..."
+                        )
 
             # Step 3: Extract root cause from final why
             await _send_status("Compiling root cause and building report...")
@@ -124,7 +151,9 @@ class FiveWhysTool(BaseTool):
                 root_cause=root_cause,
                 root_cause_confidence=root_cause_confidence,
                 corrective_actions=corrective_actions,
-                documents_used=list(set(doc_sources))  # Remove duplicates, keep unique only
+                documents_used=list(set(doc_sources)),  # Remove duplicates, keep unique only
+                stopped_early=stopped_early,
+                stop_reason=stop_reason
             )
             
             return result.model_dump()
@@ -192,6 +221,7 @@ RULES:
 4. If inferring without direct evidence, say "Based on inference"
 5. Keep your answer CONCISE: 2-4 sentences. State the cause and the evidence. No lengthy explanations.
 6. Do NOT use markdown formatting (no ** or * for bold/italic)
+7. Do NOT escalate to governance, maintenance policy, or design failures unless there is direct evidence (alarm logs, maintenance records, design specifications) that these are causal. The goal is the LOWEST sufficient explanation, not the deepest.
 
 Question: {why_question}
 
@@ -218,10 +248,10 @@ RULES:
 2. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
 3. Back every claim with evidence (sensor data, OEM manual rules, or documented procedures)
 4. If inferring without direct evidence, say "Based on inference"
-5. Keep your answer CONCISE: 2-4 sentences for Why #1-4, up to 5-6 sentences for Why #5. State the cause and evidence only.
+5. Keep your answer CONCISE: 2-4 sentences. State the cause and evidence only.
 6. Do NOT use markdown formatting (no ** or * for bold/italic)
 7. Do NOT repeat document names inside the ANSWER. Put them only in SUPPORTING_DOCUMENTS.
-{"8. This is the FINAL why. Identify the SYSTEMIC ROOT CAUSE (poor design, missing procedure, inadequate governance), not just the immediate trigger." if is_final else ""}
+8. Only escalate to a deeper root cause if the current cause cannot explain at least one observed symptom. If all symptoms are explained, declare the current cause as the root cause. Do NOT infer governance, maintenance, or design failures without direct evidence such as alarms, logs, or sensor data.
 
 Question: {why_question}
 

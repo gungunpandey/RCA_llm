@@ -1,0 +1,111 @@
+{
+  "categories": {
+    "Man": [
+      {
+        "category": "Man",
+        "cause": "Operational non-compliance with pre-heating protocols",
+        "sub_causes": [
+          "Failure to enforce the mandatory 4-hour pre-heating duration",
+          "Lack of operational supervision during plant startup/cold conditions"
+        ],
+        "confidence": 0.95,
+        "evidence": "Confirmed Root Cause states a failure in operational governance to enforce pre-heating."
+      },
+      {
+        "category": "Man",
+        "cause": "Inadequate maintenance oversight of safety interlocks",
+        "sub_causes": [
+          "Failure to verify SL 7m (RAV/Ash system interlock) during routine checks"
+        ],
+        "confidence": 0.85,
+        "evidence": "Root Cause identifies a systemic gap in routine verification of safety interlocks."
+      }
+    ],
+    "Machine": [
+      {
+        "category": "Machine",
+        "cause": "Mechanical obstruction of the Rotary Air Preheater (RAV)",
+        "sub_causes": [
+          "Torque-related stall due to clumped ash accumulation",
+          "Potential RAV thermal overload relay trip"
+        ],
+        "confidence": 0.9,
+        "evidence": "Root Cause cites a torque-related obstruction; Doc 6 mentions thermal overload relay trips for RAVs."
+      },
+      {
+        "category": "Machine",
+        "cause": "Hopper heating system performance degradation",
+        "sub_causes": [
+          "Heater element failure leading to localized cold spots",
+          "Insufficient heat transfer to maintain ash temperature above dew point"
+        ],
+        "confidence": 0.8,
+        "evidence": "Root Cause identifies a deficiency in the PM strategy for hopper heaters."
+      }
+    ],
+    "Material": [
+      {
+        "category": "Material",
+        "cause": "Ash physical property transformation",
+        "sub_causes": [
+          "Ash reached acid dew point resulting in sticky/clumped consistency",
+          "Increased moisture content leading to bridging between discharge electrodes"
+        ],
+        "confidence": 0.9,
+        "evidence": "Root Cause states ash reached acid dew point and clumped; Expert Finding notes ash bridging."
+      }
+    ],
+    "Method": [
+      {
+        "category": "Method",
+        "cause": "Deficient Preventive Maintenance (PM) strategy",
+        "sub_causes": [
+          "Inadequate inspection intervals for hopper heater integrity",
+          "Lack of standardized interlock testing procedures for SL 7 series"
+        ],
+        "confidence": 0.9,
+        "evidence": "Confirmed Root Cause identifies deficiency in PM strategy and interlock verification."
+      },
+      {
+        "category": "Method",
+        "cause": "Improper Ash Evacuation Logic",
+        "sub_causes": [
+          "RAV operation failure not immediately triggering upstream alarms",
+          "Failure in ash handling control logic / Interlock 7m"
+        ],
+        "confidence": 0.85,
+        "evidence": "Electrical Expert Findings point to failure in ash handling control logic (Interlock 7m)."
+      }
+    ],
+    "Measurement": [
+      {
+        "category": "Measurement",
+        "cause": "Interlock signal/logic failure for ash level monitoring",
+        "sub_causes": [
+          "Delayed triggering of the High-High threshold trip (Interlock 7e)",
+          "ZSS (Zero Speed Switch) micro-switch time delay issues"
+        ],
+        "confidence": 0.75,
+        "evidence": "Expert Finding 2 and Doc 6 (item j) reference level thresholds and ZSS time delays."
+      }
+    ],
+    "Environment": [
+      {
+        "category": "Environment",
+        "cause": "Thermal loss to ambient environment",
+        "sub_causes": [
+          "Rapid cooling of hopper walls during startup phase",
+          "Inadequate insulation performance contributing to acid dew point transition"
+        ],
+        "confidence": 0.7,
+        "evidence": "Inferred from the requirement for a 4-hour pre-heating protocol to maintain ash flowability."
+      }
+    ]
+  },
+  "root_cause_confirmed": "The systemic root cause is a deficiency in the preventive maintenance strategy for hopper heaters and a failure in operational governance to enforce the mandatory four-hour pre-heating protocol. This allowed ash to reach the acid dew point and clump, creating a torque-related obstruction in the RAV. The heating system is critical for ensuring ash flowability to prevent motor overload. A systemic gap in the routine verification of safety interlocks (SL 7m) also contributed.",
+  "primary_category": "Man",
+  "documents_used": [
+    "ESP_Thermax_OEM Manual"
+  ],
+  "analysis_timestamp": "2026-02-18 13:52:51.470157"
+}

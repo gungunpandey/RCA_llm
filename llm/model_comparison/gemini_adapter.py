@@ -28,7 +28,31 @@ class GeminiAdapter:
         self.model_name = "gemini-3-flash-preview"
         self.total_tokens = 0
         self.total_cost = 0.0
-    
+
+    async def generate(self, prompt: str) -> str:
+        """
+        Async text generation — used by FishboneTool, FiveWhysTool, domain agents.
+
+        Runs the synchronous google-genai SDK call in a thread executor so it
+        doesn't block the event loop.
+        """
+        import asyncio
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+        )
+        content = response.text or ""
+        # Track usage
+        tokens = len(prompt + content) // 4
+        cost = (len(prompt) // 4 * 0.00025 + len(content) // 4 * 0.0005) / 1000
+        self.total_tokens += tokens
+        self.total_cost += cost
+        return content
+
     def analyze_failure(
         self,
         failure_description: str,

@@ -1,11 +1,12 @@
 """
-Integrated RCA Tool - Domain Agents + 5 Whys Pipeline
+Integrated RCA Tool - Domain Agents + 5 Whys + Fishbone Pipeline
 
 Orchestrates sequential execution:
 1. Run domain agents in parallel
 2. Aggregate domain insights
 3. Run enhanced 5 Whys with domain context
-4. Return comprehensive root cause analysis
+4. Run Fishbone analysis using confirmed root cause
+5. Return comprehensive root cause analysis
 """
 
 from typing import List, Dict, Any, Optional
@@ -16,6 +17,7 @@ from tools.base_tool import BaseTool
 from models.tool_results import ToolResult, DomainInsightsSummary, DomainAnalysisResult
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 from tools.five_whys_tool import FiveWhysTool
+from tools.fishbone_tool import FishboneTool
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,9 @@ class IntegratedRCATool(BaseTool):
         
         # Initialize 5 Whys tool
         self.five_whys = FiveWhysTool(llm_adapter, rag_manager)
+        
+        # Initialize Fishbone tool
+        self.fishbone = FishboneTool(llm_adapter, rag_manager)
         
         # Agent routing keywords
         self.agent_routing = {
@@ -117,15 +122,18 @@ class IntegratedRCATool(BaseTool):
                 f"key findings identified (avg confidence: {domain_insights.overall_confidence*100:.0f}%)"
             )
             
-            # Send domain summary to user
-            await _send_status("\n--- DOMAIN EXPERT ANALYSIS SUMMARY ---")
-            for finding in domain_insights.key_findings[:3]:
-                await _send_status(f"  • {finding}")
-            await _send_status("")
+            # ── Emit domain insights immediately as a special event ──────────
+            # This lets the frontend render the DomainSummary card right now,
+            # before the (much slower) 5 Whys + Fishbone steps begin.
+            # Use mode='json' so all nested datetime fields become ISO strings.
+            if status_callback:
+                await status_callback(("__DOMAIN_INSIGHTS__", domain_insights.model_dump(mode='json')))
+
             
             # Step 4: Run enhanced 5 Whys
             await _send_status("🎯 Starting main root cause analysis (5 Whys)...")
             await _send_status("Using domain expert insights as foundation...")
+
             
             five_whys_result = await self.five_whys.analyze(
                 failure_description=failure_description,
@@ -135,13 +143,33 @@ class IntegratedRCATool(BaseTool):
                 status_callback=status_callback
             )
             
-            # Step 5: Build comprehensive result
+            # Step 5: Run Fishbone analysis using confirmed root cause
+            root_cause = five_whys_result.result.get("root_cause", failure_description)
+            fishbone_result = await self.fishbone.analyze(
+                failure_description=failure_description,
+                equipment_name=equipment_name,
+                symptoms=symptoms,
+                root_cause=root_cause,
+                domain_insights=domain_insights,
+                status_callback=status_callback
+            )
+            
+            # Step 6: Build comprehensive result
+            fishbone_data = None
+            if fishbone_result.success:
+                fishbone_data = fishbone_result.result
+            else:
+                logger.error(
+                    f"Fishbone analysis failed: {fishbone_result.error}"
+                )
+
             return {
                 "domain_insights": domain_insights.model_dump(),
                 "five_whys_analysis": five_whys_result.result,
-                "final_root_cause": five_whys_result.result["root_cause"],
+                "fishbone_analysis": fishbone_data,
+                "final_root_cause": root_cause,
                 "final_confidence": five_whys_result.result["root_cause_confidence"],
-                "analysis_method": "domain_enhanced_5_whys",
+                "analysis_method": "domain_enhanced_5_whys_fishbone",
                 "agents_used": selected_agents
             }
         
