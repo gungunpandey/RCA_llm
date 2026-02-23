@@ -123,6 +123,7 @@ class FishboneCause(BaseModel):
     cause: str = Field(..., description="The contributing cause (e.g. 'Inadequate lubrication schedule')")
     sub_causes: List[str] = Field(default_factory=list, description="Deeper contributing factors under this cause")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this cause (0-1)")
+    evidence_level: str = Field(default="POSSIBLE", description="Evidence classification: CONFIRMED, SUPPORTED, or POSSIBLE")
     evidence: str = Field(default="", description="Supporting evidence from documents or observations")
 
 

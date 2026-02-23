@@ -7,15 +7,19 @@ Integrates with existing PDF ingestion pipeline.
 
 import os
 import json
+import asyncio
 import logging
+import functools
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 try:
     import weaviate
     from weaviate.classes.query import MetadataQuery
+    from weaviate.exceptions import WeaviateQueryError
 except ImportError:
     weaviate = None
+    WeaviateQueryError = Exception
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +101,7 @@ class RAGManager:
                 auth_credentials=Auth.api_key(self.config["weaviate"]["api_key"]),
                 skip_init_checks=True,
                 additional_config=AdditionalConfig(
-                    timeout=Timeout(init=30, query=60, insert=120)
+                    timeout=Timeout(init=10, query=15, insert=120)  # fail fast on stale gRPC
                 ),
             )
             
@@ -136,6 +140,66 @@ class RAGManager:
             self.client.close()
             self.client = None
             logger.info("Disconnected from Weaviate")
+
+    def _reconnect(self):
+        """Close stale client and reconnect (called when gRPC channel is dead)."""
+        logger.info("Reconnecting to Weaviate after stale connection...")
+        try:
+            if self.client:
+                self.client.close()
+        except Exception:
+            pass
+        self.client = None
+        self.connect()
+
+    async def _query_bm25(
+        self,
+        query_text: str,
+        limit: int,
+        timeout: float = 12.0,
+    ):
+        """
+        Run a BM25 query in a thread executor so it doesn't block the event loop,
+        and cap it with asyncio.wait_for so a hung gRPC call fails fast.
+
+        Retries once with a fresh connection if the first attempt fails.
+        """
+        for attempt in range(2):  # try twice: once normally, once after reconnect
+            try:
+                collection = self.client.collections.get(self.collection_name)
+
+                def _run():
+                    return collection.query.bm25(query=query_text, limit=limit)
+
+                loop = asyncio.get_event_loop()
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(None, _run),
+                    timeout=timeout,
+                )
+                return result
+
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"Weaviate BM25 query timed out after {timeout}s "
+                    f"(attempt {attempt + 1}/2). "
+                    + ("Giving up — continuing without RAG context." if attempt else "Reconnecting...")
+                )
+                if attempt == 0:
+                    self._reconnect()
+                else:
+                    return None
+
+            except Exception as e:
+                logger.warning(
+                    f"Weaviate BM25 query failed (attempt {attempt + 1}/2): {e}. "
+                    + ("Giving up." if attempt else "Reconnecting...")
+                )
+                if attempt == 0:
+                    self._reconnect()
+                else:
+                    return None
+
+        return None
     
     async def retrieve_equipment_context(
         self,
@@ -163,15 +227,10 @@ class RAGManager:
         logger.info(f"Retrieving context for: {query_text}")
         
         try:
-            collection = self.client.collections.get(self.collection_name)
-            
-            # Use BM25 keyword search (collection has no vectorizer configured)
-            # Hybrid search won't work without a vectorizer
-            response = collection.query.bm25(
-                query=query_text,
-                limit=top_k
-            )
-            
+            response = await self._query_bm25(query_text, limit=top_k)
+            if response is None:
+                return []  # timed out or failed — analysis continues without RAG
+
             documents = []
             for obj in response.objects:
                 # Use sourcePdf as source since that's the actual property name
@@ -225,14 +284,10 @@ class RAGManager:
         logger.info(f"Retrieving troubleshooting guides for: {query_text}")
         
         try:
-            collection = self.client.collections.get(self.collection_name)
-            
-            # Use BM25 keyword search (no vectorizer configured)
-            response = collection.query.bm25(
-                query=query_text,
-                limit=top_k
-            )
-            
+            response = await self._query_bm25(query_text, limit=top_k)
+            if response is None:
+                return []
+
             documents = []
             for obj in response.objects:
                 doc = Document(
@@ -245,9 +300,9 @@ class RAGManager:
                     }
                 )
                 documents.append(doc)
-            
+
             return documents
-            
+
         except Exception as e:
             logger.error(f"Error retrieving troubleshooting guides: {e}")
             return []
@@ -280,14 +335,10 @@ class RAGManager:
         logger.info(f"Retrieving maintenance procedures for: {query_text}")
         
         try:
-            collection = self.client.collections.get(self.collection_name)
-            
-            # Use BM25 keyword search (no vectorizer configured)
-            response = collection.query.bm25(
-                query=query_text,
-                limit=top_k
-            )
-            
+            response = await self._query_bm25(query_text, limit=top_k)
+            if response is None:
+                return []
+
             documents = []
             for obj in response.objects:
                 doc = Document(
@@ -300,9 +351,9 @@ class RAGManager:
                     }
                 )
                 documents.append(doc)
-            
+
             return documents
-            
+
         except Exception as e:
             logger.error(f"Error retrieving maintenance procedures: {e}")
             return []

@@ -199,29 +199,38 @@ EQUIPMENT DOCUMENTATION CONTEXT:
 {rag_context}
 
 TASK:
-Map ALL contributing causes to the failure across these 6 Ishikawa categories:
+Map ONLY the conditions that ENABLED the confirmed root cause to occur, across these 6 Ishikawa categories:
 {categories_desc}
 
-For each category, identify 1-3 specific contributing causes that are relevant to THIS failure.
-Focus on causes that are realistic for a plant/industrial setting.
-Use the equipment documentation and domain findings to support your causes.
+For each category, identify 1-2 specific contributing causes relevant to THIS failure.
 
-IMPORTANT RULES:
-- Every cause must be specific and actionable (not vague like "poor maintenance")
-- Include sub-causes where relevant (e.g. "Bearing wear" → sub: "Lack of vibration monitoring")
-- Assign a confidence score (0.0-1.0) based on evidence available
-- The primary_category is the one with the strongest/most direct contributing causes
-- Do NOT repeat the root cause itself — map what CONTRIBUTED to it
+CRITICAL RULES:
+1. CAUSES ONLY — Do NOT include consequences or effects. Items that happened AFTER the root cause (electrical trips, emission exceedance, interlock activations, alarms triggered by the failure) are EFFECTS. Exclude them entirely.
+2. CAUSAL BOUNDARY — Root cause = first equipment functional failure. Branches show conditions that enabled THAT failure only. Do NOT include upstream physics theories unless a sensor/alarm confirms them.
+3. Each cause must be a SHORT phrase (5-10 words max, e.g. "Hopper heating element burnout"). NOT a full sentence.
+4. Each sub_cause must also be SHORT (3-7 words max).
+5. Evidence must be ONE sentence max (under 15 words).
+6. Do NOT repeat the root cause itself — map what CONTRIBUTED to it.
+7. The primary_category must contain ONLY CONFIRMED or SUPPORTED causes, never POSSIBLE.
+8. If a category has no relevant causes, use an empty array [].
+
+EVIDENCE CLASSIFICATION — For each cause, assign an evidence_level:
+- "CONFIRMED": Directly observed or logged (alarms, sensor data, operator report)
+- "SUPPORTED": Required by physics but not directly measured
+- "POSSIBLE": Plausible but unverified
+
+Confidence scores: CONFIRMED → 0.90, SUPPORTED → 0.75, POSSIBLE → 0.50
 
 Respond ONLY with valid JSON in this exact format:
 {{
   "categories": {{
     "Man": [
       {{
-        "cause": "Specific cause description",
-        "sub_causes": ["sub-cause 1", "sub-cause 2"],
-        "confidence": 0.85,
-        "evidence": "Evidence or document reference supporting this cause"
+        "cause": "Short cause phrase",
+        "sub_causes": ["short sub-cause"],
+        "confidence": 0.90,
+        "evidence_level": "CONFIRMED",
+        "evidence": "One sentence of evidence"
       }}
     ],
     "Machine": [...],
@@ -233,8 +242,6 @@ Respond ONLY with valid JSON in this exact format:
   "primary_category": "Machine",
   "summary": "One sentence explaining the dominant causal pathway"
 }}
-
-If a category has no relevant causes for this specific failure, use an empty array [].
 """
 
     def _parse_response(
@@ -262,11 +269,17 @@ If a category has no relevant causes for this specific failure, use an empty arr
                 cause_text = c.get("cause", "").strip()
                 if not cause_text:
                     continue
+                # Parse evidence_level, default to POSSIBLE
+                evidence_level = c.get("evidence_level", "POSSIBLE").upper()
+                if evidence_level not in ("CONFIRMED", "SUPPORTED", "POSSIBLE"):
+                    evidence_level = "POSSIBLE"
+
                 causes.append(FishboneCause(
                     category=cat_name,
                     cause=cause_text,
                     sub_causes=c.get("sub_causes", []),
-                    confidence=float(c.get("confidence", 0.7)),
+                    confidence=float(c.get("confidence", 0.5)),
+                    evidence_level=evidence_level,
                     evidence=c.get("evidence", ""),
                 ))
             categories[cat_name] = causes

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import FishboneCanvas from './FishboneCanvas'
 
 /**
  * Clean text coming from the LLM:
@@ -171,7 +172,10 @@ function RCAResult({ data }) {
           FISHBONE SECTION (Contributing Cause Map)
           ══════════════════════════════════════════════════════ */}
       {data.result?.fishbone_analysis && (
-        <FishboneSection fishbone={data.result.fishbone_analysis} />
+        <FishboneCanvas
+          fishbone={data.result.fishbone_analysis}
+          whySteps={r.why_steps || []}
+        />
       )}
 
       {/* ══════════════════════════════════════════════════════
@@ -245,22 +249,50 @@ const CATEGORY_META = {
   Environment: { icon: '🌡️', color: '#10b981' },
 }
 
+const EVIDENCE_BADGE_META = {
+  CONFIRMED: { label: 'CONFIRMED', color: '#34d399' },
+  SUPPORTED: { label: 'SUPPORTED', color: '#4a7cff' },
+  POSSIBLE: { label: 'POSSIBLE', color: '#fbbf24' },
+  EFFECT: { label: 'EFFECT', color: '#6b7280' },
+}
+
+function FishboneEvidenceBadge({ level }) {
+  const meta = EVIDENCE_BADGE_META[level] || EVIDENCE_BADGE_META.POSSIBLE
+  return (
+    <span
+      className={`fishbone-evidence-badge fishbone-evidence--${meta.label.toLowerCase()}`}
+    >
+      {meta.label}
+    </span>
+  )
+}
+
 function FishboneSection({ fishbone }) {
   const [expanded, setExpanded] = useState(true)
+  const [expandedCards, setExpandedCards] = useState({})
+  const [expandedCauses, setExpandedCauses] = useState({})
 
   if (!fishbone || !fishbone.categories) return null
 
   const primaryCat = fishbone.primary_category
 
+  // Only show categories with causes
+  const nonEmptyCategories = Object.entries(CATEGORY_META).filter(
+    ([cat]) => (fishbone.categories?.[cat] || []).length > 0
+  )
+
+  const toggleCard = (cat) => {
+    setExpandedCards(prev => ({ ...prev, [cat]: !prev[cat] }))
+  }
+
+  const toggleCause = (key) => {
+    setExpandedCauses(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
   return (
     <div className="fishbone-section">
       <div className="fishbone-header">
-        <div>
-          <h3 className="fishbone-title">🦴 Contributing Cause Map</h3>
-          <p className="fishbone-subtitle">
-            Primary category: <strong style={{ color: CATEGORY_META[primaryCat]?.color || '#fff' }}>{primaryCat}</strong>
-          </p>
-        </div>
+        <h3 className="fishbone-title">Contributing Cause Map</h3>
         <button className="expand-toggle fishbone-toggle" onClick={() => setExpanded(!expanded)}>
           <span className="toggle-icon">{expanded ? '▼' : '▶'}</span>
           {expanded ? 'Collapse' : 'Expand'}
@@ -268,51 +300,81 @@ function FishboneSection({ fishbone }) {
       </div>
 
       {expanded && (
-        <div className="fishbone-grid">
-          {Object.entries(CATEGORY_META).map(([cat, meta]) => {
-            const causes = fishbone.categories?.[cat] || []
-            const isPrimary = cat === primaryCat
+        <>
+          {/* ── Root Cause Spine Bar ── */}
+          <div className="fishbone-spine">
+            <span className="fishbone-spine-label">ROOT CAUSE</span>
+            <span className="fishbone-spine-text">{fishbone.root_cause_confirmed}</span>
+          </div>
 
-            return (
-              <div
-                key={cat}
-                className={`fishbone-card ${isPrimary ? 'fishbone-card--primary' : ''}`}
-                style={{ borderColor: isPrimary ? meta.color : undefined }}
-              >
-                <div className="fishbone-card-header" style={{ color: meta.color }}>
-                  <span className="fishbone-cat-icon">{meta.icon}</span>
-                  <span className="fishbone-cat-name">{cat}</span>
-                  {isPrimary && <span className="fishbone-primary-badge">PRIMARY</span>}
+          {/* ── Category Cards Grid ── */}
+          <div className="fishbone-grid">
+            {nonEmptyCategories.map(([cat, meta]) => {
+              const causes = fishbone.categories?.[cat] || []
+              const isPrimary = cat === primaryCat
+              const isCardOpen = isPrimary || !!expandedCards[cat]
+
+              return (
+                <div
+                  key={cat}
+                  className={`fishbone-card ${isPrimary ? 'fishbone-card--primary' : ''}`}
+                  style={{
+                    borderLeftColor: isPrimary ? meta.color : undefined,
+                  }}
+                >
+                  <div
+                    className="fishbone-card-header"
+                    style={{ color: meta.color, cursor: 'pointer' }}
+                    onClick={() => toggleCard(cat)}
+                  >
+                    <span className="fishbone-cat-icon">{meta.icon}</span>
+                    <span className="fishbone-cat-name">{cat}</span>
+                    {isPrimary && <span className="fishbone-primary-badge">PRIMARY</span>}
+                    <span className="fishbone-cause-count">
+                      {causes.length}
+                      <span className="toggle-icon-small">{isCardOpen ? '▼' : '▶'}</span>
+                    </span>
+                  </div>
+
+                  {isCardOpen && (
+                    <ul className="fishbone-causes">
+                      {causes.map((c, i) => {
+                        const causeKey = `${cat}-${i}`
+                        const isCauseExpanded = !!expandedCauses[causeKey]
+                        return (
+                          <li
+                            key={i}
+                            className="fishbone-cause-item"
+                            onClick={() => toggleCause(causeKey)}
+                          >
+                            <div className="fishbone-cause-row">
+                              <span className="fishbone-cause-text">{c.cause}</span>
+                              <FishboneEvidenceBadge level={c.evidence_level || 'POSSIBLE'} />
+                            </div>
+                            {isCauseExpanded && (
+                              <>
+                                {c.sub_causes?.length > 0 && (
+                                  <ul className="fishbone-sub-causes">
+                                    {c.sub_causes.slice(0, 3).map((sc, j) => (
+                                      <li key={j}>{sc}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {c.evidence && (
+                                  <span className="fishbone-evidence-text">{c.evidence}</span>
+                                )}
+                              </>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </div>
-
-                {causes.length === 0 ? (
-                  <p className="fishbone-no-cause">No significant causes identified</p>
-                ) : (
-                  <ul className="fishbone-causes">
-                    {causes.map((c, i) => (
-                      <li key={i} className="fishbone-cause-item">
-                        <span className="fishbone-cause-text">{c.cause}</span>
-                        {c.sub_causes?.length > 0 && (
-                          <ul className="fishbone-sub-causes">
-                            {c.sub_causes.slice(0, 2).map((sc, j) => (
-                              <li key={j}>{sc}</li>
-                            ))}
-                          </ul>
-                        )}
-                        <span
-                          className="fishbone-conf"
-                          style={{ color: c.confidence >= 0.8 ? '#34d399' : c.confidence >= 0.6 ? '#fbbf24' : '#f87171' }}
-                        >
-                          {Math.round(c.confidence * 100)}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

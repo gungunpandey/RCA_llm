@@ -1,7 +1,4 @@
 import { useState } from 'react'
-import RCAResult from './RCAResult'
-import DomainResult from './DomainResult'
-import DomainSummary from './DomainSummary'
 
 const INITIAL_STATE = {
   equipment_name: '',
@@ -12,24 +9,17 @@ const INITIAL_STATE = {
   operator_observations: ''
 }
 
-function RCAForm() {
+function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }) {
   const [form, setForm] = useState(INITIAL_STATE)
   const [status, setStatus] = useState(null) // null | 'sending' | 'success' | 'error'
-  const [result, setResult] = useState(null)
   const [statusMsg, setStatusMsg] = useState('')
   const [statusLog, setStatusLog] = useState([])
   const [includeDomain, setIncludeDomain] = useState(true)
-  const [domainStatus, setDomainStatus] = useState(null)
-  const [domainResult, setDomainResult] = useState(null)
-  const [domainStatusMsg, setDomainStatusMsg] = useState('')
-  // Progressive: set as soon as domain_insights SSE event arrives
-  const [domainInsights, setDomainInsights] = useState(null)
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  // --- Dynamic list helpers (symptoms & error_codes) ---
   const handleListChange = (field, index, value) => {
     setForm(prev => {
       const updated = [...prev[field]]
@@ -49,8 +39,13 @@ function RCAForm() {
     })
   }
 
-  // --- SSE stream reader (reusable for both endpoints) ---
-  const readSSEStream = async (url, payload, { onStatus, onResult, onError, onDomainInsights }) => {
+  const setStatusAll = (s) => {
+    setStatus(s)
+    onStatusChange?.(s)
+  }
+
+  // ── SSE stream reader ──────────────────────────────────────────────────────
+  const readSSEStream = async (url, payload, { onStatus, onResult, onError, onDomainInsightsEvt }) => {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,26 +80,23 @@ function RCAForm() {
           if (eventType === 'status') onStatus(parsed)
           if (eventType === 'result') onResult(parsed)
           if (eventType === 'error') onError(parsed)
-          // Progressive domain insights — rendered immediately
-          if (eventType === 'domain_insights' && onDomainInsights) {
+          if (eventType === 'domain_insights' && onDomainInsightsEvt) {
             console.log('[SSE] domain_insights received:', parsed)
-            onDomainInsights(parsed)
+            onDomainInsightsEvt(parsed)
           }
         } catch (parseErr) {
-          console.warn('[SSE] JSON parse error for event:', eventType, parseErr, data.slice(0, 200))
+          console.warn('[SSE] JSON parse error:', eventType, parseErr, data.slice(0, 200))
         }
       }
     }
   }
 
-  // --- Submit via SSE stream (INTEGRATED PIPELINE) ---
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setStatus('sending')
-    setResult(null)
-    setDomainResult(null)
-    setDomainStatus(null)
-    setDomainInsights(null)   // clear previous domain insights
+    setStatusAll('sending')
+    onResult?.(null)
+    onDomainInsights?.(null)
     setStatusMsg('Connecting to server...')
     setStatusLog([])
 
@@ -116,49 +108,49 @@ function RCAForm() {
 
     try {
       if (includeDomain) {
-        // NEW: Use integrated pipeline (domain agents → 5 Whys)
         await readSSEStream('http://localhost:8000/analyze-integrated-stream', payload, {
           onStatus: (d) => {
-            const msg = d.message
-            setStatusMsg(msg)
-            setStatusLog(prev => [...prev, msg])
+            setStatusMsg(d.message)
+            setStatusLog(prev => [...prev, d.message])
+            onStatusMessage?.(d.message)
           },
-          onDomainInsights: (d) => {
-            // Render DomainSummary immediately — 5 Whys is still running
-            setDomainInsights(d.domain_insights)
-            setStatusMsg('🎯 Domain analysis complete — running 5 Whys...')
+          onDomainInsightsEvt: (d) => {
+            onDomainInsights?.(d.domain_insights)
+            const msg = '🎯 Domain analysis complete — running 5 Whys...'
+            setStatusMsg(msg)
+            onStatusMessage?.(msg)
           },
           onResult: (d) => {
-            setResult(d)
-            setStatus('success')
+            onResult?.(d)
+            setStatusAll('success')
           },
           onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
         })
       } else {
-        // Fallback: Use standalone 5 Whys (no domain analysis)
         await readSSEStream('http://localhost:8000/analyze-stream', payload, {
-          onStatus: (d) => { setStatusMsg(d.message); setStatusLog(prev => [...prev, d.message]) },
-          onResult: (d) => { setResult(d); setStatus('success') },
+          onStatus: (d) => {
+            setStatusMsg(d.message)
+            setStatusLog(prev => [...prev, d.message])
+            onStatusMessage?.(d.message)
+          },
+          onResult: (d) => { onResult?.(d); setStatusAll('success') },
           onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
         })
       }
     } catch (err) {
       console.error(err)
-      setResult({ error: err.message })
-      setStatus('error')
+      onResult?.({ error: err.message })
+      setStatusAll('error')
     }
   }
 
   const handleReset = () => {
     setForm(INITIAL_STATE)
-    setStatus(null)
-    setResult(null)
+    setStatusAll(null)
+    onResult?.(null)
+    onDomainInsights?.(null)
     setStatusMsg('')
     setStatusLog([])
-    setDomainStatus(null)
-    setDomainResult(null)
-    setDomainStatusMsg('')
-    setDomainInsights(null)
   }
 
   return (
@@ -203,7 +195,7 @@ function RCAForm() {
           />
         </div>
 
-        {/* Symptoms (dynamic list) */}
+        {/* Symptoms */}
         <div className="field">
           <label>Symptoms</label>
           {form.symptoms.map((symptom, i) => (
@@ -229,7 +221,7 @@ function RCAForm() {
           </button>
         </div>
 
-        {/* Error Codes (dynamic list) */}
+        {/* Error Codes */}
         <div className="field">
           <label>Error Codes</label>
           {form.error_codes.map((code, i) => (
@@ -282,8 +274,8 @@ function RCAForm() {
 
         {/* Actions */}
         <div className="form-actions">
-          <button type="submit" className="btn-submit" disabled={status === 'sending' || domainStatus === 'sending'}>
-            {status === 'sending' || domainStatus === 'sending' ? 'Analyzing...' : 'Run RCA Analysis'}
+          <button type="submit" className="btn-submit" disabled={status === 'sending'}>
+            {status === 'sending' ? 'Analyzing...' : 'Run RCA Analysis'}
           </button>
           <button type="button" className="btn-reset" onClick={handleReset}>
             Reset
@@ -291,78 +283,12 @@ function RCAForm() {
         </div>
       </form>
 
-      {/* Live Status Updates */}
+      {/* Minimal sidebar spinner — just the current step, no log */}
       {status === 'sending' && (
-        <div className="status-panel">
-          <div className="status-current">
-            <div className="status-spinner" />
-            <span>{statusMsg}</span>
-          </div>
-          {statusLog.length > 1 && (
-            <div className="status-log">
-              {statusLog.slice(0, -1).map((msg, i) => (
-                <div className="status-log-item" key={i}>
-                  <span className="status-check">&#10003;</span>
-                  {msg}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="sidebar-status">
+          <div className="status-spinner" />
+          <span>{statusMsg}</span>
         </div>
-      )}
-
-      {status === 'error' && result && (
-        <div className="result-box error">
-          <strong>Error:</strong> {result.error}
-          <p>Make sure the backend server is running on port 8000.</p>
-        </div>
-      )}
-
-      {/* ── Progressive: show DomainSummary as soon as domain_insights event arrives ── */}
-      {domainInsights && (
-        <DomainSummary insights={domainInsights} />
-      )}
-
-      {/* While 5 Whys is still running, show a status indicator below domain summary */}
-      {domainInsights && status === 'sending' && (
-        <div className="section-divider">
-          <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
-          <p className="section-subtitle">Running 5 Whys analysis using domain insights...</p>
-        </div>
-      )}
-
-      {/* Final 5 Whys result */}
-      {status === 'success' && result && (
-        <>
-          {domainInsights && (
-            <div className="section-divider">
-              <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
-              <p className="section-subtitle">Building on domain expert insights...</p>
-            </div>
-          )}
-          <RCAResult data={result} />
-        </>
-      )}
-
-      {/* Domain analysis status */}
-      {domainStatus === 'sending' && (
-        <div className="status-panel">
-          <div className="status-current">
-            <div className="status-spinner" />
-            <span>{domainStatusMsg}</span>
-          </div>
-        </div>
-      )}
-
-      {domainStatus === 'error' && domainResult && (
-        <div className="result-box error">
-          <strong>Domain Analysis Error:</strong> {domainResult.error}
-        </div>
-      )}
-
-      {/* Old domain result display (keep for backward compatibility with old endpoint) */}
-      {domainStatus === 'success' && domainResult && !result?.result?.domain_insights && (
-        <DomainResult data={domainResult} />
       )}
     </div>
   )

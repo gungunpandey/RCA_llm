@@ -11,36 +11,69 @@ body {
   min-height: 100vh;
 }
 
-/* ---- App Shell ---- */
+/* ---- App Shell (Fullscreen two-panel) ---- */
 .app {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #0a0c12;
+}
+
+.app-sidebar {
+  width: 400px;
+  min-width: 340px;
+  max-width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0f1117;
+  border-right: 1px solid #1e2130;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2rem 2rem 4rem;
+  background: #0a0c12;
 }
 
 .app-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
+  padding: 1.75rem 1.5rem 1rem;
+  border-bottom: 1px solid #1e2130;
+  margin-bottom: 0;
+  text-align: left;
+}
+
+.app-logo {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #4a7cff;
+  letter-spacing: 1px;
+  margin-bottom: 0.35rem;
 }
 
 .app-header h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
   color: #ffffff;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.3rem;
 }
 
 .app-header p {
-  color: #888;
-  font-size: 0.95rem;
+  color: #666;
+  font-size: 0.82rem;
 }
 
 /* ---- Form Container ---- */
 .form-container {
-  background: #1a1d27;
-  border: 1px solid #2a2d3a;
-  border-radius: 12px;
-  padding: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 1rem 1.5rem 2rem;
+  flex: 1;
 }
 
 /* ---- Field ---- */
@@ -988,27 +1021,31 @@ body {
    Fishbone (Ishikawa) Diagram Section
    ====================================================== */
 
+/* ══════════════════════════════════════════════════════
+   FISHBONE (Ishikawa) — Spine Layout
+   ══════════════════════════════════════════════════════ */
+
 .fishbone-section {
   margin-top: 1.75rem;
   margin-bottom: 1.75rem;
   background: #12141c;
   border: 1px solid #2a2d3a;
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .fishbone-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
 .fishbone-title {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #fff;
-  margin: 0 0 0.3rem 0;
+  margin: 0;
 }
 
 .fishbone-subtitle {
@@ -1019,15 +1056,47 @@ body {
 
 .fishbone-toggle {
   width: auto;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.82rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
 }
 
-/* ── 6-Category Grid ── */
+/* ── Root Cause Spine Bar ── */
+.fishbone-spine {
+  background: #1e2130;
+  border: 2px solid #ef4444;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fishbone-spine-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #ef4444;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 0.15rem 0.5rem;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.fishbone-spine-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  line-height: 1.3;
+}
+
+/* ── Category Grid ── */
 .fishbone-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.85rem;
+  gap: 0.6rem;
 }
 
 @media (max-width: 640px) {
@@ -1040,30 +1109,31 @@ body {
 .fishbone-card {
   background: #1a1d27;
   border: 1px solid #2a2d3a;
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
+  border-left: 3px solid #2a2d3a;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
   transition: border-color 0.2s;
 }
 
 .fishbone-card--primary {
-  border-width: 2px;
-  background: #1a1d27;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-left-width: 4px;
+  background: #1c1f2b;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
 }
 
 .fishbone-card-header {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.65rem;
+  gap: 0.35rem;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  user-select: none;
 }
 
 .fishbone-cat-icon {
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .fishbone-cat-name {
@@ -1071,11 +1141,11 @@ body {
 }
 
 .fishbone-primary-badge {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
-  padding: 0.15rem 0.4rem;
+  padding: 0.1rem 0.35rem;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 3px;
   letter-spacing: 0.5px;
 }
 
@@ -1083,49 +1153,487 @@ body {
 .fishbone-causes {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0.4rem 0 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
 .fishbone-cause-item {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.5rem 0.6rem;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
   background: #12141c;
-  border-radius: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.fishbone-cause-item:hover {
+  background: #161823;
+}
+
+.fishbone-cause-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .fishbone-cause-text {
   color: #d0d0d0;
-  font-size: 0.82rem;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .fishbone-sub-causes {
   list-style: disc;
-  padding-left: 1.1rem;
-  margin: 0.2rem 0 0;
+  padding-left: 1rem;
+  margin: 0.15rem 0 0;
 }
 
 .fishbone-sub-causes li {
-  color: #666;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  margin-bottom: 0.1rem;
+  color: #777;
+  font-size: 0.7rem;
+  line-height: 1.3;
 }
 
-.fishbone-conf {
-  font-size: 0.72rem;
-  font-weight: 600;
-  align-self: flex-end;
+/* ── Evidence Badges ── */
+.fishbone-evidence-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.fishbone-no-cause {
-  color: #444;
-  font-size: 0.78rem;
+.fishbone-evidence--confirmed {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.fishbone-evidence--supported {
+  background: rgba(74, 124, 255, 0.15);
+  color: #4a7cff;
+  border: 1px solid rgba(74, 124, 255, 0.3);
+}
+
+.fishbone-evidence--possible {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.fishbone-evidence-text {
+  font-size: 0.68rem;
+  color: #777;
   font-style: italic;
+  line-height: 1.3;
+  margin-top: 0.1rem;
+}
+
+.fishbone-cause-count {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toggle-icon-small {
+  font-size: 0.55rem;
+}
+
+/* ======================================================
+   Fishbone Canvas — SVG Container & New Styles
+   ====================================================== */
+
+.fishbone-canvas-section {
+  background: #0f1117;
+  border: 1px solid #1e2130;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.fishbone-canvas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.fishbone-canvas-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.2rem 0;
+}
+
+.fishbone-canvas-subtitle {
+  font-size: 0.78rem;
+  color: #555;
   margin: 0;
+}
+
+.fishbone-svg-wrapper {
+  width: 100%;
+  height: 480px;
+  background: #080a10;
+  border: 1px solid #1a1d2a;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── EFFECT Rail ── */
+.effect-rail-wrapper {
+  margin-top: 0.75rem;
+  border-top: 1px solid #1e2130;
+  padding-top: 0.75rem;
+}
+
+.effect-toggle {
+  background: none;
+  border: 1px dashed #3a3f55;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.effect-toggle:hover {
+  border-color: #6b7280;
+  color: #9ca3af;
+}
+
+.effect-toggle-hint {
+  color: #444;
+  font-size: 0.72rem;
+}
+
+.effect-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.effect-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  background: rgba(107, 114, 128, 0.1);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  border-radius: 20px;
+  font-size: 0.72rem;
+}
+
+.effect-cat {
+  color: #6b7280;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.4px;
+}
+
+.effect-text {
+  color: #888;
+}
+
+/* ── Timeline Modal ── */
+.timeline-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.timeline-modal {
+  background: #0f1117;
+  border: 1px solid #2a2d3a;
+  border-radius: 14px;
+  width: min(640px, 90vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.timeline-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #1e2130;
+  flex-shrink: 0;
+}
+
+.timeline-modal-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.timeline-close {
+  background: none;
+  border: 1px solid #2a2d3a;
+  border-radius: 6px;
+  color: #666;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.timeline-close:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.timeline-steps {
+  overflow-y: auto;
+  padding: 1rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.timeline-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #4a7cff22;
+  border: 2px solid #4a7cff;
+  color: #4a7cff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.timeline-body {
+  flex: 1;
+  background: #12141c;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.timeline-q {
+  color: #7da8ff;
+  font-size: 0.83rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem 0;
+}
+
+.timeline-a {
+  color: #c0c0c0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 420px;
+  text-align: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.empty-state-icon {
+  font-size: 3.5rem;
+  filter: grayscale(0.3);
+}
+
+.empty-state h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.empty-state p {
+  color: #666;
+  font-size: 0.92rem;
+  max-width: 360px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.empty-state-features {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.empty-state-features li {
+  color: #444;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+  background: #1a1d27;
+  border: 1px solid #2a2d3a;
+  border-radius: 20px;
+  transition: color 0.2s;
+}
+
+/* ── rca-result inside app-main has no extra top margin ── */
+.app-main .rca-result {
+  margin-top: 0;
+}
+
+/* ── Responsive: collapse sidebar on narrow screens ── */
+@media (max-width: 900px) {
+  .app {
+    flex-direction: column;
+    height: auto;
+    overflow: auto;
+  }
+
+  .app-sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #1e2130;
+  }
+
+  .app-main {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .fishbone-svg-wrapper {
+    height: 360px;
+  }
+}
+
+/* ======================================================
+   Right-Panel Live Status Panel
+   ====================================================== */
+
+.main-status-panel {
+  background: #0f1117;
+  border: 1px solid #1e2130;
+  border-radius: 14px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.main-status-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.main-status-current {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #7da8ff;
+  line-height: 1.4;
+}
+
+.main-status-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1e2130;
+}
+
+.main-status-log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #4a5568;
+  font-size: 0.85rem;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.main-status-log-item .status-check {
+  color: #34d399;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* ── Compact sidebar spinner (replaces full status-panel inside form) ── */
+.sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  background: #12141c;
+  border: 1px solid #1e2130;
+  border-radius: 8px;
+  margin: 0.75rem 1.5rem 0;
+  color: #7da8ff;
+  font-size: 0.82rem;
 }

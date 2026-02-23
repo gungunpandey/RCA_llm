@@ -222,6 +222,7 @@ RULES:
 5. Keep your answer CONCISE: 2-4 sentences. State the cause and the evidence. No lengthy explanations.
 6. Do NOT use markdown formatting (no ** or * for bold/italic)
 7. Do NOT escalate to governance, maintenance policy, or design failures unless there is direct evidence (alarm logs, maintenance records, design specifications) that these are causal. The goal is the LOWEST sufficient explanation, not the deepest.
+8. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
 
 Question: {why_question}
 
@@ -252,6 +253,7 @@ RULES:
 6. Do NOT use markdown formatting (no ** or * for bold/italic)
 7. Do NOT repeat document names inside the ANSWER. Put them only in SUPPORTING_DOCUMENTS.
 8. Only escalate to a deeper root cause if the current cause cannot explain at least one observed symptom. If all symptoms are explained, declare the current cause as the root cause. Do NOT infer governance, maintenance, or design failures without direct evidence such as alarms, logs, or sensor data.
+9. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
 
 Question: {why_question}
 
