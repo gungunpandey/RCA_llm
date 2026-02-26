@@ -29,7 +29,6 @@ load_dotenv(os.path.join(LLM_DIR, ".env"))
 from tools.five_whys_tool import FiveWhysTool
 from tools.tool_registry import ToolRegistry
 from tools.fishbone_tool import FishboneTool
-from model_comparison.gemini_adapter import GeminiAdapter
 from rag_manager import RAGManager
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 
@@ -42,6 +41,7 @@ logging.basicConfig(
 # ── Globals (initialized at startup) ──
 registry: ToolRegistry = None
 rag: RAGManager = None
+active_llm_model: str = "unknown"
 
 
 # ── Request / Response schemas ──
@@ -59,13 +59,24 @@ class AnalyzeRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global registry, rag
+    global registry, rag, active_llm_model
 
     logger.info("Starting up — initializing RCA components...")
 
-    # 1. Gemini LLM adapter
-    gemini = GeminiAdapter()
-    logger.info("Gemini adapter ready")
+    # 1. LLM adapter — controlled by LLM_PROVIDER env var
+    llm_provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    if llm_provider == "openrouter":
+        from model_comparison.openrouter_adapter import OpenRouterAdapter
+        llm_adapter = OpenRouterAdapter()
+        active_llm_model = f"OpenRouter/{llm_adapter.model_name}"
+        logger.info(f"OpenRouter adapter ready (model: {llm_adapter.model_name})")
+    else:
+        from model_comparison.gemini_adapter import GeminiAdapter
+        llm_adapter = GeminiAdapter()
+        active_llm_model = f"Gemini/{llm_adapter.model_name}"
+        logger.info(f"Gemini adapter ready (model: {llm_adapter.model_name})")
+
+    gemini = llm_adapter  # keep local alias so existing code below stays unchanged
 
     # 2. RAG (Weaviate)
     rag = RAGManager()
@@ -134,6 +145,7 @@ def _build_failure_text(req: AnalyzeRequest) -> str:
 async def health():
     return {
         "status": "healthy",
+        "llm_model": active_llm_model,
         "tools": registry.list_tools() if registry else [],
     }
 

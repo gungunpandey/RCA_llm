@@ -105,7 +105,21 @@ class FishboneTool(BaseTool):
             )
 
             # ── 4. Call LLM ───────────────────────────────────────────────
-            raw_response = await self.llm_adapter.generate(prompt)
+            # json_mode=True forces the model to return valid JSON (supported
+            # by OpenRouter/GPT-5). Ignored silently by adapters that don't
+            # support the parameter (e.g. GeminiAdapter).
+            import inspect
+            gen_sig = inspect.signature(self.llm_adapter.generate)
+            supports_json = "json_mode" in gen_sig.parameters
+            supports_max_tokens = "max_tokens" in gen_sig.parameters
+            call_kwargs = {}
+            if supports_json:
+                call_kwargs["json_mode"] = True
+            if supports_max_tokens:
+                # Fishbone JSON (6 categories × multiple causes) can be verbose —
+                # raise the cap well above the default 4096 so finish_reason never hits 'length'
+                call_kwargs["max_tokens"] = 16384
+            raw_response = await self.llm_adapter.generate(prompt, **call_kwargs)
 
             # ── 5. Parse response ─────────────────────────────────────────
             fishbone_result = self._parse_response(raw_response, root_cause, docs_used)
@@ -248,9 +262,13 @@ Respond ONLY with valid JSON in this exact format:
         self, raw: str, root_cause: str, docs_used: List[str]
     ) -> FishboneResult:
         """Parse LLM JSON response into FishboneResult."""
+        # Strip markdown code fences (```json ... ``` or ``` ... ```)
+        cleaned = re.sub(r"```(?:json)?\s*", "", raw).replace("```", "").strip()
+
         # Extract JSON block
-        json_match = re.search(r'\{[\s\S]*\}', raw)
+        json_match = re.search(r'\{[\s\S]*\}', cleaned)
         if not json_match:
+            logger.error(f"Raw LLM response (first 500 chars): {raw[:500]!r}")
             raise ValueError("No JSON found in LLM response")
 
         data = json.loads(json_match.group())

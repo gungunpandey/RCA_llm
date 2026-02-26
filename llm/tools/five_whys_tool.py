@@ -322,32 +322,32 @@ CONFIDENCE: [percentage, e.g., 85]
     def _call_llm(self, prompt: str) -> str:
         """
         Call LLM with the given prompt.
-        
-        Args:
-            prompt: Prompt text
-            
+
         Returns:
             LLM response text
         """
-        # Check if adapter has a direct chat/completion method
-        if hasattr(self.llm_adapter, 'client'):
-            # Gemini adapter
-            if hasattr(self.llm_adapter.client, 'models'):
-                response = self.llm_adapter.client.models.generate_content(
-                    model=self.llm_adapter.model_name,
-                    contents=prompt
-                )
-                return response.text
-        
-        # Fallback: use analyze_failure method (less ideal but works)
+        # Preferred: adapter exposes a direct sync call (OpenRouter and future adapters)
+        if hasattr(self.llm_adapter, "generate_sync"):
+            return self.llm_adapter.generate_sync(prompt)
+        # Gemini-specific path: client.models.generate_content
+        if (
+            hasattr(self.llm_adapter, "client")
+            and hasattr(self.llm_adapter.client, "models")
+            and hasattr(self.llm_adapter.client.models, "generate_content")
+        ):
+            response = self.llm_adapter.client.models.generate_content(
+                model=self.llm_adapter.model_name,
+                contents=prompt,
+            )
+            return response.text
+        # Last-resort fallback
         result = self.llm_adapter.analyze_failure(
             failure_description=prompt,
             equipment_name="",
             symptoms=[],
-            use_rag=False
+            use_rag=False,
         )
-        
-        return result.get('raw_response', '')
+        return result.get("raw_response", "")
     
     def _parse_why_response(self, response: str, step_number: int) -> tuple:
         """

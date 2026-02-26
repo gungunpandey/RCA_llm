@@ -7,13 +7,14 @@ FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a mul
 ## 📋 Table of Contents
 
 - [Quick Start](#quick-start)
+- [LLM Provider Configuration](#llm-provider-configuration)
 - [Directory Structure](#directory-structure)
 - [API Endpoints](#api-endpoints)
 - [Pipeline Architecture](#pipeline-architecture)
 - [5 Whys — Early Stop Logic](#5-whys--early-stop-logic)
 - [Evidence Validation System](#evidence-validation-system)
 - [RAG Manager](#rag-manager)
-- [Configuration](#configuration)
+- [Configuration Reference](#configuration-reference)
 - [Running Tests](#running-tests)
 
 ---
@@ -22,19 +23,46 @@ FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a mul
 
 ```bash
 cd llm
-pip install fastapi uvicorn python-dotenv google-genai weaviate-client pydantic
+pip install fastapi uvicorn python-dotenv openai google-genai weaviate-client pydantic
 
 # Start the API server
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Add a `.env` file in the `llm/` directory:
+Add a `.env` file in the `llm/` directory (see [Configuration Reference](#configuration-reference) below).
+
+---
+
+## LLM Provider Configuration
+
+The backend supports two LLM providers, switched via a single env variable.
+
+### Option A — OpenRouter (GPT-5, default)
+
+Get a key at [openrouter.ai/keys](https://openrouter.ai/keys), add credits, then set:
+
+```env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openai/gpt-5
 ```
+
+Available GPT-5 models on OpenRouter:
+
+| Model ID | Input | Output | Notes |
+|----------|-------|--------|-------|
+| `openai/gpt-5` | $1.25/M | $10.00/M | Recommended |
+| `openai/gpt-5-mini-2025-08-07` | $0.25/M | $2.00/M | Cheapest, good for testing |
+| `openai/gpt-5.2` | $1.75/M | $14.00/M | Strongest reasoning |
+
+### Option B — Google Gemini (fallback)
+
+```env
+LLM_PROVIDER=gemini
 GOOGLE_API_KEY=your-gemini-api-key
-WEAVIATE_URL=your-weaviate-cloud-url
-WEAVIATE_API_KEY=your-weaviate-api-key
-HUGGINGFACE_API_KEY=your-hf-api-key   # optional, for embedding
 ```
+
+The active provider is reported on the `/health` endpoint as `llm_model`.
 
 ---
 
@@ -59,9 +87,9 @@ llm/
 ├── models/
 │   └── tool_results.py          # Pydantic schemas for all tool outputs
 ├── model_comparison/
-│   ├── run_comparison.py        # Multi-model comparison script
-│   ├── gemini_adapter.py        # Google Gemini API adapter
-│   └── test_scenarios_extended.json  # Test scenarios for model comparison
+│   ├── openrouter_adapter.py    # OpenRouter / GPT-5 adapter (active default)
+│   ├── gemini_adapter.py        # Google Gemini adapter (fallback)
+│   └── test_scenarios.json      # Test scenarios for standalone tool tests
 ├── rag_manager.py               # Weaviate vector search for OEM docs (with gRPC timeout fix)
 ├── rca_orchestrator.py          # Legacy orchestrator (pre-integrated pipeline)
 ├── test_fishbone.py             # Standalone fishbone test (direct tool call)
@@ -105,7 +133,11 @@ Lighter endpoint — runs standalone 5 Whys (no domain agents or fishbone).
 
 ### `GET /health`
 
-Returns `{"status": "ok"}` — used for readiness checks.
+Returns server status and active LLM model:
+
+```json
+{ "status": "healthy", "llm_model": "OpenRouter/openai/gpt-5", "tools": [...] }
+```
 
 ---
 
@@ -250,16 +282,28 @@ Timeout(init=10, query=8, insert=120)
 
 ---
 
-## Configuration
+## Configuration Reference
 
-| Variable | Location | Purpose |
-|----------|----------|---------|
-| `GOOGLE_API_KEY` | `llm/.env` | Gemini API key for LLM calls |
-| `WEAVIATE_URL` | `llm/.env` | Weaviate Cloud cluster URL |
-| `WEAVIATE_API_KEY` | `llm/.env` | Weaviate API key |
-| `HUGGINGFACE_API_KEY` | `llm/.env` | HuggingFace key for embeddings (optional) |
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `LLM_PROVIDER` | `openrouter` (default) or `gemini` | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key | When `LLM_PROVIDER=openrouter` |
+| `OPENROUTER_MODEL` | Model ID, e.g. `openai/gpt-5` | No (defaults to `openai/gpt-5`) |
+| `GOOGLE_API_KEY` | Gemini API key | When `LLM_PROVIDER=gemini` |
+| `WEAVIATE_URL` | Weaviate Cloud cluster URL | Yes |
+| `WEAVIATE_API_KEY` | Weaviate API key | Yes |
+| `HUGGINGFACE_API_KEY` | HuggingFace key for embeddings | Optional |
 
 Weaviate collection and embedding settings are in `data_ingestion/weaviate_config.json`. `.env` values override the JSON config.
+
+**Minimal `.env` for OpenRouter:**
+```env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openai/gpt-5
+WEAVIATE_URL=https://your-cluster.weaviate.cloud
+WEAVIATE_API_KEY=your-weaviate-key
+```
 
 ---
 
@@ -280,9 +324,3 @@ python test_five_whys.py
 
 ### Full integrated pipeline via API
 Start the server, then submit a request to `/analyze-integrated-stream` (use the frontend or curl).
-
-### Model comparison
-```bash
-python model_comparison/run_comparison.py
-```
-Runs multiple Gemini models against the scenarios defined in `model_comparison/test_scenarios_extended.json` and produces a side-by-side comparison of outputs.

@@ -156,13 +156,20 @@ class BaseAgent(BaseTool):
     # ── LLM call (same pattern as FiveWhysTool) ──
 
     def _call_llm(self, prompt: str) -> str:
-        if hasattr(self.llm_adapter, "client"):
-            if hasattr(self.llm_adapter.client, "models"):
-                response = self.llm_adapter.client.models.generate_content(
-                    model=self.llm_adapter.model_name, contents=prompt
-                )
-                return response.text
-
+        # Preferred: adapter exposes a direct sync call (OpenRouter and future adapters)
+        if hasattr(self.llm_adapter, "generate_sync"):
+            return self.llm_adapter.generate_sync(prompt)
+        # Gemini-specific path: client.models.generate_content
+        if (
+            hasattr(self.llm_adapter, "client")
+            and hasattr(self.llm_adapter.client, "models")
+            and hasattr(self.llm_adapter.client.models, "generate_content")
+        ):
+            response = self.llm_adapter.client.models.generate_content(
+                model=self.llm_adapter.model_name, contents=prompt
+            )
+            return response.text
+        # Last-resort fallback
         result = self.llm_adapter.analyze_failure(
             failure_description=prompt,
             equipment_name="",
