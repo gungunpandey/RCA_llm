@@ -5,29 +5,41 @@
       "name": "ESP High Emission with TR Set Trip",
       "equipment_name": "Electrostatic Precipitator (ESP)",
       "failure_description": "Excessive stack emission opacity > 50mg/Nm3 despite normal inlet load. Ash discharge rotary valve was found stopped; clinker formation suspected in hopper.",
+      "department": "Pollution Control",
+      "occurrence_from": "2026-02-10T08:00",
+      "occurrence_to": "2026-02-10T13:30",
+      "total_downtime": "5.5 hours",
+      "production_loss": "110 MT clinker",
+      "impact_top_line": "Line 1 kiln output reduced by 40%",
       "symptoms": [
         "TR Set 1 tripped on under-voltage",
         "Hopper High Level Alarm active",
         "Field 1 Spark Rate high"
       ],
-      "error_codes": ["TR-UV-Trip", "HPR-Hi-Lvl"],
       "operator_observations": "Ash discharge rotary valve was found stopped; clinker formation suspected in hopper.",
       "expected_root_cause": "Hopper blockage due to clinker formation causing ash buildup and TR set trip",
       "complexity": "high",
       "equipment_type": "electrical",
-      "relevant_pdfs": ["ESP_Thermax_OEM Manual.pdf"]
+      "relevant_pdfs": [
+        "ESP_Thermax_OEM Manual.pdf"
+      ]
     },
     {
       "id": "kiln_main_drive_trip",
       "name": "Rotary Kiln Main Drive Motor Trip",
       "equipment_name": "Rotary Kiln",
       "failure_description": "Main Drive Motor tripped during kiln rotation. Motor current spiked to 120% of rated FLA. Kiln shell temperature was uneven; red spot observed near tyre #2.",
+      "department": "Pyro Processing",
+      "occurrence_from": "2026-02-12T14:15",
+      "occurrence_to": "2026-02-13T06:00",
+      "total_downtime": "15.75 hours",
+      "production_loss": "315 MT clinker",
+      "impact_top_line": "Full kiln line shutdown — Line 2 halted",
       "symptoms": [
         "Motor current spiked to 120% of rated FLA",
         "Auxiliary drive engaged automatically",
         "Girth gear noise observed prior to trip"
       ],
-      "error_codes": ["MTR-OC-Trip", "VFD-Fault-F012"],
       "operator_observations": "Kiln shell temperature was uneven; red spot observed near tyre #2.",
       "expected_root_cause": "Refractory lining damage causing shell deformation and increased mechanical load",
       "complexity": "high",
@@ -42,12 +54,17 @@
       "name": "Travelling Grate Hydraulic System Failure",
       "equipment_name": "Travelling Grate",
       "failure_description": "Grate movement stalled; hydraulic system pressure loss. Found oil leakage near the solenoid valve manifold; tank level low.",
+      "department": "Induration",
+      "occurrence_from": "2026-02-15T09:30",
+      "occurrence_to": "2026-02-15T13:00",
+      "total_downtime": "3.5 hours",
+      "production_loss": "70 MT pellets",
+      "impact_top_line": "Pellet dispatch delayed by 4 hours",
       "symptoms": [
         "System pressure dropped below 80 bar",
         "Hydraulic pump P-101 cavitation noise",
         "Oil temperature high alarm (>60°C)"
       ],
-      "error_codes": ["HYD-Low-Press", "OIL-Temp-Hi"],
       "operator_observations": "Found oil leakage near the solenoid valve manifold; tank level low.",
       "expected_root_cause": "Hydraulic oil leak at solenoid valve manifold causing low pressure and pump cavitation",
       "complexity": "medium",
@@ -59,29 +76,41 @@
       "name": "ID Fan High Vibration Trip",
       "equipment_name": "ID Fan",
       "failure_description": "High vibration on Drive End (DE) bearing requiring shutdown. Fan impeller was cleaned 2 days ago; suspect balance weights might have dislodged.",
+      "department": "Gas Handling",
+      "occurrence_from": "2026-02-18T22:00",
+      "occurrence_to": "2026-02-19T02:30",
+      "total_downtime": "4.5 hours",
+      "production_loss": "90 MT pellets",
+      "impact_top_line": "Draft system disrupted — kiln throughput reduced 30%",
       "symptoms": [
         "Vibration amplitude reached 12 mm/s RMS",
         "Bearing temperature stable at 65°C",
         "Phase angle shift observed"
       ],
-      "error_codes": ["VIB-Hi-Hi-Trip"],
       "operator_observations": "Fan impeller was cleaned 2 days ago; suspect balance weights might have dislodged.",
       "expected_root_cause": "Impeller imbalance due to dislodged balance weights after recent cleaning",
       "complexity": "medium",
       "equipment_type": "mechanical",
-      "relevant_pdfs": ["ID&HR Fan_TLT_OEM Manual.pdf"]
+      "relevant_pdfs": [
+        "ID&HR Fan_TLT_OEM Manual.pdf"
+      ]
     },
     {
       "id": "cooler_fan_overload",
       "name": "Grate Cooler Fan Thermal Overload Trip",
       "equipment_name": "Grate Cooler Fan",
       "failure_description": "Fan motor tripped on thermal overload after 2 hours of operation. Damper actuator linkage appears broken; fan was starting against full load.",
+      "department": "Cooling",
+      "occurrence_from": "2026-02-20T06:00",
+      "occurrence_to": "2026-02-20T08:00",
+      "total_downtime": "2 hours",
+      "production_loss": "40 MT pellets",
+      "impact_top_line": "Cooler bed temperature rose — product quality at risk",
       "symptoms": [
         "Discharge damper stuck at 100% open",
         "Motor body temperature high",
         "Air flow rate lower than expected"
       ],
-      "error_codes": ["TOL-Trip", "DMP-Pos-Err"],
       "operator_observations": "Damper actuator linkage appears broken; fan was starting against full load.",
       "expected_root_cause": "Broken damper actuator linkage causing fan to operate against full system resistance",
       "complexity": "medium",

@@ -3,9 +3,13 @@ import { useState } from 'react'
 const INITIAL_STATE = {
   equipment_name: '',
   failure_description: '',
-  failure_timestamp: '',
+  occurrence_from: '',
+  occurrence_to: '',
+  department: '',
+  total_downtime: '',
+  production_loss: '',
+  impact_top_line: '',
   symptoms: [''],
-  error_codes: [''],
   operator_observations: ''
 }
 
@@ -81,7 +85,6 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
           if (eventType === 'result') onResult(parsed)
           if (eventType === 'error') onError(parsed)
           if (eventType === 'domain_insights' && onDomainInsightsEvt) {
-            console.log('[SSE] domain_insights received:', parsed)
             onDomainInsightsEvt(parsed)
           }
         } catch (parseErr) {
@@ -101,9 +104,16 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
     setStatusLog([])
 
     const payload = {
-      ...form,
+      equipment_name: form.equipment_name,
+      failure_description: form.failure_description,
+      occurrence_from: form.occurrence_from,
+      occurrence_to: form.occurrence_to,
+      department: form.department,
+      total_downtime: form.total_downtime,
+      production_loss: form.production_loss,
+      impact_top_line: form.impact_top_line,
       symptoms: form.symptoms.filter(s => s.trim()),
-      error_codes: form.error_codes.filter(c => c.trim())
+      operator_observations: form.operator_observations,
     }
 
     try {
@@ -121,6 +131,16 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
             onStatusMessage?.(msg)
           },
           onResult: (d) => {
+            // Attach extra form meta so the report can use it
+            d._formMeta = {
+              department: form.department,
+              occurrence_from: form.occurrence_from,
+              occurrence_to: form.occurrence_to,
+              total_downtime: form.total_downtime,
+              production_loss: form.production_loss,
+              impact_top_line: form.impact_top_line,
+              failure_description: form.failure_description,
+            }
             onResult?.(d)
             setStatusAll('success')
           },
@@ -133,7 +153,19 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
             setStatusLog(prev => [...prev, d.message])
             onStatusMessage?.(d.message)
           },
-          onResult: (d) => { onResult?.(d); setStatusAll('success') },
+          onResult: (d) => {
+            d._formMeta = {
+              department: form.department,
+              occurrence_from: form.occurrence_from,
+              occurrence_to: form.occurrence_to,
+              total_downtime: form.total_downtime,
+              production_loss: form.production_loss,
+              impact_top_line: form.impact_top_line,
+              failure_description: form.failure_description,
+            }
+            onResult?.(d)
+            setStatusAll('success')
+          },
           onError: (d) => { throw new Error(d.detail || 'Analysis failed') },
         })
       }
@@ -157,22 +189,94 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
     <div className="form-container">
       <form onSubmit={handleSubmit}>
 
+        {/* Department */}
+        <div className="field">
+          <label htmlFor="department">Department</label>
+          <input
+            id="department"
+            type="text"
+            placeholder="e.g. Maintenance, Production"
+            value={form.department}
+            onChange={e => handleChange('department', e.target.value)}
+          />
+        </div>
+
         {/* Equipment Name */}
         <div className="field">
-          <label htmlFor="equipment_name">Equipment Name</label>
+          <label htmlFor="equipment_name">Equipment name / Place of occurrence</label>
           <input
             id="equipment_name"
             type="text"
-            placeholder="e.g. ID&HR Fan"
+            placeholder="e.g. ID&HR Fan, Line 2 Kiln"
             value={form.equipment_name}
             onChange={e => handleChange('equipment_name', e.target.value)}
             required
           />
         </div>
 
-        {/* Failure Description */}
+        {/* Occurrence From */}
         <div className="field">
-          <label htmlFor="failure_description">Failure Description</label>
+          <label htmlFor="occurrence_from">Occurrence — Date &amp; time (From)</label>
+          <input
+            id="occurrence_from"
+            type="text"
+            placeholder="e.g. 2026-02-06T10:00"
+            value={form.occurrence_from}
+            onChange={e => handleChange('occurrence_from', e.target.value)}
+          />
+        </div>
+
+        {/* Occurrence To */}
+        <div className="field">
+          <label htmlFor="occurrence_to">Occurrence — Date &amp; time (To)</label>
+          <input
+            id="occurrence_to"
+            type="text"
+            placeholder="e.g. 2026-02-06T15:30"
+            value={form.occurrence_to}
+            onChange={e => handleChange('occurrence_to', e.target.value)}
+          />
+        </div>
+
+        {/* Total Downtime */}
+        <div className="field">
+          <label htmlFor="total_downtime">Total down time</label>
+          <input
+            id="total_downtime"
+            type="text"
+            placeholder="e.g. 5.5 hours"
+            value={form.total_downtime}
+            onChange={e => handleChange('total_downtime', e.target.value)}
+          />
+        </div>
+
+        {/* Production Loss */}
+        <div className="field">
+          <label htmlFor="production_loss">Production loss</label>
+          <input
+            id="production_loss"
+            type="text"
+            placeholder="e.g. 120 MT"
+            value={form.production_loss}
+            onChange={e => handleChange('production_loss', e.target.value)}
+          />
+        </div>
+
+        {/* Impact of Top Line */}
+        <div className="field">
+          <label htmlFor="impact_top_line">Impact of top line</label>
+          <input
+            id="impact_top_line"
+            type="text"
+            placeholder="e.g. Line stopped, batch delayed"
+            value={form.impact_top_line}
+            onChange={e => handleChange('impact_top_line', e.target.value)}
+          />
+        </div>
+
+        {/* Problem Statement */}
+        <div className="field">
+          <label htmlFor="failure_description">Problem statement</label>
           <textarea
             id="failure_description"
             rows={3}
@@ -180,18 +284,6 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
             value={form.failure_description}
             onChange={e => handleChange('failure_description', e.target.value)}
             required
-          />
-        </div>
-
-        {/* Failure Timestamp */}
-        <div className="field">
-          <label htmlFor="failure_timestamp">Failure Timestamp</label>
-          <input
-            id="failure_timestamp"
-            type="text"
-            placeholder="e.g. 2026-02-06T15:30:00Z"
-            value={form.failure_timestamp}
-            onChange={e => handleChange('failure_timestamp', e.target.value)}
           />
         </div>
 
@@ -218,32 +310,6 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
           ))}
           <button type="button" className="btn-add" onClick={() => addListItem('symptoms')}>
             + Add Symptom
-          </button>
-        </div>
-
-        {/* Error Codes */}
-        <div className="field">
-          <label>Error Codes</label>
-          {form.error_codes.map((code, i) => (
-            <div className="list-row" key={i}>
-              <input
-                type="text"
-                placeholder={`Code ${i + 1}, e.g. E401`}
-                value={code}
-                onChange={e => handleListChange('error_codes', i, e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-icon remove"
-                onClick={() => removeListItem('error_codes', i)}
-                title="Remove"
-              >
-                &times;
-              </button>
-            </div>
-          ))}
-          <button type="button" className="btn-add" onClick={() => addListItem('error_codes')}>
-            + Add Error Code
           </button>
         </div>
 
@@ -283,7 +349,7 @@ function RCAForm({ onResult, onDomainInsights, onStatusChange, onStatusMessage }
         </div>
       </form>
 
-      {/* Minimal sidebar spinner — just the current step, no log */}
+      {/* Minimal sidebar spinner */}
       {status === 'sending' && (
         <div className="sidebar-status">
           <div className="status-spinner" />

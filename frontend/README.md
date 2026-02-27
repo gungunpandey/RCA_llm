@@ -1,6 +1,6 @@
 # Frontend — React UI
 
-React single-page application for the RCA (Root Cause Analysis) system. Provides a form to submit equipment failures and displays progressive, real-time analysis results via Server-Sent Events (SSE).
+React single-page application for the RCA (Root Cause Analysis) system. Provides a structured form to submit equipment failures and displays a formal RCA report with full analysis results via Server-Sent Events (SSE).
 
 ---
 
@@ -8,9 +8,10 @@ React single-page application for the RCA (Root Cause Analysis) system. Provides
 
 - [Quick Start](#quick-start)
 - [Component Architecture](#component-architecture)
+- [Form Fields](#form-fields)
+- [Output Layout](#output-layout)
 - [SSE Streaming](#sse-streaming)
-- [Progressive Result Display](#progressive-result-display)
-- [Confidence Score UI](#confidence-score-ui)
+- [CSV Export](#csv-export)
 - [Styling System](#styling-system)
 
 ---
@@ -31,54 +32,116 @@ npm run dev        # Starts dev server at http://localhost:5173
 
 ```
 src/
-├── main.jsx          # Entry point — mounts App
-├── App.jsx           # Root component
-├── RCAForm.jsx       # Main form + SSE stream controller
-├── RCAResult.jsx     # Final analysis results display
-├── DomainSummary.jsx # Progressive domain insights card
-├── DomainResult.jsx  # Legacy per-domain result card
-└── index.css         # Global design system
+├── main.jsx            # Entry point — mounts App
+├── App.jsx             # Root layout: sidebar (form) + main panel (results)
+├── RCAForm.jsx         # Input form + SSE stream controller
+├── RCAReportTable.jsx  # Formal RCA report table (snapshot-style) + CSV download
+├── RCAResult.jsx       # Fishbone + collapsible domain/5-whys details
+├── FishboneCanvas.jsx  # Interactive SVG Ishikawa diagram
+├── DomainResult.jsx    # Per-domain agent card (utility component)
+└── index.css           # Global design system (~1800 lines)
 ```
 
-### `RCAForm.jsx` — The Controller
+### `App.jsx` — Layout & State
 
-The heart of the UI. Manages all state and orchestrates the SSE stream:
+Two-panel shell: left sidebar (form) and right main panel (results).
 
-- Builds and submits the analysis request
-- Parses incoming SSE events (`status`, `domain_insights`, `result`, `error`)
-- Progressively renders components as events arrive
+- Holds top-level state: `result`, `domainInsights`, `analysisStatus`, `statusLog`
+- **On success:** renders `RCAReportTable` first (upfront), then `RCAResult` (scroll down)
+- **During analysis:** shows live SSE status spinner with completed-steps log
+
+### `RCAForm.jsx` — Controller
+
+Manages all form state and the SSE stream. On submit, connects to `/analyze-integrated-stream` (or `/analyze-stream` if domain toggle is off), parses events, and attaches `_formMeta` to the result payload so the report table has access to all user-entered fields.
 
 **Key state:**
+
 | State | Purpose |
 |-------|---------|
+| `form` | All input field values |
+| `status` | `null` / `sending` / `success` / `error` |
 | `statusMsg` | Current live status message (spinner) |
-| `statusLog` | Previously completed steps (✓ list) |
-| `domainInsights` | Domain agent findings — rendered immediately on arrival |
-| `result` | Final full analysis result |
+| `includeDomain` | Toggle for domain expert pipeline |
 
-### `RCAResult.jsx` — The Results Card
+### `RCAReportTable.jsx` — Formal Report
 
-Displays the full RCA output once the pipeline completes:
+Renders the snapshot-style tabular RCA report upfront as soon as analysis completes:
 
-- **MOST LIKELY CAUSE** — root cause text + INFERRED/RAG-BACKED badge + confidence bar
-- **5 Why Steps** — collapsible chain of why questions and answers
-- **Corrective Actions** — ordered list of recommended fixes
-- **Documents Referenced** — source OEM manuals used
+- **Header meta:** Department, Equipment, Occurrence From/To, Downtime, Production loss, Top-line impact
+- **Problem statement:** From form input
+- **5 Why Analysis table:** Why 1–5 (or fewer if causal sufficiency stops early)
+- **Root Cause row:** Synthesized final root cause (distinct from any single why step)
+- **CAPA table:** Editable rows for preventive action, responsibility, target date
+- **CSV download:** Exports full report including CAPA rows
 
-### `DomainSummary.jsx` — Progressive Card
+### `RCAResult.jsx` — Analysis Details
 
-Rendered **immediately** when domain agents finish (before 5 Whys starts). Shows:
+Shown below the report table. Contains two collapsible sections:
 
-- Agents that analyzed the failure (Mechanical / Electrical / Process)
-- Key findings with severity badges (CRITICAL / WARNING)
-- Suspected root cause hypothesis per domain
-- Recommended physical checks
+1. **Fishbone (Ishikawa)** — SVG canvas, always visible on load, can be collapsed
+2. **Root Cause Reasoning Details** — two expand toggles:
+   - 🔬 Domain Expert Insights (Mechanical / Electrical / Process findings)
+   - 📋 Detailed 5 Whys Reasoning (question + answer + evidence badges per step)
+
+### `FishboneCanvas.jsx` — Interactive SVG Diagram
+
+- Fixed 1280 × 560 SVG canvas, scales with `viewBox`
+- 6 Ishikawa categories: Machine, Material, Environment (top) + Method, Man, Measurement (bottom)
+- Hover a bone branch to dim all others; click a leaf node to highlight it
+- Evidence levels: `CONFIRMED` (green) / `SUPPORTED` (blue) / `POSSIBLE` (amber) / `EFFECT` (grey)
+- Click root cause head to open the 5 Whys timeline modal
+
+---
+
+## Form Fields
+
+| Field | Maps to |
+|-------|---------|
+| Department | `_formMeta.department` |
+| Equipment name / Place of occurrence | `equipment_name` (API payload) |
+| Occurrence — Date & time (From) | `occurrence_from` (API + `_formMeta`) |
+| Occurrence — Date & time (To) | `occurrence_to` (API + `_formMeta`) |
+| Total down time | `_formMeta.total_downtime` |
+| Production loss | `_formMeta.production_loss` |
+| Impact of top line | `_formMeta.impact_top_line` |
+| Problem statement | `failure_description` (API payload) |
+| Symptoms | `symptoms[]` (API payload) |
+| Operator Observations | `operator_observations` (API payload) |
+| Include Domain Expert Analysis | toggle — routes to integrated or 5-whys-only endpoint |
+
+> `_formMeta` is a client-side object attached to the API result before passing it to the report component. It is not sent to the backend — it stays in the browser session.
+
+---
+
+## Output Layout
+
+After analysis completes, the right panel renders in this order (top to bottom):
+
+```
+┌──────────────────────────────────────┐
+│  RCA Report            ⬇ Download CSV │  ← always visible upfront
+│  [meta table]                         │
+│  [5 Why Analysis]                     │
+│  [Root Cause] ← synthesized, distinct │
+│  [CAPA table — editable]              │
+└──────────────────────────────────────┘
+
+┌──────────────────────────────────────┐
+│  🦴 Fishbone Diagram  [Collapse ▼]   │  ← scroll down
+└──────────────────────────────────────┘
+
+┌──────────────────────────────────────┐
+│  🔬 Root Cause Reasoning Details     │
+│  [ Show Domain Expert Insights ▶ ]   │  ← collapsed by default
+│  [ Show 5 Whys Reasoning ▶ ]         │  ← collapsed by default
+└──────────────────────────────────────┘
+```
 
 ---
 
 ## SSE Streaming
 
-The frontend connects to `/analyze-integrated-stream` and reads a continuous stream of events:
+The frontend connects to `/analyze-integrated-stream` and reads a continuous event stream:
 
 ```
 event: status
@@ -91,94 +154,50 @@ event: result
 data: {"status": "success", "result": { ... }}
 ```
 
-**Parsing logic** (`readSSEStream` in `RCAForm.jsx`):
-
-```javascript
-// Each SSE chunk is split on "\n\n" (double-newline = event separator)
-// Lines starting with "event:" set the event type
-// Lines starting with "data:" contain the JSON payload
-```
-
 **Event routing:**
 
-| Event | Handler | Effect |
-|-------|---------|--------|
-| `status` | `onStatus` | Updates spinner + appends to completed log |
-| `domain_insights` | `onDomainInsights` | Renders `DomainSummary` immediately |
-| `result` | `onResult` | Renders full `RCAResult` |
-| `error` | `onError` | Shows error message |
+| Event | Effect |
+|-------|--------|
+| `status` | Updates spinner text + appends to completed-steps log |
+| `domain_insights` | Stored in state (used in RCAResult expand section) |
+| `result` | Triggers report + result render; `_formMeta` is attached here |
+| `error` | Shows error message in main panel |
 
 ---
 
-## Progressive Result Display
+## CSV Export
 
-The UI renders results in **two waves** — not all at once:
+Clicking **⬇ Download CSV** in the report header exports a `.csv` file containing:
 
-```
-[Spinner: "🔬 Domain experts analyzing..."]
-         ↓ ~30-45s
-[DomainSummary card appears]
-[Spinner: "🎯 Running 5 Whys..."]
-         ↓ ~60-90s more
-[RCAResult card appears]
-```
+- All header meta fields (department, equipment, dates, downtime, etc.)
+- Problem statement
+- Why 1–5 answers
+- Root cause
+- CAPA table rows (including any edits made in the browser)
 
-**Why this matters:** The pipeline takes 2–3 minutes total. Showing domain insights early gives the user actionable information while the slower 5 Whys + Fishbone analysis runs.
-
-**Render conditions:**
-```jsx
-{/* Shown as soon as domain_insights SSE event arrives */}
-{domainInsights && <DomainSummary insights={domainInsights} />}
-
-{/* Shows while 5 Whys is still running */}
-{domainInsights && status === 'sending' && (
-  <div className="section-divider">🎯 Main Root Cause Analysis (5 Whys)</div>
-)}
-
-{/* Final result after pipeline completes */}
-{status === 'success' && result && <RCAResult data={result} />}
-```
-
----
-
-## Confidence Score UI
-
-Each root cause is displayed with a compact inline confidence bar:
-
-```
-[INFERRED]  ▓▓▓▓▓▓▓░░░  85%
-```
-
-- **Badge** (`EvidenceBadge`): `INFERRED` (LLM-only) or `RAG-BACKED` (supported by OEM docs)
-- **Bar track**: 80px wide, 5px tall — compact and non-intrusive
-- **Colour coding:**
-  - 🟢 Green: ≥ 80% confidence
-  - 🟡 Amber: 60–79%
-  - 🔴 Red: < 60%
+File is named: `RCA_Report_<equipment>_<date>.csv`
 
 ---
 
 ## Styling System
 
-All styles live in `index.css`. Key CSS classes:
+All styles live in `index.css` (~1800 lines). Key class groups:
 
-| Class | Purpose |
-|-------|---------|
-| `.form-container` | Outer page wrapper with max-width |
-| `.status-panel` | Live spinner panel during analysis |
-| `.status-log` | Completed-steps log with ✓ bullets |
-| `.result-card` | Main results container |
-| `.most-likely-cause` | Highlighted root cause section |
-| `.badge-confidence-row` | Flex row: badge left, bar right |
-| `.confidence-bar-track` | Bar background track (80px wide) |
-| `.confidence-bar-fill` | Animated coloured fill |
-| `.section-divider` | Header between domain summary and RCA result |
+| Class prefix | Purpose |
+|---|---|
+| `.app-*` | Two-panel shell layout |
+| `.form-*` | Sidebar form and field styles |
+| `.rca-report-*` | Formal report table (RCAReportTable) |
+| `.fishbone-*` | Fishbone canvas section and SVG wrappers |
+| `.domain-*` | Domain agent cards and findings |
+| `.why-*` | 5 Whys timeline steps |
+| `.evidence-badge` | Evidence level pill (From Alarm / From Manual / Inferred) |
+| `.confidence-*` | Confidence bar track and fill |
+| `.section-divider` | Section header between result blocks |
+| `.expand-toggle` | Collapsible section toggle button |
+| `.main-status-*` | Live status panel during analysis |
 
-**Design tokens (CSS variables):**
-```css
---bg-primary: #0f1117       /* Dark background */
---bg-card: #161b27          /* Card surface */
---accent: #6366f1           /* Primary purple accent */
---text-primary: #e2e8f0     /* Main text */
---text-muted: #a0a8c0       /* Secondary text */
-```
+**Colour coding (confidence):**
+- 🟢 `#34d399` — ≥ 85%
+- 🟡 `#fbbf24` — 60–84%
+- 🔴 `#f87171` — < 60%

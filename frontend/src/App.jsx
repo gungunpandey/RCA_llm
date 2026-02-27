@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import RCAForm from './RCAForm'
 import RCAResult from './RCAResult'
-import DomainSummary from './DomainSummary'
+import RCAReportTable from './RCAReportTable'
 
 function EmptyState() {
   return (
@@ -46,7 +46,7 @@ function App() {
           <p>AI-powered failure diagnostics</p>
         </header>
         <RCAForm
-          onResult={(r) => { setResult(r); if (r) setStatusLog([]); }}
+          onResult={(r) => { setResult(r); if (r) setStatusLog([]) }}
           onDomainInsights={setDomainInsights}
           onStatusChange={handleStatusChange}
           onStatusMessage={handleStatusMessage}
@@ -57,7 +57,7 @@ function App() {
       <main className="app-main">
         {analysisStatus === null && !result && <EmptyState />}
 
-        {/* ── Live Status Panel (right panel, shown during analysis) ── */}
+        {/* ── Live Status Panel (shown during analysis only) ── */}
         {analysisStatus === 'sending' && (
           <div className="main-status-panel">
             <div className="main-status-header">
@@ -77,29 +77,15 @@ function App() {
           </div>
         )}
 
-        {/* Progressive domain insights appear first */}
-        {domainInsights && (
-          <DomainSummary insights={domainInsights} />
-        )}
-
-        {/* While 5 Whys is running, show divider */}
-        {domainInsights && analysisStatus === 'sending' && (
-          <div className="section-divider">
-            <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
-            <p className="section-subtitle">Running 5 Whys analysis using domain insights...</p>
-          </div>
-        )}
-
-        {/* Final analysis result */}
+        {/* ── SUCCESS: render everything together in correct order ── */}
         {analysisStatus === 'success' && result && (
           <>
-            {domainInsights && (
-              <div className="section-divider">
-                <h3>🎯 Main Root Cause Analysis (5 Whys)</h3>
-                <p className="section-subtitle">Building on domain expert insights...</p>
-              </div>
-            )}
-            <RCAResult data={result} />
+            {/* 1. Final RCA Report Table (upfront) */}
+            <RCAReportTable data={result} />
+
+            {/* 2. Fishbone diagram (with collapse) — rendered inside RCAResult */}
+            {/* 3. Domain + 5 Whys details (with expand) — rendered inside RCAResult */}
+            <RCAResult data={result} domainInsights={domainInsights} />
           </>
         )}
 

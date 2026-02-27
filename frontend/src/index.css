@@ -1639,3 +1639,174 @@ body {
   color: #7da8ff;
   font-size: 0.82rem;
 }
+
+/* ======================================================
+   RCA REPORT TABLE (Snapshot-style formal report)
+   ====================================================== */
+
+.rca-report-table-wrapper {
+  background: #12141c;
+  border: 1px solid #2a2d3a;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.rca-report-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(90deg, #1a1d27, #12141c);
+  border-bottom: 2px solid #4a7cff44;
+}
+
+.rca-report-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-style: italic;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.btn-download-csv {
+  padding: 0.5rem 1.1rem;
+  background: #1a2a1a;
+  border: 1px solid #34d399;
+  border-radius: 7px;
+  color: #34d399;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  letter-spacing: 0.3px;
+}
+
+.btn-download-csv:hover {
+  background: #34d399;
+  color: #0a0c12;
+}
+
+/* Table itself */
+.rca-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.rca-report-table td {
+  border: 1px solid #2a2d3a;
+  padding: 0.7rem 1rem;
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+/* Label cells — bold, slightly muted bg */
+.rca-label {
+  font-weight: 700;
+  color: #c8c8c8;
+  background: #1a1d27;
+  white-space: nowrap;
+  width: 220px;
+  min-width: 180px;
+}
+
+/* Value cells */
+.rca-value {
+  color: #e0e0e0;
+  background: #12141c;
+}
+
+.rca-value--muted {
+  color: #555;
+}
+
+.rca-value--highlight {
+  color: #ffffff;
+  font-weight: 600;
+  background: #17202c;
+}
+
+/* Why number label */
+.rca-why-label {
+  font-weight: 700;
+  color: #7da8ff;
+  background: #1a1d27;
+  text-align: center;
+  width: 80px;
+}
+
+/* Root-cause row highlight */
+.rca-label--highlight {
+  color: #ef4444;
+  background: #200f0f;
+  border-left: 3px solid #ef4444;
+}
+
+/* Section header rows (pink strip like snapshot) */
+.rca-section-header {
+  background: linear-gradient(90deg, #2a1a24, #1e1828);
+  color: #f0a8c8;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid #4a2040;
+  border-bottom: 1px solid #4a2040;
+}
+
+/* CAPA sub-header row */
+.rca-capa-header td {
+  font-weight: 700;
+  color: #c8c8c8;
+  background: #1a1d27;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+/* CAPA data rows */
+.rca-capa-row td {
+  background: #12141c;
+}
+
+.rca-capa-num {
+  text-align: center;
+  color: #7da8ff;
+  font-weight: 700;
+  width: 50px;
+}
+
+/* Editable CAPA inputs */
+.rca-capa-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed #2a2d3a;
+  color: #e0e0e0;
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 0.25rem 0.1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.rca-capa-input:focus {
+  border-bottom-color: #4a7cff;
+}
+
+.rca-capa-input::placeholder {
+  color: #444;
+}
+
+/* Footer note */
+.rca-footer-note {
+  text-align: right;
+  font-size: 0.72rem;
+  color: #444;
+  padding: 0.5rem 1.25rem 0.6rem;
+  border-top: 1px solid #1e2130;
+  font-style: italic;
+}

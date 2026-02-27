@@ -132,19 +132,20 @@ class FiveWhysTool(BaseTool):
                             f"Why #{step_num} insufficient — unexplained: {unexplained}. Continuing..."
                         )
 
-            # Step 3: Extract root cause from final why
-            await _send_status("Compiling root cause and building report...")
-            root_cause = why_steps[-1].answer
-            root_cause_confidence = why_steps[-1].confidence
-            
+            # Step 3: Synthesize root cause from ALL why steps + domain insights
+            await _send_status("Synthesizing final root cause from all findings...")
+            root_cause, root_cause_confidence = await self._synthesize_root_cause(
+                equipment_name=equipment_name,
+                failure_description=failure_description,
+                why_steps=why_steps,
+                domain_insights=domain_insights,
+                rag_context=rag_context
+            )
+
             # Step 4: Generate corrective actions (COMMENTED OUT - not needed for now)
-            # corrective_actions = await self._generate_corrective_actions(
-            #     equipment_name=equipment_name,
-            #     root_cause=root_cause,
-            #     rag_context=rag_context
-            # )
+            # corrective_actions = await self._generate_corrective_actions(...)
             corrective_actions = []  # Empty for now
-            
+
             # Build result
             result = FiveWhysResult(
                 why_steps=why_steps,
@@ -155,12 +156,99 @@ class FiveWhysTool(BaseTool):
                 stopped_early=stopped_early,
                 stop_reason=stop_reason
             )
-            
+
             return result.model_dump()
-        
+
         # Execute with timing and error handling
         return await self._execute_with_timing(_perform_analysis)
     
+    async def _synthesize_root_cause(
+        self,
+        equipment_name: str,
+        failure_description: str,
+        why_steps: list,
+        domain_insights,
+        rag_context: str
+    ) -> tuple:
+        """
+        Synthesize a final root cause statement from all why steps and domain insights.
+
+        This produces a DISTINCT, concise root cause — not a copy of any individual why step.
+        The root cause should be the deepest, most fundamental cause that explains ALL symptoms.
+
+        Returns:
+            Tuple of (root_cause_str, confidence_float)
+        """
+        import re
+
+        # Build the causal chain summary
+        chain_lines = []
+        for step in why_steps:
+            chain_lines.append(f"  Why #{step.step_number}: {step.answer}")
+        causal_chain = "\n".join(chain_lines)
+
+        # Build domain hypotheses section
+        domain_section = ""
+        if domain_insights and domain_insights.suspected_root_causes:
+            hyps = []
+            for rc in domain_insights.suspected_root_causes:
+                hyps.append(
+                    f"  [{rc['domain'].upper()} agent] {rc['hypothesis']} "
+                    f"(confidence {rc['confidence']*100:.0f}%)"
+                )
+            domain_section = "\nDOMAIN EXPERT HYPOTHESES:\n" + "\n".join(hyps)
+
+        prompt = f"""You are the final reviewer of a 5 Whys Root Cause Analysis for an industrial equipment failure.
+
+Equipment: {equipment_name}
+Original Failure: {failure_description}
+{domain_section}
+
+COMPLETE CAUSAL CHAIN (5 Whys):
+{causal_chain}
+
+Your task: Synthesize ONE concise root cause statement that:
+1. Is the deepest, most fundamental cause identified in the causal chain above
+2. Is DIFFERENT from any single why step — it integrates the full chain into a single, clear statement
+3. Explains WHY the failure occurred at its root, not just what happened
+4. Is 1-3 sentences maximum — precise and actionable, not verbose
+5. Is consistent with the domain expert hypotheses where relevant
+6. Does NOT repeat the failure description or the symptom — it answers the fundamental "why"
+7. Does NOT use markdown bold/italic formatting
+8. Focuses on the equipment-level or process-level root cause, NOT IT/API/software failures
+
+Respond in EXACTLY this format:
+ROOT_CAUSE: [1-3 sentences — the synthesized root cause]
+CONFIDENCE: [percentage, e.g., 82]
+"""
+
+        try:
+            response = self._call_llm(prompt)
+
+            # Parse ROOT_CAUSE
+            rc_match = re.search(
+                r'ROOT_CAUSE:\s*(.+?)(?=\nCONFIDENCE:|\Z)',
+                response, re.DOTALL | re.IGNORECASE
+            )
+            root_cause = rc_match.group(1).strip() if rc_match else why_steps[-1].answer
+
+            # Parse confidence
+            conf_match = re.search(r'CONFIDENCE:\s*(\d+)', response, re.IGNORECASE)
+            raw_conf = float(conf_match.group(1)) / 100.0 if conf_match else 0.75
+
+            # Cap at max confidence seen across why steps
+            max_step_conf = max((s.confidence for s in why_steps), default=0.75)
+            confidence = min(raw_conf, max_step_conf + 0.05)  # allow slight boost for synthesis
+            confidence = round(max(0.0, min(1.0, confidence)), 3)
+
+            self.logger.info(f"Root cause synthesized: {root_cause[:120]}... (confidence {confidence:.0%})")
+            return root_cause, confidence
+
+        except Exception as e:
+            self.logger.error(f"Root cause synthesis failed: {e}")
+            # Graceful fallback: use last why step
+            return why_steps[-1].answer, why_steps[-1].confidence
+
     async def _generate_why_step(
         self,
         step_number: int,

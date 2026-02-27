@@ -49,7 +49,16 @@ active_llm_model: str = "unknown"
 class AnalyzeRequest(BaseModel):
     equipment_name: str = Field(..., min_length=1)
     failure_description: str = Field(..., min_length=10)
+    # Legacy field kept for backward compat
     failure_timestamp: Optional[str] = None
+    # New occurrence window fields
+    occurrence_from: Optional[str] = None
+    occurrence_to: Optional[str] = None
+    # New meta fields
+    department: Optional[str] = None
+    total_downtime: Optional[str] = None
+    production_loss: Optional[str] = None
+    impact_top_line: Optional[str] = None
     symptoms: List[str] = Field(default_factory=list)
     error_codes: List[str] = Field(default_factory=list)
     operator_observations: Optional[str] = None
