@@ -1,10 +1,13 @@
 # ── RCA LLM Backend — Python Dependencies ──────────────────────────────────────
-# Generated from the working local environment (pip show) — only includes
-# packages actually used by the backend, not the full pip freeze dump.
+# Pinned to versions that share a compatible anyio range:
+#   fastapi >= 0.111  requires anyio >= 3.5 (no upper cap on 4.x)
+#   openai  >= 1.45   requires anyio >= 3.5, < 5
+#   google-genai       requires anyio >= 4.8, < 5
+# → anyio 4.x satisfies all three. Older fastapi 0.104 blocked anyio >= 4.
 
-# API framework
-fastapi==0.104.1
-uvicorn==0.24.0
+# API framework (>= 0.111 lifts the anyio < 4 restriction)
+fastapi==0.111.0
+uvicorn==0.29.0
 
 # Data models & env config
 pydantic==2.12.5
@@ -12,8 +15,8 @@ pydantic-settings==2.4.0
 python-dotenv==1.0.1
 
 # LLM providers
-openai==1.45.0          # Used by OpenRouterAdapter (OpenAI-compatible SDK)
-google-genai==1.62.0    # Used by GeminiAdapter
+openai==1.45.0          # OpenRouterAdapter (OpenAI-compatible SDK)
+google-genai==1.62.0    # GeminiAdapter
 
 # Vector database (RAG)
 weaviate-client==4.19.2
