@@ -1693,6 +1693,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: fixed;
 }
 
 .rca-report-table td {
@@ -1700,6 +1701,8 @@ body {
   padding: 0.7rem 1rem;
   vertical-align: top;
   line-height: 1.55;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Label cells — bold, slightly muted bg */
@@ -1716,6 +1719,8 @@ body {
 .rca-value {
   color: #e0e0e0;
   background: #12141c;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .rca-value--muted {
@@ -1725,7 +1730,10 @@ body {
 .rca-value--highlight {
   color: #ffffff;
   font-weight: 600;
+  font-style: italic;
   background: #17202c;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Why number label */
@@ -1809,4 +1817,37 @@ body {
   padding: 0.5rem 1.25rem 0.6rem;
   border-top: 1px solid #1e2130;
   font-style: italic;
+}
+
+/* Download button group (CSV + PDF side by side) */
+.rca-download-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* PDF download button */
+.btn-download-pdf {
+  padding: 0.5rem 1.1rem;
+  background: #2a1a1a;
+  border: 1px solid #f87171;
+  border-radius: 7px;
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  letter-spacing: 0.3px;
+}
+
+.btn-download-pdf:hover {
+  background: #f87171;
+  color: #0a0c12;
+}
+
+/* Condensed why step cell — 1-2 sentences, slightly tighter */
+.rca-value--condensed {
+  color: #e0e0e0;
+  background: #12141c;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }

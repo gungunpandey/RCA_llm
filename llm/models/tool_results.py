@@ -13,9 +13,11 @@ class WhyStep(BaseModel):
     """Single step in 5 Whys analysis."""
     step_number: int = Field(..., description="Step number (1-5)")
     question: str = Field(..., description="The 'why' question asked")
-    answer: str = Field(..., description="Answer to the why question")
+    answer: str = Field(..., description="Full detailed answer to the why question")
+    answer_summary: Optional[str] = Field(None, description="Concise 2-3 sentence summary for the report card")
     supporting_documents: List[str] = Field(default_factory=list, description="Documents cited in this step")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this answer (0-1)")
+
 
 
 class FiveWhysResult(BaseModel):

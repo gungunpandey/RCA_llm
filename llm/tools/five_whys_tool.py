@@ -108,6 +108,13 @@ class FiveWhysTool(BaseTool):
                 current_answer = why_result.answer
                 await _send_status(f"Why #{step_num} complete — confidence {why_result.confidence*100:.0f}%")
 
+                # Generate report-card summary (concise LLM-generated summary for the final report)
+                await _send_status(f"Summarising Why #{step_num} for report...")
+                why_result.answer_summary = await self._summarize_why_step(
+                    step_number=step_num,
+                    full_answer=why_result.answer
+                )
+
                 # Causal sufficiency check: after step 2+, evaluate if current cause explains all observations
                 if step_num >= 2 and symptoms:
                     await _send_status(f"Evaluating causal sufficiency at Why #{step_num}...")
@@ -539,3 +546,54 @@ Be specific and reference procedures from the documentation where applicable.
         for check in insights.recommended_checks[:5]:
             sections.append(f"  • {check}")
         return "\n".join(sections)
+
+    async def _summarize_why_step(self, step_number: int, full_answer: str) -> str:
+        """
+        Call the LLM (async) to produce a concise 2-sentence summary of a Why step answer.
+        This summary is used in the final RCA report card; the full answer is
+        preserved separately for the detailed reasoning panel.
+
+        Returns:
+            A 2-sentence summary string, or the original full_answer if summarization fails.
+        """
+        import re
+
+        prompt = f"""You are summarising one step from a 5 Whys Root Cause Analysis for a formal industrial equipment failure report.
+
+The following is the FULL detailed analysis for Why #{step_number}:
+
+\"\"\"
+{full_answer}
+\"\"\"
+
+Your task: Rewrite this as a concise 2-sentence summary for the report card that a plant manager will read.
+
+Strict rules:
+1. Write EXACTLY 2 complete sentences.
+2. Sentence 1: State the core causal finding (what caused what and why).
+3. Sentence 2: State the key evidence or mechanism that confirms this.
+4. Do NOT use markdown, bullet points, asterisks, numbers, or bold/italic formatting.
+5. Do NOT start with phrases like "In summary", "The answer is", "This step", etc.
+6. Preserve critical technical terms and any measurement values.
+7. Write in plain, professional English — clear to a non-specialist.
+
+Respond with ONLY the 2-sentence summary. Nothing else."""
+
+        try:
+            # Use async generate() — never block the event loop with a sync call
+            summary = await self.llm_adapter.generate(prompt)
+            if summary:
+                summary = summary.strip()
+                # Strip any accidental markdown the LLM may have added
+                summary = re.sub(r'^["\u2018\u2019\u201c\u201d]|["\u2018\u2019\u201c\u201d]$', '', summary)
+                summary = re.sub(r'\*{1,2}([^*]+?)\*{1,2}', r'\1', summary)
+                summary = summary.strip()
+                # Only reject if obviously too short (LLM returned garbage)
+                if len(summary) >= 20:
+                    self.logger.info(f"Why #{step_number} summary generated ({len(summary)} chars)")
+                    return summary
+            self.logger.warning(f"Why #{step_number} summary too short or empty, using full answer")
+            return full_answer
+        except Exception as e:
+            self.logger.warning(f"Why #{step_number} summary failed: {e} — using full answer")
+            return full_answer
