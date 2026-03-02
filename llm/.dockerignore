@@ -1,0 +1,28 @@
+# Don't bake secrets into the image — pass via --env-file at runtime
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test files
+test_*.py
+*_test.py
+
+# Dev / editor files
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Model comparison / test data (not needed at runtime)
+model_comparison/
+data/

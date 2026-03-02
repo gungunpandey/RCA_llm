@@ -63,25 +63,60 @@ class RAGManager:
         self.collection_name = self.config["collection"]["name"]
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
-        """Load configuration from JSON file and overlay .env credentials."""
-        with open(config_path, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-        
-        # Load .env from llm folder (where this file is located)
+        """
+        Build Weaviate config, preferring environment variables over JSON file.
+
+        Priority:
+          1. Environment variables (WEAVIATE_URL, WEAVIATE_API_KEY, ...) — used in Docker
+          2. weaviate_config.json — fallback for local development only
+
+        This means the container never crashes on a missing JSON file.
+        """
+        # Try loading .env for local dev (silently ignored if file doesn't exist)
         from dotenv import load_dotenv
         llm_dir = os.path.dirname(__file__)
-        env_path = os.path.join(llm_dir, ".env")
-        load_dotenv(env_path)
-        
-        env = os.environ
-        
-        if "WEAVIATE_URL" in env:
-            cfg["weaviate"]["url"] = env["WEAVIATE_URL"]
-        if "WEAVIATE_API_KEY" in env:
-            cfg["weaviate"]["api_key"] = env["WEAVIATE_API_KEY"]
-        if "HUGGINGFACE_API_KEY" in env:
-            cfg["embedding"]["huggingface_api_key"] = env["HUGGINGFACE_API_KEY"]
-        
+        load_dotenv(os.path.join(llm_dir, ".env"))
+
+        weaviate_url = os.getenv("WEAVIATE_URL")
+        weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
+        hf_api_key = os.getenv("HUGGINGFACE_API_KEY", "")
+
+        # ── Production path: env vars present → build config dict directly ──
+        if weaviate_url and weaviate_api_key:
+            logger.info("Weaviate config loaded from environment variables")
+            return {
+                "weaviate": {
+                    "url": weaviate_url,
+                    "api_key": weaviate_api_key,
+                },
+                "collection": {
+                    "name": os.getenv("WEAVIATE_COLLECTION", "Rca"),
+                },
+                "embedding": {
+                    "huggingface_api_key": hf_api_key,
+                },
+            }
+
+        # ── Local dev fallback: load from JSON and overlay any env vars ──
+        logger.info(f"WEAVIATE_URL not set — falling back to JSON config: {config_path}")
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(
+                f"Weaviate config not found at '{config_path}' "
+                "and WEAVIATE_URL/WEAVIATE_API_KEY env vars are not set. "
+                "Set the env vars (recommended) or provide a weaviate_config.json."
+            )
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+
+        # Overlay any partial env vars on top of the JSON values
+        if weaviate_url:
+            cfg["weaviate"]["url"] = weaviate_url
+        if weaviate_api_key:
+            cfg["weaviate"]["api_key"] = weaviate_api_key
+        if hf_api_key:
+            cfg["embedding"]["huggingface_api_key"] = hf_api_key
+
         return cfg
     
     def connect(self):
