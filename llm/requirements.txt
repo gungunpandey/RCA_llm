@@ -12,8 +12,13 @@ pydantic-settings
 python-dotenv
 
 # LLM providers
-openai==1.55.3
+openai>=1.57.0
 google-genai==1.62.0
+
+# Pin httpx to a range all three providers agree on
+# - google-genai needs >= 0.28.1
+# - openai >= 1.57 works correctly with httpx 0.28.x (removed internal proxies= usage)
+httpx>=0.28.1,<1.0
 
 # Vector database (RAG)
 weaviate-client
