@@ -1,0 +1,25 @@
+# ── RCA LLM Backend — Python Dependencies ──────────────────────────────────────
+# Generated from the working local environment (pip show) — only includes
+# packages actually used by the backend, not the full pip freeze dump.
+
+# API framework
+fastapi==0.104.1
+uvicorn==0.24.0
+
+# Data models & env config
+pydantic==2.12.5
+pydantic-settings==2.4.0
+python-dotenv==1.0.1
+
+# LLM providers
+openai==1.45.0          # Used by OpenRouterAdapter (OpenAI-compatible SDK)
+google-genai==1.62.0    # Used by GeminiAdapter
+
+# Vector database (RAG)
+weaviate-client==4.19.2
+
+# HTTP client (used internally by openai / httpx)
+httpx==0.27.0
+
+# WebSockets / SSE support
+websockets==15.0.1
