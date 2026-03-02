@@ -24,5 +24,4 @@ test_*.py
 .idea/
 
 # Model comparison / test data (not needed at runtime)
-model_comparison/
 data/
