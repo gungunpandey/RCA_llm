@@ -2,6 +2,8 @@
 
 FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a multi-agent pipeline that combines domain-expert analysis, 5 Whys methodology, and Fishbone (Ishikawa) diagramming — all grounded in OEM manual content via RAG.
 
+> **Integration note:** This backend runs on port **8000**. The web dashboard (`app/`) runs on port **8080**. The browser connects directly to this service for SSE streaming via the `/analyze-integrated-stream` endpoint — no server-side proxy is involved.
+
 ---
 
 ## 📋 Table of Contents

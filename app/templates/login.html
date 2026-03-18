@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 4rem);
+    }
+
+    .login-box {
+        width: 100%;
+        max-width: 450px;
+        text-align: center;
+    }
+
+    .login-logo {
+        margin-bottom: 2rem;
+    }
+
+    .login-logo svg {
+        width: 64px;
+        height: 64px;
+        stroke: var(--accent);
+        filter: drop-shadow(0 0 10px var(--accent-glow));
+    }
+
+    .login-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-subtitle {
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        text-align: left;
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+    }
+
+    .error-msg {
+        color: var(--danger);
+        background: rgba(255, 75, 75, 0.1);
+        border: 1px solid rgba(255, 75, 75, 0.2);
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="glass-panel login-box">
+        <div class="login-logo" style="display: flex; align-items: center; justify-content: center; gap: 0;">
+            <img src="/static/favicon.svg" width="48" height="48" alt="ProdAI Logo">
+            <div style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin-top: 5px;">
+                <span style="color: #3ba3a5;">Prod</span><span style="color: #4a5568;">AI</span>
+            </div>
+        </div>
+        <h1 class="login-title">Welcome Back</h1>
+        <p class="login-subtitle">Sign in to ProdAI Dashboard</p>
+
+        {% if error %}
+        <div class="error-msg">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-login">Sign In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

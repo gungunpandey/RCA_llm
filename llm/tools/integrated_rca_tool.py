@@ -93,25 +93,48 @@ class IntegratedRCATool(BaseTool):
             ToolResult containing integrated analysis
         """
         status_callback = kwargs.get("status_callback")
+        image_path = kwargs.get("image_path")    # optional: absolute path to image file
+        image_desc = kwargs.get("image_desc")    # optional: user description of image
         
         async def _send_status(msg: str):
             if status_callback:
                 await status_callback(msg)
         
+        async def _analyze_image_async():
+            """Run image analysis in a thread (it uses synchronous requests)."""
+            if not image_path:
+                return None
+            try:
+                from tools.image_analysis_tool import analyze_image
+                await _send_status("📷 Analyzing uploaded equipment image...")
+                result = await asyncio.to_thread(analyze_image, image_path, image_desc)
+                await _send_status(
+                    f"✓ Image analyzed — {result.get('component', '?')}: "
+                    f"{result.get('damage_type', '?')} ({result.get('severity', '?')})"
+                )
+                return result
+            except Exception as e:
+                logger.error(f"Image analysis failed: {e}", exc_info=True)
+                await _send_status(f"⚠ Image analysis failed: {e}")
+                return None
+
         async def _perform_analysis():
             # Step 1: Route to domain agents
             await _send_status("🔍 Routing to domain experts...")
             selected_agents = self._route_agents(failure_description, symptoms)
             await _send_status(f"✓ Selected experts: {', '.join([a.replace('_agent', '').title() for a in selected_agents])}")
             
-            # Step 2: Run domain agents in parallel
-            await _send_status("🔬 Domain experts analyzing failure...")
-            domain_results = await self._run_domain_agents(
-                selected_agents,
-                failure_description,
-                equipment_name,
-                symptoms,
-                status_callback
+            # Step 2: Run domain agents AND image analysis in PARALLEL
+            await _send_status("🔬 Domain experts + Image analysis running in parallel...")
+            domain_results, image_analysis = await asyncio.gather(
+                self._run_domain_agents(
+                    selected_agents,
+                    failure_description,
+                    equipment_name,
+                    symptoms,
+                    status_callback
+                ),
+                _analyze_image_async(),
             )
             
             # Step 3: Aggregate domain insights
@@ -123,11 +146,12 @@ class IntegratedRCATool(BaseTool):
             )
             
             # ── Emit domain insights immediately as a special event ──────────
-            # This lets the frontend render the DomainSummary card right now,
-            # before the (much slower) 5 Whys + Fishbone steps begin.
-            # Use mode='json' so all nested datetime fields become ISO strings.
             if status_callback:
                 await status_callback(("__DOMAIN_INSIGHTS__", domain_insights.model_dump(mode='json')))
+
+            # ── Emit image analysis immediately as a special event ────────────
+            if image_analysis and status_callback:
+                await status_callback(("__IMAGE_ANALYSIS__", image_analysis))
 
             
             # Step 4: Run enhanced 5 Whys
@@ -140,6 +164,7 @@ class IntegratedRCATool(BaseTool):
                 equipment_name=equipment_name,
                 symptoms=symptoms,
                 domain_insights=domain_insights,  # Pass domain context
+                image_analysis=image_analysis,     # Pass image analysis context
                 status_callback=status_callback
             )
             
@@ -163,7 +188,7 @@ class IntegratedRCATool(BaseTool):
                     f"Fishbone analysis failed: {fishbone_result.error}"
                 )
 
-            return {
+            result_dict = {
                 "domain_insights": domain_insights.model_dump(),
                 "five_whys_analysis": five_whys_result.result,
                 "fishbone_analysis": fishbone_data,
@@ -172,6 +197,10 @@ class IntegratedRCATool(BaseTool):
                 "analysis_method": "domain_enhanced_5_whys_fishbone",
                 "agents_used": selected_agents
             }
+            # Include image analysis in result if present
+            if image_analysis:
+                result_dict["image_analysis"] = image_analysis
+            return result_dict
         
         return await self._execute_with_timing(_perform_analysis)
     

@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  # ── AI/LLM backend (port 8000) ─────────────────────────────────────────────
+  llm:
+    build:
+      context: ./llm
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./llm/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # ── Web dashboard (port 8080) ──────────────────────────────────────────────
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LLM_API_URL=http://localhost:8000   # browser calls this directly
+      - APP_PORT=8080
+      - SECRET_KEY=change-me-in-production
+    volumes:
+      - app_db:/app/plant_dashboard_v2.db
+      - app_uploads:/app/static/uploads
+    restart: unless-stopped
+
+volumes:
+  app_db:
+  app_uploads:

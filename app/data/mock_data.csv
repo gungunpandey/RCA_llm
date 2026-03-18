@@ -1,0 +1,4 @@
+#,Serial #,Failure date,reported date,RCA date,Division,Equipment,Impact on topline,Downtime(hrs),Event description/problem statement,RCA report,Root cause,Actions,CAPA,Target date,Responsibility,Actual completion date,Status,Remarks
+12,1001,01/02/2026,01/02/2026,05/02/2026,BNFC,Extruder A,50000,2.5,Hydraulic pressure drop,Doc123.pdf,Worn seal on main cylinder,Replace seal assembly,Quarterly inspection of seals,15/02/2026,John D.,10/02/2026,Closed,Parts ordered
+3,1002,15/02/2026,15/02/2026,18/02/2026,Pellet,Conveyor C-14,0,0.5,Belt snapped,Doc124.pdf,Material fatigue,Install reinforced belt,Review belt specifications,20/02/2026,Mike T.,19/02/2026,Closed,No other damage
+4,1003,24/02/2026,24/02/2026,,DRI,Mixer Unit 2,12000,4.0,Motor overheated and tripped,,Pending investigation,Cool motor and reset,TBD,28/02/2026,Sarah Connor,,In Progress,Motor currently running on half load

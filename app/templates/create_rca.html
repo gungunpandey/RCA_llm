@@ -1,0 +1,1668 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+    /* ── Tabs ── */
+    .tab-bar {
+        display: flex;
+        gap: 0.5rem;
+        background: rgba(0,0,0,0.04);
+        border-radius: 12px;
+        padding: 0.3rem;
+    }
+    .tab-btn {
+        padding: 0.5rem 1.2rem;
+        border-radius: 9px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .tab-btn.active {
+        background: var(--accent);
+        color: #fff;
+        box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    /* ── Status Log ── */
+    .status-log {
+        background: #f8fafc;
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 0.88rem;
+        font-family: 'Outfit', monospace;
+    }
+    .status-line {
+        padding: 0.2rem 0;
+        color: var(--text-muted);
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .status-line:last-child { border-bottom: none; }
+    .status-line.done { color: var(--success); }
+    .status-line.error-line { color: var(--danger); }
+
+    /* ── Domain Insights ── */
+    .domain-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .domain-card {
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 1.2rem;
+    }
+    .domain-card-title {
+        font-weight: 700;
+        color: var(--accent);
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.8px;
+        margin-bottom: 0.8rem;
+    }
+    .finding-item {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+    }
+    .finding-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-top: 5px;
+        flex-shrink: 0;
+    }
+    .dot-critical { background: var(--danger); }
+    .dot-warning  { background: var(--warning); }
+    .dot-normal   { background: var(--success); }
+
+    /* ── Report ── */
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .meta-card {
+        background: rgba(59,163,165,0.05);
+        border: 1px solid rgba(59,163,165,0.2);
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+    }
+    .meta-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        margin-bottom: 0.3rem;
+    }
+    .meta-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    /* 5 Whys Table */
+    .why-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+    .why-table th {
+        background: rgba(59,163,165,0.1);
+        color: var(--accent);
+        padding: 0.7rem 1rem;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    .why-table td {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--glass-border);
+        vertical-align: top;
+        color: var(--text-main);
+        line-height: 1.5;
+    }
+    .why-table tr:last-child td { border-bottom: none; }
+    .why-table tr:hover td { background: rgba(0,0,0,0.01); }
+    .step-badge {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        width: 26px; height: 26px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 26px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .conf-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.3rem;
+    }
+    .conf-track {
+        flex: 1;
+        height: 4px;
+        background: rgba(0,0,0,0.08);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .conf-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 4px;
+    }
+    .conf-pct {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    /* Root Cause Box */
+    .root-cause-box {
+        background: linear-gradient(135deg, rgba(59,163,165,0.08), rgba(59,163,165,0.03));
+        border: 1.5px solid rgba(59,163,165,0.4);
+        border-radius: 14px;
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .root-cause-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+    }
+    .root-cause-text {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-main);
+        line-height: 1.6;
+    }
+    .conf-badge {
+        display: inline-block;
+        background: rgba(59,163,165,0.15);
+        color: var(--accent);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 0.7rem;
+    }
+
+    /* CAPA Table */
+    .capa-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    .capa-table th {
+        background: rgba(0,0,0,0.04);
+        color: var(--text-muted);
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    .capa-table td {
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px solid var(--glass-border);
+        vertical-align: middle;
+    }
+    .capa-table input {
+        border: 1px solid transparent;
+        background: transparent;
+        padding: 0.4rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.88rem;
+        width: 100%;
+        transition: all 0.2s;
+    }
+    .capa-table input:focus {
+        background: #fff;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(59,163,165,0.15);
+    }
+    .btn-del-capa {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 0.3rem;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .btn-del-capa:hover { color: var(--danger); background: #fee2e2; }
+
+    /* ── Manual Tree CSS (from new_design) ── */
+    .rca-container {
+        padding: 2rem;
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+        min-height: 60vh;
+    }
+    .tree { display: flex; justify-content: center; }
+    .tree ul {
+        padding-top: 25px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        padding-left: 0;
+        margin: 0;
+    }
+    .tree li {
+        list-style-type: none;
+        position: relative;
+        padding: 25px 10px 0 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .tree li::before, .tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 2px solid var(--accent);
+        width: 50%;
+        height: 25px;
+    }
+    .tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 2px solid var(--accent);
+    }
+    .tree li:only-child::after, .tree li:only-child::before { display: none; }
+    .tree li:only-child { padding-top: 0; }
+    .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+    .tree li:last-child::before { border-right: 2px solid var(--accent); border-radius: 0 5px 0 0; }
+    .tree li:first-child::after { border-radius: 5px 0 0 0; }
+    .tree ul ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid var(--accent);
+        width: 0;
+        height: 25px;
+        transform: translateX(-50%);
+    }
+    .node {
+        background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.8);
+        border-radius: 16px;
+        padding: 1.2rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.5);
+        width: 310px;
+        position: relative;
+        text-align: left;
+        transition: transform 0.3s cubic-bezier(0.25,0.8,0.25,1), box-shadow 0.3s;
+        margin-top: 0;
+    }
+    .node:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.8); }
+    .node.drag-over { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(59,163,165,0.2); }
+    .node[draggable=true] { cursor: grab; }
+    .node[draggable=true]:active { cursor: grabbing; }
+    .tree ul ul li .node::before {
+        content: '';
+        position: absolute;
+        top: -7px;
+        left: calc(50% - 6px);
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid var(--accent);
+    }
+    .node-header { display: flex; align-items: center; justify-content: center; margin-bottom: 0.8rem; }
+    .node-badge {
+        background: #e0f2fe; color: #0369a1;
+        padding: 0.25rem 0.6rem; border-radius: 20px;
+        font-size: 0.75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .node-badge.event { background: #fee2e2; color: #b91c1c; }
+    .node-content textarea {
+        width: 100%; min-height: 70px; padding: 0.75rem;
+        border-radius: 8px; border: 1px solid transparent; resize: vertical;
+        font-family: inherit; background: rgba(0,0,0,0.03);
+        font-size: 0.95rem; color: var(--text-main); transition: all 0.2s;
+    }
+    .node-content textarea:focus {
+        outline: none; background: #fff;
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.15);
+    }
+    .node-actions {
+        margin-top: 1rem; display: flex; justify-content: flex-start;
+        align-items: center; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .btn-sm {
+        padding: 0.4rem 0.7rem; font-size: 0.8rem; border-radius: 6px;
+        cursor: pointer; display: flex; align-items: center; gap: 0.3rem;
+        font-weight: 600; transition: all 0.2s;
+    }
+    .btn-outline {
+        border: 1px solid var(--glass-border);
+        color: var(--accent); background: var(--glass-bg);
+    }
+    .btn-outline:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-1px); }
+    .btn-del {
+        margin-left: auto; border: none; background: transparent;
+        color: #94a3b8; padding: 0.4rem; border-radius: 6px;
+    }
+    .btn-del:hover { color: var(--danger); background: #fee2e2; }
+    @keyframes pop-shake {
+        0%   { transform: scale(0.8) translateY(20px); opacity: 0; }
+        40%  { transform: scale(1.05) translateY(-5px); opacity: 1; }
+        60%  { transform: scale(0.96) rotate(-2deg); }
+        80%  { transform: scale(1.02) rotate(2deg); }
+        100% { transform: scale(1) translateY(0) rotate(0); opacity: 1; }
+    }
+    .shake-animate { animation: pop-shake 0.7s cubic-bezier(0.36,0.07,0.19,0.97) both; }
+
+    /* ── Collapsible ── */
+    .collapsible-header {
+        display: flex; justify-content: space-between; align-items: center;
+        cursor: pointer; user-select: none;
+    }
+    .collapsible-header svg { transition: transform 0.3s; }
+    .collapsible-header.open svg { transform: rotate(180deg); }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+        width: 20px; height: 20px;
+        border: 3px solid rgba(59,163,165,0.2);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+    }
+
+    /* ── Export buttons ── */
+    .export-btn {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem;
+        font-weight: 600; cursor: pointer; transition: all 0.2s;
+        border: 1px solid var(--glass-border);
+        background: transparent; color: var(--text-muted);
+    }
+    .export-btn:hover { background: var(--glass-bg); color: var(--text-main); transform: translateY(-1px); }
+
+    /* ── Formal RCA Report Table ── */
+    .rca-formal-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    .rca-formal-table td {
+        border: 1px solid #d1d5db;
+        padding: 0.6rem 0.85rem;
+        vertical-align: middle;
+        color: var(--text-main);
+        line-height: 1.5;
+    }
+    .rca-formal-table .label-cell {
+        background: rgba(59,163,165,0.08);
+        font-weight: 600;
+        color: var(--accent);
+        font-size: 0.82rem;
+        white-space: nowrap;
+        width: 18%;
+    }
+    .rca-formal-table .rca-section-hdr {
+        background: rgba(59,163,165,0.15);
+        color: var(--accent);
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        font-size: 0.82rem;
+        padding: 0.45rem;
+        border: 1px solid #d1d5db;
+    }
+    .rca-formal-table .rca-col-hdr td {
+        background: rgba(59,163,165,0.06);
+        font-weight: 600;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+    }
+    .rca-formal-table .rca-root-row td {
+        background: rgba(59,163,165,0.1);
+        border-top: 2px solid rgba(59,163,165,0.45);
+        font-weight: 600;
+    }
+    .rca-formal-table .rca-root-row .label-cell {
+        background: rgba(59,163,165,0.2);
+        color: var(--accent);
+        font-size: 0.9rem;
+    }
+
+    /* ── Detailed Why cards ── */
+    .why-detail-card {
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+    .why-step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        color: #fff;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        font-size: 0.85rem;
+        font-weight: 700;
+        flex-shrink: 0;
+        margin-right: 0.6rem;
+    }
+
+    /* ── Image Analysis Section ── */
+    .img-analysis-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
+    .img-preview {
+        width: 220px;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .severity-badge {
+        display: inline-block;
+        padding: 0.2rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .sev-critical { background: #fee2e2; color: #b91c1c; }
+    .sev-severe   { background: #ffedd5; color: #c2410c; }
+    .sev-moderate { background: #fef9c3; color: #a16207; }
+    .sev-minor    { background: #dcfce7; color: #15803d; }
+    .sev-none     { background: #f0fdf4; color: #166534; }
+    .img-detail-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-muted);
+        margin-top: 0.8rem;
+        margin-bottom: 0.3rem;
+    }
+    .symptom-tag {
+        display: inline-block;
+        background: rgba(59,163,165,0.1);
+        color: var(--accent);
+        border-radius: 12px;
+        padding: 0.18rem 0.6rem;
+        font-size: 0.78rem;
+        margin: 0.15rem 0.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hidden meta inputs for JS (safe template injection) -->
+<input type="hidden" id="hid-equipment"  value="{{ log.machine_name }}">
+<input type="hidden" id="hid-description" value="{{ log.description }}">
+<input type="hidden" id="hid-division"   value="{{ log.division }}">
+<input type="hidden" id="hid-start"      value="{{ start_iso }}">
+<input type="hidden" id="hid-end"        value="{{ end_iso }}">
+<input type="hidden" id="hid-downtime"   value="{{ log.downtime_minutes or 0 }}">
+<input type="hidden" id="hid-revenue"    value="{{ log.revenue_loss or 0 }}">
+<input type="hidden" id="hid-logid"      value="{{ log.id }}">
+<input type="hidden" id="hid-image-path"  value="{{ attached_image_path or '' }}">
+<input type="hidden" id="hid-image-url"   value="{{ attached_image_url or '' }}">
+<input type="hidden" id="hid-image-desc"  value="{{ image_description or '' }}">
+
+<!-- ── Page Header ── -->
+<div class="glass-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.2rem;">5 Whys Root Cause Analysis</h1>
+        <p class="text-muted" style="margin: 0;">{{ log.machine_name }} &middot; {{ log.division }}</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="tab-bar">
+            <button class="tab-btn" id="tab-ai"     onclick="switchTab('ai')">AI Analysis</button>
+            <button class="tab-btn" id="tab-manual" onclick="switchTab('manual')">Manual Tree</button>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="saveRCA()" id="save-btn">
+            Save RCA Report
+        </button>
+    </div>
+</div>
+
+<!-- ══════════════════════ AI PANEL ══════════════════════ -->
+<div id="panel-ai" class="tab-panel">
+
+    <!-- Input section (hidden once result is shown) -->
+    <div id="ai-input-section" class="glass-panel" style="margin-bottom: 1.5rem;">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">AI Assist — Operator Input</h3>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: flex-start;">
+            <div class="form-group" style="margin: 0;">
+                <label for="operator-obs">Operator Observations (optional)</label>
+                <textarea id="operator-obs" rows="4"
+                    placeholder="Describe what the operator noticed — unusual sounds, smells, readings, sequence of events, prior maintenance, etc."></textarea>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; padding-top: 1.9rem;">
+                <div style="background: rgba(59,163,165,0.05); border: 1px solid rgba(59,163,165,0.2); border-radius: 10px; padding: 0.8rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                    <strong style="color: var(--accent);">Pre-filled from log:</strong><br>
+                    Equipment: <strong style="color: var(--text-main);">{{ log.machine_name }}</strong><br>
+                    Downtime: <strong style="color: var(--text-main);">{{ log.downtime_minutes or 0 }} min</strong>
+                </div>
+                <button type="button" class="btn btn-primary" id="run-ai-btn" onclick="runAnalysis()">
+                    <span id="run-btn-content" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Run AI Analysis
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Log -->
+    <div id="status-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+        <div class="collapsible-header" id="status-collapsible" onclick="toggleSection('status-body', this)">
+            <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem;">
+                <span id="status-spinner" class="spinner" style="display:none;"></span>
+                Analysis Progress
+            </h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="status-body" style="margin-top: 1rem;">
+            <div class="status-log" id="status-log"></div>
+        </div>
+    </div>
+
+    <!-- AI Report (shown after result) -->
+    <div id="report-section" style="display: none;">
+
+        <!-- Formal RCA Report Table -->
+        <div class="glass-panel" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700;">Root Cause Analysis Report</h3>
+                <span id="rt-conf-badge" class="conf-badge"></span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="rca-formal-table">
+                    <tbody id="rca-formal-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Investigation Team -->
+        <div class="glass-panel" style="margin-bottom: 1.5rem;">
+            <h3 style="margin-bottom: 0.8rem; font-size: 1.1rem; font-weight: 600;">Investigation Team</h3>
+            <input type="text" id="team-list-input" placeholder="e.g. John Smith (Mech), Priya Verma (Elect), Raju Kumar (Process)" style="max-width: 600px;">
+        </div>
+
+        <!-- CAPA -->
+        <div class="glass-panel" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Corrective &amp; Preventive Actions (CAPA)</h3>
+                <button type="button" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="addCapaRow()">
+                    + Add Row
+                </button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="capa-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">S.No.</th>
+                            <th style="width: 44%;">Preventive / Corrective Action</th>
+                            <th style="width: 28%;">Responsibility</th>
+                            <th style="width: 16%;">Target Date</th>
+                            <th style="width: 7%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="capa-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Domain Expert Insights (collapsible) -->
+        <div id="domain-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+            <div class="collapsible-header" onclick="toggleSection('domain-body', this)">
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Domain Expert Insights</h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="domain-body" style="margin-top: 1rem; display: none;">
+                <div id="domain-content"></div>
+            </div>
+        </div>
+
+        <!-- Detailed 5 Whys Analysis (collapsible) -->
+        <div id="whys-detail-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+            <div class="collapsible-header" onclick="toggleSection('whys-detail-body', this)">
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Detailed 5 Whys Analysis</h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="whys-detail-body" style="margin-top: 1rem; display: none;">
+                <div id="whys-detail-content"></div>
+            </div>
+        </div>
+
+        <!-- Image Analysis Section (expanded by default, collapsible) -->
+        <div id="image-analysis-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+            <div class="collapsible-header open" id="img-analysis-header" onclick="toggleSection('img-analysis-body', this)">
+                <h3 style="font-size: 1.1rem; font-weight: 600;">📸 Image Analysis</h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="img-analysis-body" style="margin-top: 1rem;">
+                <div id="img-analysis-content"></div>
+            </div>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="glass-panel" style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end;">
+            <button type="button" class="export-btn" onclick="exportCSV()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+            </button>
+            <button type="button" class="export-btn" onclick="exportPDF()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Export PDF
+            </button>
+        </div>
+
+    </div><!-- /report-section -->
+</div><!-- /panel-ai -->
+
+<!-- ══════════════════════ MANUAL PANEL ══════════════════════ -->
+<div id="panel-manual" class="tab-panel" style="display: none;">
+    <div class="glass-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem;">Manual 5 Whys Tree</h3>
+            <p class="text-muted" style="font-size: 0.88rem;">Drag nodes to rearrange. Click &ldquo;Next Why&rdquo; to dig deeper.</p>
+        </div>
+    </div>
+    <div class="rca-container">
+        <div class="tree" id="tree-container"></div>
+    </div>
+</div>
+
+<!-- Save form (shared) -->
+<form id="rca-form" action="/save-rca/{{ log.id }}" method="POST">
+    <input type="hidden" id="rca_data" name="rca_data" value="">
+</form>
+
+<script>
+    // ── Constants passed from server ─────────────────────────────────────────
+    const LLM_API_URL  = {{ llm_api_url | tojson }};
+    const AUTO_AI      = {{ 'true' if auto_start_ai else 'false' }};
+    const SAVED_TYPE   = {{ rca_type | tojson if rca_type else 'null' }};
+    const SAVED_DATA   = {{ rca_data_json | safe }};
+    const ATTACHED_IMAGE_URL = {{ (attached_image_url or '') | tojson }};
+    const IMAGE_DESC   = {{ (image_description or '') | tojson }};
+
+    // ── Tab Management ───────────────────────────────────────────────────────
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('panel-' + tab).style.display = 'block';
+        document.getElementById('tab-' + tab).classList.add('active');
+        currentTab = tab;
+    }
+
+    let currentTab = 'ai';
+
+    // ── Collapsible sections ─────────────────────────────────────────────────
+    function toggleSection(bodyId, header) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            header.classList.add('open');
+        } else {
+            body.style.display = 'none';
+            header.classList.remove('open');
+        }
+    }
+
+    // ── AI Streaming ─────────────────────────────────────────────────────────
+    let currentResult = null;  // stores the latest AI result
+
+    function addStatusLine(msg, cls) {
+        const log = document.getElementById('status-log');
+        const div = document.createElement('div');
+        div.className = 'status-line' + (cls ? ' ' + cls : '');
+        div.textContent = msg;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // ── Image analysis helper ─────────────────────────────────────────────────
+    let _imageAnalysisResult = null;  // stores image analysis for save/load
+
+    async function analyzeImageIfPresent() {
+        const imageUrl = document.getElementById('hid-image-url').value;
+        if (!imageUrl) return null;
+
+        addStatusLine('📷 Analyzing uploaded equipment image...');
+
+        try {
+            // Fetch the image from the app server and send to LLM API
+            const imgResp = await fetch(imageUrl);
+            if (!imgResp.ok) {
+                addStatusLine('Could not load image — skipping image analysis.', 'error-line');
+                return null;
+            }
+            const blob = await imgResp.blob();
+
+            const formData = new FormData();
+            const filename = imageUrl.split('/').pop() || 'image.jpg';
+            formData.append('image', blob, filename);
+            const userDesc = document.getElementById('hid-image-desc').value;
+            if (userDesc) formData.append('user_description', userDesc);
+
+            const analysisResp = await fetch(LLM_API_URL + '/analyze-image', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!analysisResp.ok) {
+                const errText = await analysisResp.text();
+                addStatusLine('Image analysis failed: ' + errText, 'error-line');
+                return null;
+            }
+
+            const data = await analysisResp.json();
+            addStatusLine(
+                `✓ Image analyzed — ${data.image_analysis.component}: ${data.image_analysis.damage_type} (${data.image_analysis.severity})`,
+                'done'
+            );
+            _imageAnalysisResult = data.image_analysis;
+            // Attach the image URL so the UI can render it later
+            _imageAnalysisResult._image_url = imageUrl;
+            return data.image_analysis;
+
+        } catch (err) {
+            addStatusLine('Image analysis error: ' + err.message, 'error-line');
+            return null;
+        }
+    }
+
+    async function runAnalysis() {
+        const btn = document.getElementById('run-ai-btn');
+        btn.disabled = true;
+        document.getElementById('run-btn-content').innerHTML =
+            '<span class="spinner"></span> Analyzing...';
+
+        // Show status section
+        document.getElementById('status-section').style.display = 'block';
+        document.getElementById('status-spinner').style.display = 'inline-block';
+        document.getElementById('status-collapsible').classList.add('open');
+        document.getElementById('status-body').style.display = 'block';
+        document.getElementById('status-log').innerHTML = '';
+
+        const payload = {
+            equipment_name:      document.getElementById('hid-equipment').value,
+            failure_description: document.getElementById('hid-description').value,
+            occurrence_from:     document.getElementById('hid-start').value || null,
+            occurrence_to:       document.getElementById('hid-end').value   || null,
+            department:          document.getElementById('hid-division').value,
+            total_downtime:      document.getElementById('hid-downtime').value + ' minutes',
+            production_loss:     document.getElementById('hid-revenue').value || '0',
+            impact_top_line:     document.getElementById('hid-description').value,
+            symptoms:            [],
+            operator_observations: document.getElementById('operator-obs').value || null,
+            image_path:          document.getElementById('hid-image-path').value || null,
+            image_desc:          document.getElementById('hid-image-desc').value || null
+        };
+
+        try {
+            const response = await fetch(LLM_API_URL + '/analyze-integrated-stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+            }
+
+            const reader  = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '', lastEvent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('event: ')) {
+                        lastEvent = trimmed.slice(7);
+                    } else if (trimmed.startsWith('data: ')) {
+                        const data = trimmed.slice(6);
+                        handleSSEData(lastEvent, data);
+                        lastEvent = '';
+                    }
+                }
+            }
+        } catch (err) {
+            addStatusLine('Connection error: ' + err.message, 'error-line');
+        } finally {
+            document.getElementById('status-spinner').style.display = 'none';
+            btn.disabled = false;
+            document.getElementById('run-btn-content').innerHTML =
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run AI Analysis';
+        }
+    }
+
+    let _pendingDomainInsights = null;
+
+    function handleSSEData(eventType, dataStr) {
+        if (!dataStr || dataStr === '""') return;
+        try {
+            const data = JSON.parse(dataStr);
+            if (eventType === 'status') {
+                addStatusLine(data.message || dataStr);
+            } else if (eventType === 'domain_insights') {
+                _pendingDomainInsights = data.domain_insights;
+                addStatusLine('Domain analysis complete.', 'done');
+            } else if (eventType === 'image_analysis') {
+                _imageAnalysisResult = data.image_analysis;
+                _imageAnalysisResult._image_url = ATTACHED_IMAGE_URL;
+                addStatusLine('Image analysis complete.', 'done');
+            } else if (eventType === 'result') {
+                addStatusLine('Analysis complete!', 'done');
+                renderReport(data.result);
+                if (_pendingDomainInsights) {
+                    renderDomainInsights(_pendingDomainInsights);
+                    _pendingDomainInsights = null;
+                }
+            } else if (eventType === 'error') {
+                addStatusLine('Error: ' + (data.detail || dataStr), 'error-line');
+            }
+        } catch (e) {
+            // padding / non-json lines — ignore
+        }
+    }
+
+    // ── Domain Insights Renderer ─────────────────────────────────────────────
+    function renderDomainInsights(di) {
+        if (!di) return;
+        const section = document.getElementById('domain-section');
+        section.style.display = 'block';
+
+        let html = '';
+
+        // Key Findings
+        if (di.key_findings && di.key_findings.length > 0) {
+            html += '<div style="margin-bottom: 1.2rem;"><strong style="font-size: 0.9rem; color: var(--text-muted);">KEY FINDINGS</strong><div style="margin-top: 0.6rem;">';
+            di.key_findings.forEach(f => {
+                const isCrit = f.includes('CRITICAL');
+                html += `<div class="finding-item">
+                    <div class="finding-dot ${isCrit ? 'dot-critical' : 'dot-warning'}"></div>
+                    <span>${escHtml(f)}</span></div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Per-domain cards
+        if (di.domain_analyses && di.domain_analyses.length > 0) {
+            html += '<div class="domain-grid">';
+            di.domain_analyses.forEach(da => {
+                html += `<div class="domain-card">
+                    <div class="domain-card-title">${escHtml(da.domain)} Expert</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.6rem;"><em>${escHtml(da.root_cause_hypothesis)}</em></div>`;
+                (da.findings || []).slice(0, 4).forEach(f => {
+                    const dotCls = f.severity === 'critical' ? 'dot-critical' : f.severity === 'warning' ? 'dot-warning' : 'dot-normal';
+                    html += `<div class="finding-item">
+                        <div class="finding-dot ${dotCls}"></div>
+                        <span><strong>${escHtml(f.area)}:</strong> ${escHtml(f.observation)}</span></div>`;
+                });
+                const confPct = Math.round((da.confidence || 0) * 100);
+                html += `<div class="conf-bar" style="margin-top: 0.5rem;">
+                    <div class="conf-track"><div class="conf-fill" style="width: ${confPct}%"></div></div>
+                    <span class="conf-pct">${confPct}%</span></div></div>`;
+            });
+            html += '</div>';
+        }
+
+        // Recommended checks
+        if (di.recommended_checks && di.recommended_checks.length > 0) {
+            html += '<div style="margin-top: 1rem;"><strong style="font-size: 0.85rem; color: var(--text-muted);">RECOMMENDED CHECKS</strong><ul style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: var(--text-muted);">';
+            di.recommended_checks.forEach(c => { html += `<li style="margin-bottom: 0.3rem;">${escHtml(c)}</li>`; });
+            html += '</ul></div>';
+        }
+
+        document.getElementById('domain-content').innerHTML = html;
+        // Show section but keep body collapsed — user can expand
+        document.getElementById('domain-body').style.display = 'none';
+        document.getElementById('domain-section').querySelector('.collapsible-header').classList.remove('open');
+    }
+
+    // ── AI Report Renderer ───────────────────────────────────────────────────
+    function renderReport(result) {
+        currentResult = result;
+
+        const equipment = document.getElementById('hid-equipment').value;
+        const division  = document.getElementById('hid-division').value;
+        const startISO  = document.getElementById('hid-start').value;
+        const endISO    = document.getElementById('hid-end').value;
+        const downtime  = document.getElementById('hid-downtime').value;
+        const revenue   = document.getElementById('hid-revenue').value;
+        const desc      = document.getElementById('hid-description').value;
+
+        const fw    = result.five_whys_analysis || {};
+        const steps = fw.why_steps || [];
+        const rc    = result.final_root_cause || fw.root_cause || '—';
+        const conf  = Math.round((result.final_confidence || fw.root_cause_confidence || 0) * 100);
+
+        // ── Build formal report table rows ──
+        let rows = `
+            <tr>
+                <td class="label-cell">Department</td>
+                <td>${escHtml(division)}</td>
+                <td class="label-cell">Equipment / Place of Occurrence</td>
+                <td>${escHtml(equipment)}</td>
+            </tr>
+            <tr>
+                <td class="label-cell">Occurrence Date From</td>
+                <td>${startISO ? escHtml(formatDate(startISO)) : '&mdash;'}</td>
+                <td class="label-cell">Occurrence Date To</td>
+                <td>${endISO ? escHtml(formatDate(endISO)) : '&mdash;'}</td>
+            </tr>
+            <tr>
+                <td class="label-cell">Total Downtime</td>
+                <td>${escHtml(downtime)} min</td>
+                <td class="label-cell">Revenue Loss</td>
+                <td>${revenue && revenue !== '0' ? '&#8377;' + parseInt(revenue).toLocaleString() : '&mdash;'}</td>
+            </tr>
+            <tr>
+                <td class="label-cell">Problem Statement</td>
+                <td colspan="3" style="white-space: pre-wrap;">${escHtml(desc)}</td>
+            </tr>
+            <tr>
+                <td class="rca-section-hdr" colspan="4">5 Why Analysis</td>
+            </tr>
+            <tr class="rca-col-hdr">
+                <td style="width: 8%; text-align: center;">S.No.</td>
+                <td style="width: 32%;">Why (Question)</td>
+                <td colspan="2">Because (Finding / Answer)</td>
+            </tr>`;
+
+        if (steps.length === 0) {
+            rows += `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); font-style:italic;">No analysis steps available.</td></tr>`;
+        } else {
+            steps.forEach(step => {
+                rows += `<tr>
+                    <td style="text-align: center; font-weight: 700; color: var(--accent); font-size: 1rem;">${step.step_number}</td>
+                    <td style="font-size: 0.88rem; color: var(--text-muted);">${escHtml(step.question || '')}</td>
+                    <td colspan="2">${escHtml(step.answer_summary || step.answer || '')}</td>
+                </tr>`;
+            });
+        }
+        if (fw.stopped_early && fw.stop_reason) {
+            rows += `<tr><td colspan="4" style="text-align:center; font-style:italic; color:var(--text-muted); font-size:0.85rem;">${escHtml(fw.stop_reason)}</td></tr>`;
+        }
+
+        rows += `
+            <tr class="rca-root-row">
+                <td class="label-cell" colspan="1">Root Cause</td>
+                <td colspan="3">${escHtml(rc)}</td>
+            </tr>`;
+
+        document.getElementById('rca-formal-tbody').innerHTML = rows;
+        document.getElementById('rt-conf-badge').textContent = `Confidence: ${conf}%`;
+
+        // ── Detailed 5 Whys collapsible ──
+        let detailHtml = '';
+        steps.forEach(step => {
+            const c = Math.round((step.confidence || 0) * 100);
+            const docs = step.supporting_documents || [];
+            detailHtml += `<div class="why-detail-card">
+                <div style="display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.6rem;">
+                    <span class="why-step-num">${step.step_number}</span>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9rem;">${escHtml(step.question || '')}</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem;">Confidence: ${c}%</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.88rem; line-height: 1.65; margin-left: 2.3rem;">${escHtml(step.answer || step.answer_summary || '')}</div>`;
+            if (docs.length > 0) {
+                detailHtml += `<div style="margin-top: 0.55rem; margin-left: 2.3rem;">
+                    <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Supporting Documents</div>`;
+                docs.forEach(d => {
+                    detailHtml += `<span style="display:inline-block; background:rgba(59,163,165,0.1); color:var(--accent); border-radius:12px; padding:0.18rem 0.6rem; font-size:0.78rem; margin:0.15rem 0.2rem;">${escHtml(d)}</span>`;
+                });
+                detailHtml += '</div>';
+            }
+            detailHtml += '</div>';
+        });
+        if (detailHtml) {
+            document.getElementById('whys-detail-content').innerHTML = detailHtml;
+            document.getElementById('whys-detail-section').style.display = 'block';
+        }
+
+        // ── CAPA ──
+        const actions = fw.corrective_actions || [];
+        document.getElementById('capa-tbody').innerHTML = '';
+        const savedCapa = result.capa || null;
+        if (savedCapa && savedCapa.length > 0) {
+            savedCapa.forEach(row => addCapaRow(row.action, row.responsibility, row.targetDate));
+        } else {
+            actions.slice(0, 5).forEach(a => addCapaRow(a, '', ''));
+            if (actions.length === 0) addCapaRow('', '', '');
+        }
+
+        // Pre-fill team list
+        if (result.team_list) {
+            document.getElementById('team-list-input').value = result.team_list;
+        }
+
+        // Render image analysis section if we have results
+        const imgData = result.image_analysis || _imageAnalysisResult;
+        if (imgData) {
+            renderImageAnalysis(imgData);
+        }
+
+        // Show report; hide input form and analysis progress
+        document.getElementById('report-section').style.display = 'block';
+        document.getElementById('ai-input-section').style.display = 'none';
+        document.getElementById('status-section').style.display = 'none';
+    }
+
+    // ── CAPA Table ───────────────────────────────────────────────────────────
+    function addCapaRow(action, responsibility, targetDate) {
+        action         = action         || '';
+        responsibility = responsibility || '';
+        targetDate     = targetDate     || '';
+        const sno = document.getElementById('capa-tbody').children.length + 1;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="text-align:center; font-weight:600; color:var(--text-muted);">${sno}</td>
+            <td><input type="text" placeholder="Describe the corrective action..." value="${escAttr(action)}"></td>
+            <td><input type="text" placeholder="Who is responsible?"              value="${escAttr(responsibility)}"></td>
+            <td><input type="date" value="${escAttr(targetDate)}"></td>
+            <td><button type="button" class="btn-del-capa" title="Remove" onclick="this.closest('tr').remove(); renumberCapa();">&times;</button></td>`;
+        document.getElementById('capa-tbody').appendChild(tr);
+    }
+
+    function renumberCapa() {
+        [...document.querySelectorAll('#capa-tbody tr')].forEach((tr, i) => {
+            tr.querySelector('td:first-child').textContent = i + 1;
+        });
+    }
+
+    function getCapaData() {
+        return [...document.querySelectorAll('#capa-tbody tr')].map(tr => {
+            const inputs = tr.querySelectorAll('input');
+            return {
+                action:         inputs[0] ? inputs[0].value : '',
+                responsibility: inputs[1] ? inputs[1].value : '',
+                targetDate:     inputs[2] ? inputs[2].value : ''
+            };
+        }).filter(r => r.action.trim() || r.responsibility.trim());
+    }
+
+    // ── Manual Tree ──────────────────────────────────────────────────────────
+    let treeData    = [];
+    let treeCounter = 100;
+
+    function initTree() {
+        const initialText = document.getElementById('hid-description').value;
+        if (SAVED_TYPE === 'manual_tree' && SAVED_DATA && SAVED_DATA.nodes) {
+            treeData = SAVED_DATA.nodes;
+            treeData.forEach(n => { if (n.id >= treeCounter) treeCounter = n.id + 1; });
+        } else if (Array.isArray(SAVED_DATA) && SAVED_DATA.length > 0 && SAVED_TYPE !== 'ai_generated') {
+            // Legacy raw array format
+            treeData = SAVED_DATA;
+            treeData.forEach((n, i) => {
+                n.parentId = (i === 0) ? null : treeData[i-1].id;
+                if (n.id >= treeCounter) treeCounter = n.id + 1;
+            });
+        } else {
+            treeData = [{ id: 0, parentId: null, text: initialText }];
+        }
+        renderTree();
+    }
+
+    function updateNodeText(id, value) {
+        const node = treeData.find(n => n.id === id);
+        if (node) node.text = value;
+    }
+
+    function addChild(parentId) {
+        treeCounter++;
+        treeData.push({ id: treeCounter, parentId, text: '', animate: true });
+        renderTree();
+    }
+
+    function addSibling(nodeId) {
+        const node = treeData.find(n => n.id === nodeId);
+        if (node && node.parentId !== null) {
+            treeCounter++;
+            treeData.push({ id: treeCounter, parentId: node.parentId, text: '', animate: true });
+            renderTree();
+        }
+    }
+
+    function removeNodeAndChildren(nodeId) {
+        if (!confirm('Delete this node and all its children?')) return;
+        const toRemove = new Set([nodeId]);
+        let added = true;
+        while (added) {
+            added = false;
+            treeData.forEach(n => {
+                if (toRemove.has(n.parentId) && !toRemove.has(n.id)) { toRemove.add(n.id); added = true; }
+            });
+        }
+        treeData = treeData.filter(n => !toRemove.has(n.id));
+        renderTree();
+    }
+
+    let draggedId = null;
+    function dragStart(ev, id) { draggedId = id; ev.dataTransfer.effectAllowed = 'move'; setTimeout(() => ev.target.style.opacity = '0.4', 0); }
+    function dragEnd(ev) { ev.target.style.opacity = '1'; document.querySelectorAll('.node').forEach(n => n.classList.remove('drag-over')); }
+    function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+    function dragLeave(ev) { ev.currentTarget.classList.remove('drag-over'); }
+    function dropNode(ev, targetId) {
+        ev.preventDefault();
+        ev.currentTarget.classList.remove('drag-over');
+        if (draggedId === null || draggedId === targetId) return;
+        let p = targetId;
+        while (p !== null) {
+            if (p === draggedId) { alert('Cannot move a node into its own child branch.'); return; }
+            const n = treeData.find(x => x.id === p);
+            p = n ? n.parentId : null;
+        }
+        const node = treeData.find(n => n.id === draggedId);
+        if (node) { node.parentId = targetId; renderTree(); }
+    }
+
+    function renderTree() {
+        const container = document.getElementById('tree-container');
+        container.innerHTML = '';
+        const roots = treeData.filter(n => n.parentId === null);
+        if (roots.length > 0) container.appendChild(buildUL(null));
+        setTimeout(() => {
+            const newest = document.querySelectorAll('.shake-animate textarea');
+            if (newest.length > 0) newest[newest.length-1].focus();
+        }, 50);
+        setTimeout(() => treeData.forEach(n => n.animate = false), 1000);
+    }
+
+    function buildUL(parentId) {
+        const children = treeData.filter(n => n.parentId == parentId);
+        if (!children.length) return null;
+        const ul = document.createElement('ul');
+        children.forEach(child => {
+            const li  = document.createElement('li');
+            const div = document.createElement('div');
+            const isRoot = parentId === null;
+            div.className = 'node' + (child.animate ? ' shake-animate' : '');
+            if (!isRoot) {
+                div.setAttribute('draggable', 'true');
+                div.setAttribute('ondragstart', `dragStart(event, ${child.id})`);
+                div.setAttribute('ondragend', 'dragEnd(event)');
+            }
+            div.setAttribute('ondragover', 'dragOver(event)');
+            div.setAttribute('ondragleave', 'dragLeave(event)');
+            div.setAttribute('ondrop', `dropNode(event, ${child.id})`);
+            div.innerHTML = `
+                <div class="node-header">
+                    <span class="node-badge ${isRoot ? 'event' : ''}">${isRoot ? '&#127919; Event' : '&#128269; Why?'}</span>
+                </div>
+                <div class="node-content">
+                    <textarea placeholder="${isRoot ? 'Describe the problem...' : 'Enter root cause...'}"
+                        onchange="updateNodeText(${child.id}, this.value)"
+                        onkeyup="updateNodeText(${child.id}, this.value)"
+                        ${isRoot ? 'readonly' : ''}>${escHtml(child.text || '')}</textarea>
+                </div>
+                <div class="node-actions">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="addChild(${child.id})" title="Ask Why?">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Next Why
+                    </button>
+                    ${!isRoot ? `
+                    <button type="button" class="btn btn-sm btn-outline" onclick="addSibling(${child.id})" title="Parallel cause">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Parallel Cause
+                    </button>
+                    <button type="button" class="btn btn-sm btn-del" onclick="removeNodeAndChildren(${child.id})" title="Delete branch">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>` : ''}
+                </div>`;
+            li.appendChild(div);
+            const childUL = buildUL(child.id);
+            if (childUL) li.appendChild(childUL);
+            ul.appendChild(li);
+        });
+        return ul;
+    }
+
+    // ── Image Analysis Renderer ───────────────────────────────────────────────
+    function renderImageAnalysis(ia) {
+        if (!ia) return;
+        _imageAnalysisResult = ia;  // store for save
+
+        const section = document.getElementById('image-analysis-section');
+        section.style.display = 'block';
+
+        // Severity badge class
+        const sevLower = (ia.severity || 'none').toLowerCase();
+        const sevCls = sevLower === 'critical' ? 'sev-critical'
+            : sevLower === 'severe' ? 'sev-severe'
+            : sevLower === 'moderate' ? 'sev-moderate'
+            : sevLower === 'minor' ? 'sev-minor'
+            : 'sev-none';
+
+        let html = '<div class="img-analysis-grid">';
+
+        // Image preview (if URL available)
+        const imgUrl = ia._image_url || ATTACHED_IMAGE_URL;
+        if (imgUrl) {
+            html += `<img src="${escAttr(imgUrl)}" alt="Equipment image" class="img-preview">`;
+        } else {
+            html += '<div></div>';
+        }
+
+        html += '<div>';
+        // Component + severity
+        html += `<div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.3rem;">${escHtml(ia.component || 'Unknown Component')}</div>`;
+        html += `<div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem;">
+            <span style="font-size: 0.9rem; color: var(--text-muted);">${escHtml(ia.damage_type || 'Unknown')}</span>
+            <span class="severity-badge ${sevCls}">${escHtml(ia.severity || 'Unknown')}</span>
+        </div>`;
+
+        // Visual symptoms
+        if (ia.visual_symptoms && ia.visual_symptoms.length > 0) {
+            html += '<div class="img-detail-label">Visual Symptoms</div><div>';
+            ia.visual_symptoms.forEach(s => {
+                html += `<span class="symptom-tag">${escHtml(s)}</span>`;
+            });
+            html += '</div>';
+        }
+
+        // Possible causes
+        if (ia.possible_causes && ia.possible_causes.length > 0) {
+            html += '<div class="img-detail-label">Possible Causes</div><div>';
+            ia.possible_causes.forEach(c => {
+                html += `<span class="symptom-tag">${escHtml(c)}</span>`;
+            });
+            html += '</div>';
+        }
+
+        // Combined observation
+        const obs = ia.combined_observation || ia.ai_description || '';
+        if (obs) {
+            html += `<div class="img-detail-label">Observation</div>
+                <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">${escHtml(obs)}</div>`;
+        }
+
+        // User description (if separate)
+        if (ia.user_description && ia.user_description.trim()) {
+            html += `<div class="img-detail-label">Operator Note</div>
+                <div style="font-size: 0.88rem; font-style: italic; color: var(--text-muted);">${escHtml(ia.user_description)}</div>`;
+        }
+
+        html += '</div></div>';
+
+        document.getElementById('img-analysis-content').innerHTML = html;
+
+        // Keep expanded by default
+        document.getElementById('img-analysis-body').style.display = 'block';
+        document.getElementById('img-analysis-header').classList.add('open');
+    }
+
+    // ── Save ─────────────────────────────────────────────────────────────────
+    function saveRCA() {
+        let payload;
+        if (currentTab === 'ai' && currentResult) {
+            payload = {
+                type:              'ai_generated',
+                timestamp:         new Date().toISOString(),
+                five_whys_analysis: currentResult.five_whys_analysis || {},
+                domain_insights:   currentResult.domain_insights || {},
+                final_root_cause:  currentResult.final_root_cause || '',
+                final_confidence:  currentResult.final_confidence  || 0,
+                team_list:         document.getElementById('team-list-input').value,
+                capa:              getCapaData(),
+                image_analysis:    _imageAnalysisResult || currentResult.image_analysis || null
+            };
+        } else if (currentTab === 'manual') {
+            payload = {
+                type:      'manual_tree',
+                timestamp: new Date().toISOString(),
+                nodes:     treeData.map(n => ({ id: n.id, parentId: n.parentId, text: n.text || '' }))
+            };
+        } else {
+            alert('Nothing to save yet. Run the AI Analysis or build the manual tree first.');
+            return;
+        }
+        document.getElementById('rca_data').value = JSON.stringify(payload);
+        document.getElementById('rca-form').submit();
+    }
+
+    // ── Export: CSV ──────────────────────────────────────────────────────────
+    function exportCSV() {
+        if (!currentResult) { alert('No AI result to export.'); return; }
+        const fw    = currentResult.five_whys_analysis || {};
+        const steps = fw.why_steps || [];
+        const eq    = document.getElementById('hid-equipment').value;
+        const div   = document.getElementById('hid-division').value;
+        const rc    = currentResult.final_root_cause || fw.root_cause || '';
+        const conf  = Math.round((currentResult.final_confidence || fw.root_cause_confidence || 0) * 100);
+        const team  = document.getElementById('team-list-input').value;
+        const capa  = getCapaData();
+
+        let csv = 'RCA Report\n';
+        csv += `"Equipment","${eq}"\n"Division","${div}"\n"Root Cause","${rc}"\n"Confidence","${conf}%"\n"Team","${team}"\n\n`;
+        csv += '"Step","Question","Finding","Confidence"\n';
+        steps.forEach(s => {
+            csv += `"${s.step_number}","${(s.question||'').replace(/"/g,'""')}","${(s.answer_summary||s.answer||'').replace(/"/g,'""')}","${Math.round((s.confidence||0)*100)}%"\n`;
+        });
+        csv += '\n"CAPA Actions"\n"Action","Responsibility","Target Date"\n';
+        capa.forEach(r => {
+            csv += `"${r.action.replace(/"/g,'""')}","${r.responsibility.replace(/"/g,'""')}","${r.targetDate}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `RCA_${eq.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ── Export: PDF ──────────────────────────────────────────────────────────
+    function exportPDF() {
+        if (!currentResult) { alert('No AI result to export.'); return; }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const W = 210, MARGIN = 14, CONTENT = W - MARGIN * 2;
+        let y = 15;
+
+        const ACCENT = [59, 163, 165];
+        const DARK   = [45, 55, 72];
+        const MUTED  = [113, 128, 150];
+        const LBLBG  = [228, 246, 246];
+        const WHITE  = [255, 255, 255];
+        const ROWALT = [248, 252, 252];
+
+        const fw    = currentResult.five_whys_analysis || {};
+        const steps = fw.why_steps || [];
+        const eq    = document.getElementById('hid-equipment').value;
+        const div_  = document.getElementById('hid-division').value;
+        const rc    = currentResult.final_root_cause || fw.root_cause || '';
+        const conf  = Math.round((currentResult.final_confidence || fw.root_cause_confidence || 0) * 100);
+        const team  = document.getElementById('team-list-input').value;
+        const capa  = getCapaData();
+        const dt    = document.getElementById('hid-downtime').value;
+        const rev   = document.getElementById('hid-revenue').value;
+        const startISO = document.getElementById('hid-start').value;
+        const endISO   = document.getElementById('hid-end').value;
+        const desc  = document.getElementById('hid-description').value;
+
+        function checkPage(needed) {
+            if (y + needed > 283) { doc.addPage(); y = 15; }
+        }
+
+        // Draw a bordered table row: label cell + value cell spanning rest
+        // labelW = width of label column
+        function drawRowFull(lbl, val, rowH, labelW) {
+            labelW = labelW || 38;
+            const valW = CONTENT - labelW;
+            checkPage(rowH + 1);
+            doc.setFillColor(...LBLBG);
+            doc.rect(MARGIN, y, labelW, rowH, 'F');
+            doc.setFillColor(...WHITE);
+            doc.rect(MARGIN + labelW, y, valW, rowH, 'F');
+            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.25);
+            doc.rect(MARGIN, y, CONTENT, rowH);
+            doc.line(MARGIN + labelW, y, MARGIN + labelW, y + rowH);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACCENT);
+            doc.text(lbl, MARGIN + 2, y + rowH / 2 + 2.5);
+            doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
+            const lines = doc.splitTextToSize(val || '\u2014', valW - 4);
+            doc.text(lines, MARGIN + labelW + 2, y + 4.5);
+            y += rowH;
+        }
+
+        // Draw a 4-column row: label | value | label | value
+        function drawRow4(lbl1, val1, lbl2, val2, rowH) {
+            const cw = [38, 55, 44, 45];
+            const x = [MARGIN, MARGIN + cw[0], MARGIN + cw[0] + cw[1], MARGIN + cw[0] + cw[1] + cw[2]];
+            checkPage(rowH + 1);
+            doc.setFillColor(...LBLBG);
+            doc.rect(x[0], y, cw[0], rowH, 'F');
+            doc.rect(x[2], y, cw[2], rowH, 'F');
+            doc.setFillColor(...WHITE);
+            doc.rect(x[1], y, cw[1], rowH, 'F');
+            doc.rect(x[3], y, cw[3], rowH, 'F');
+            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.25);
+            doc.rect(MARGIN, y, CONTENT, rowH);
+            doc.line(x[1], y, x[1], y + rowH);
+            doc.line(x[2], y, x[2], y + rowH);
+            doc.line(x[3], y, x[3], y + rowH);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACCENT);
+            doc.text(lbl1, x[0] + 2, y + rowH / 2 + 2.5);
+            if (lbl2) doc.text(lbl2, x[2] + 2, y + rowH / 2 + 2.5);
+            doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
+            doc.text(doc.splitTextToSize(val1 || '\u2014', cw[1] - 4), x[1] + 2, y + 4.5);
+            if (val2 !== undefined) doc.text(doc.splitTextToSize(val2 || '\u2014', cw[3] - 4), x[3] + 2, y + 4.5);
+            y += rowH;
+        }
+
+        function drawSectionRow(title) {
+            checkPage(8);
+            doc.setFillColor(...ACCENT);
+            doc.rect(MARGIN, y, CONTENT, 8, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...WHITE);
+            doc.text(title, W / 2, y + 5.3, { align: 'center' });
+            doc.setTextColor(...DARK);
+            y += 8;
+        }
+
+        // ── Banner header ──
+        doc.setFillColor(...ACCENT);
+        doc.rect(0, 0, W, 24, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...WHITE);
+        doc.text('Root Cause Analysis Report', MARGIN, 10);
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+        doc.text(`${eq}  \u2022  ${div_}  \u2022  Confidence: ${conf}%  \u2022  ${new Date().toLocaleDateString()}`, MARGIN, 18);
+        y = 30;
+
+        // ── Incident info rows ──
+        drawRow4('Department', div_, 'Equipment / Place of Occurrence', eq, 9);
+        drawRow4('Occurrence Date From', startISO ? formatDate(startISO) : '\u2014',
+                 'Occurrence Date To',   endISO   ? formatDate(endISO)   : '\u2014', 9);
+        drawRow4('Total Downtime', dt + ' min',
+                 'Revenue Loss', rev && rev !== '0' ? 'Rs.' + parseInt(rev).toLocaleString() : '\u2014', 9);
+
+        const descLines = doc.splitTextToSize(desc || '\u2014', CONTENT - 42);
+        const descH = Math.max(9, descLines.length * 4.5 + 4);
+        drawRowFull('Problem Statement', desc, descH);
+        y += 2;
+
+        // ── 5 Why Analysis ──
+        drawSectionRow('5 Why Analysis');
+
+        // Column header row
+        const WC = [12, 70, CONTENT - 82];
+        const WX = [MARGIN, MARGIN + 12, MARGIN + 82];
+        doc.setFillColor(...LBLBG);
+        doc.rect(MARGIN, y, CONTENT, 7, 'F');
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.25);
+        doc.rect(MARGIN, y, CONTENT, 7);
+        doc.line(WX[1], y, WX[1], y + 7);
+        doc.line(WX[2], y, WX[2], y + 7);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACCENT);
+        doc.text('S.No.', WX[0] + 1, y + 4.8);
+        doc.text('Why (Question)', WX[1] + 2, y + 4.8);
+        doc.text('Because (Finding / Answer)', WX[2] + 2, y + 4.8);
+        y += 7;
+
+        steps.forEach((s, idx) => {
+            const qLines = doc.splitTextToSize(s.question || '', WC[1] - 4);
+            const aLines = doc.splitTextToSize(s.answer_summary || s.answer || '', WC[2] - 4);
+            const rowH   = Math.max(qLines.length, aLines.length) * 4.5 + 4;
+            checkPage(rowH);
+            doc.setFillColor(...(idx % 2 === 0 ? WHITE : ROWALT));
+            doc.rect(MARGIN, y, CONTENT, rowH, 'F');
+            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2);
+            doc.rect(MARGIN, y, CONTENT, rowH);
+            doc.line(WX[1], y, WX[1], y + rowH);
+            doc.line(WX[2], y, WX[2], y + rowH);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...ACCENT);
+            doc.text(String(s.step_number), WX[0] + 4, y + rowH / 2 + 2.5);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+            doc.text(qLines, WX[1] + 2, y + 3.5);
+            doc.text(aLines, WX[2] + 2, y + 3.5);
+            y += rowH;
+        });
+
+        // Root Cause row
+        const rcLines = doc.splitTextToSize(rc, CONTENT - 42);
+        const rcH = Math.max(9, rcLines.length * 4.5 + 4);
+        checkPage(rcH);
+        doc.setFillColor(220, 243, 243);
+        doc.rect(MARGIN, y, CONTENT, rcH, 'F');
+        doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5);
+        doc.rect(MARGIN, y, CONTENT, rcH);
+        doc.line(MARGIN + 38, y, MARGIN + 38, y + rcH);
+        doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACCENT);
+        doc.text('Root Cause', MARGIN + 2, y + rcH / 2 + 2.5);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...DARK);
+        doc.text(rcLines, MARGIN + 40, y + 4.5);
+        y += rcH + 4;
+
+        // ── Team ──
+        if (team && team.trim()) {
+            drawRowFull('Investigation Team', team, 9);
+            y += 3;
+        }
+
+        // ── CAPA ──
+        if (capa.length > 0) {
+            drawSectionRow('Corrective & Preventive Actions (CAPA)');
+
+            const CC = [10, 87, 48, CONTENT - 145];
+            const CX = [MARGIN, MARGIN + 10, MARGIN + 97, MARGIN + 145];
+            doc.setFillColor(...LBLBG);
+            doc.rect(MARGIN, y, CONTENT, 7, 'F');
+            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.25);
+            doc.rect(MARGIN, y, CONTENT, 7);
+            doc.line(CX[1], y, CX[1], y + 7);
+            doc.line(CX[2], y, CX[2], y + 7);
+            doc.line(CX[3], y, CX[3], y + 7);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACCENT);
+            doc.text('S.No.', CX[0] + 1, y + 4.8);
+            doc.text('Preventive / Corrective Action', CX[1] + 2, y + 4.8);
+            doc.text('Responsibility', CX[2] + 2, y + 4.8);
+            doc.text('Target Date', CX[3] + 2, y + 4.8);
+            y += 7;
+
+            capa.forEach((r, i) => {
+                const aLines = doc.splitTextToSize(r.action, CC[1] - 4);
+                const rowH   = Math.max(aLines.length * 4.5 + 4, 7);
+                checkPage(rowH);
+                doc.setFillColor(...(i % 2 === 0 ? WHITE : ROWALT));
+                doc.rect(MARGIN, y, CONTENT, rowH, 'F');
+                doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2);
+                doc.rect(MARGIN, y, CONTENT, rowH);
+                doc.line(CX[1], y, CX[1], y + rowH);
+                doc.line(CX[2], y, CX[2], y + rowH);
+                doc.line(CX[3], y, CX[3], y + rowH);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+                doc.text(String(i + 1), CX[0] + 3, y + rowH / 2 + 2);
+                doc.text(aLines, CX[1] + 2, y + 3.5);
+                doc.text(r.responsibility || '\u2014', CX[2] + 2, y + rowH / 2 + 1.5);
+                doc.text(r.targetDate     || '\u2014', CX[3] + 2, y + rowH / 2 + 1.5);
+                y += rowH;
+            });
+        }
+
+        // ── Footer on every page ──
+        const totalPages = doc.getNumberOfPages();
+        for (let p = 1; p <= totalPages; p++) {
+            doc.setPage(p);
+            doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
+            doc.text(
+                `Generated by ProdAI RCA System  |  ${new Date().toLocaleString()}  |  Page ${p} of ${totalPages}`,
+                MARGIN, 292
+            );
+        }
+
+        doc.save(`RCA_${eq.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(str) {
+        return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function formatDate(iso) {
+        if (!iso) return '—';
+        try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+        catch { return iso; }
+    }
+
+    // ── Initialization ───────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize manual tree
+        initTree();
+
+        // Determine default tab and load saved data
+        if (SAVED_TYPE === 'ai_generated' && SAVED_DATA) {
+            // Load saved AI result directly into the report
+            renderReport(SAVED_DATA);
+            // renderReport shows report-section first, then render domain insights inside it
+            if (SAVED_DATA.domain_insights) {
+                renderDomainInsights(SAVED_DATA.domain_insights);
+            }
+            // Render saved image analysis
+            if (SAVED_DATA.image_analysis) {
+                renderImageAnalysis(SAVED_DATA.image_analysis);
+            }
+            switchTab('ai');
+        } else if (AUTO_AI) {
+            switchTab('ai');
+            // Don't auto-trigger the fetch — user sees the form and presses "Run AI Analysis"
+        } else if (SAVED_TYPE === 'manual_tree') {
+            switchTab('manual');
+        } else {
+            switchTab('manual');
+        }
+    });
+</script>
+{% endblock %}

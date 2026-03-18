@@ -15,7 +15,7 @@ logs/
 data/
 data_old/
 pdfs/
-
+history/
 
 # IDE
 .vscode/

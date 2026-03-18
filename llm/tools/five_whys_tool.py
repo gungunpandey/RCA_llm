@@ -48,13 +48,14 @@ class FiveWhysTool(BaseTool):
             equipment_name: Name of the equipment
             symptoms: List of observed symptoms
             domain_insights: Optional domain expert analysis results
-            **kwargs: Additional parameters (status_callback, etc.)
+            **kwargs: Additional parameters (status_callback, image_analysis, etc.)
             
         Returns:
             ToolResult containing FiveWhysResult
         """
         # Optional callback for live status updates (used by SSE endpoint)
         status_callback = kwargs.get('status_callback')
+        image_analysis = kwargs.get('image_analysis')  # optional image analysis dict
 
         async def _send_status(msg: str):
             if status_callback:
@@ -101,6 +102,7 @@ class FiveWhysTool(BaseTool):
                     previous_answer=current_answer,
                     rag_context=rag_context,
                     domain_insights=domain_insights,
+                    image_analysis=image_analysis if step_num == 1 else None,  # inject on step 1 only
                     is_final=False  # No longer force systemic escalation
                 )
 
@@ -265,6 +267,7 @@ CONFIDENCE: [percentage, e.g., 82]
         previous_answer: str,
         rag_context: str,
         domain_insights: Optional[DomainInsightsSummary] = None,
+        image_analysis: Optional[dict] = None,
         is_final: bool = False
     ) -> WhyStep:
         """
@@ -278,6 +281,7 @@ CONFIDENCE: [percentage, e.g., 82]
             previous_answer: Answer from previous why (or failure description for step 1)
             rag_context: RAG context documents
             domain_insights: Optional domain expert analysis results
+            image_analysis: Optional image analysis dict (injected on step 1)
             is_final: Whether this is the final step (step 5)
             
         Returns:
@@ -292,6 +296,22 @@ CONFIDENCE: [percentage, e.g., 82]
             why_question = f"Why did {prev_short.rstrip('.')}?"
 
         # Build domain insights section if available
+        # Build image analysis section if available (step 1 only)
+        image_section = ""
+        if image_analysis:
+            symptoms_str = ", ".join(image_analysis.get("visual_symptoms", []))
+            causes_str = ", ".join(image_analysis.get("possible_causes", []))
+            image_section = (
+                f"\n\nIMAGE ANALYSIS (Visual Inspection of {image_analysis.get('component', 'Unknown')}):"
+                f"\n  Component: {image_analysis.get('component', 'Unknown')}"
+                f"\n  Damage Type: {image_analysis.get('damage_type', 'Unknown')}"
+                f"\n  Severity: {image_analysis.get('severity', 'Unknown')}"
+                f"\n  Visual Symptoms: {symptoms_str}"
+                f"\n  Possible Causes: {causes_str}"
+                f"\n  Observation: {image_analysis.get('combined_observation', '')}"
+                f"\n"
+            )
+
         domain_section = ""
         if domain_insights and domain_insights.key_findings:
             domain_section = f"\n\nDOMAIN EXPERT ANALYSIS (Pre-Analysis):\nThe following domain experts have already analyzed this failure:\n\n{self._format_domain_insights(domain_insights)}\n"
@@ -303,7 +323,7 @@ CONFIDENCE: [percentage, e.g., 82]
 Equipment: {equipment_name}
 Failure Description: {failure_description}
 Observed Symptoms: {', '.join(symptoms)}
-{domain_section}
+{domain_section}{image_section}
 Relevant Technical Documentation:
 {rag_context}
 

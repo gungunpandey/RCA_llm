@@ -16,11 +16,11 @@ from contextlib import asynccontextmanager
 LLM_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, LLM_DIR)
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
 
 # Load env from llm/.env
@@ -62,6 +62,8 @@ class AnalyzeRequest(BaseModel):
     symptoms: List[str] = Field(default_factory=list)
     error_codes: List[str] = Field(default_factory=list)
     operator_observations: Optional[str] = None
+    image_path: Optional[str] = None   # absolute path to uploaded image
+    image_desc: Optional[str] = None   # user description of image
 
 
 # ── Lifespan: startup / shutdown ──
@@ -145,6 +147,8 @@ def _build_failure_text(req: AnalyzeRequest) -> str:
         failure_text += f"\nOperator observations: {req.operator_observations}"
     if req.error_codes:
         failure_text += f"\nError codes: {', '.join(req.error_codes)}"
+    if req.image_desc:
+        failure_text += f"\nImage description: {req.image_desc}"
     return failure_text
 
 
@@ -319,6 +323,8 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
                 equipment_name=req.equipment_name,
                 symptoms=req.symptoms if req.symptoms else ["unspecified"],
                 status_callback=_status_callback,
+                image_path=req.image_path,
+                image_desc=req.image_desc,
             )
             await status_queue.put(("__RESULT__", result))
         except Exception as e:
@@ -361,11 +367,16 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
                 break
 
             # ── Intermediate: domain insights ready ──────────────────────────
-            # Emitted as soon as domain agents finish, before 5 Whys starts.
             if isinstance(item, tuple) and item[0] == "__DOMAIN_INSIGHTS__":
-                # Use mode='json' to serialize datetimes as ISO strings (not Python datetime objects)
                 payload = json.dumps({"domain_insights": item[1]}, default=str)
                 yield f"event: domain_insights\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
+            # ── Intermediate: image analysis ready ───────────────────────────
+            if isinstance(item, tuple) and item[0] == "__IMAGE_ANALYSIS__":
+                payload = json.dumps({"image_analysis": item[1]}, default=str)
+                yield f"event: image_analysis\ndata: {payload}\n\n"
                 await asyncio.sleep(0)
                 continue
 
@@ -566,6 +577,50 @@ async def analyze_domain_stream(req: AnalyzeRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ── Image Analysis endpoint ──────────────────────────────────────────────────
+
+@app.post("/analyze-image")
+async def analyze_image_endpoint(
+    image: UploadFile = File(...),
+    user_description: Optional[str] = Form(None),
+):
+    """
+    Analyze an uploaded equipment image using the vision model.
+
+    Accepts multipart form: image file + optional text description.
+    Returns structured damage analysis JSON.
+    """
+    import os, tempfile
+    from tools.image_analysis_tool import analyze_image, SUPPORTED_EXTENSIONS
+
+    # Validate extension
+    ext = os.path.splitext(image.filename or "")[1].lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported image format '{ext}'. Supported: {', '.join(SUPPORTED_EXTENSIONS)}"
+        )
+
+    # Save to temp file
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    try:
+        contents = await image.read()
+        tmp.write(contents)
+        tmp.close()
+
+        result = analyze_image(tmp.name, user_description=user_description)
+        result["image_filename"] = image.filename or "upload" + ext
+        return {"status": "success", "image_analysis": result}
+    except Exception as e:
+        logger.error(f"Image analysis failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
 
 
 # ── Run ──

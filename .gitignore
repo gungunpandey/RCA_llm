@@ -22,6 +22,15 @@ llm/docs/
 llm/firmware_tools.py
 llm/check_pellet_properties.py
 llm/analysis_tools/
+new_design/
+image_testing/
+image_testing_yolo/
+frontend_archive/
+
+# App database & uploads
+app/plant_dashboard_v2.db
+app/static/uploads/
+new_design/plant_dashboard*.db
 
 # Windows reserved names
 nul

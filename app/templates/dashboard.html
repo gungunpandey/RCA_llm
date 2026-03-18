@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .metric-title {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .metric-value.accent {
+        color: var(--accent);
+    }
+
+    .metric-value.danger {
+        color: var(--danger);
+    }
+
+    .metric-value.success {
+        color: var(--success);
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    @media (min-width: 900px) {
+        .charts-grid {
+            grid-template-columns: 2fr 1fr;
+        }
+    }
+
+    .chart-container {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th,
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    th {
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    tbody tr {
+        transition: background 0.2s;
+    }
+
+    tbody tr:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .status-select {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        color: var(--text-main);
+        padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        min-width: 130px;
+    }
+
+    .status-select:focus {
+        border-color: var(--accent);
+        outline: none;
+    }
+
+    .status-form {
+        display: inline;
+        margin: 0;
+    }
+
+    /* DataTable Overrides */
+    .dataTables_wrapper {
+        margin-top: 1rem;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        background: rgba(255,255,255,0.8);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 0.4rem 0.8rem;
+        color: var(--text-main);
+        outline: none;
+    }
+    .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: var(--accent);
+    }
+    .dataTables_wrapper .dataTables_length select {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        padding: 0.2rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        border-radius: 8px !important;
+        padding: 0.3em 0.8em !important;
+        margin: 0 0.2em !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+        background: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+    }
+    table.dataTable thead th, table.dataTable thead td {
+        border-bottom: 2px solid var(--glass-border) !important;
+    }
+    table.dataTable.no-footer {
+        border-bottom: 1px solid var(--glass-border) !important;
+    }
+    /* Column Resize styling */
+    table.dataTable {
+        table-layout: auto;
+    }
+    table.dataTable th, table.dataTable td {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    .resizer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        cursor: col-resize;
+        user-select: none;
+        height: 100%;
+    }
+    .resizer:hover, .resizing {
+        border-right: 2px solid var(--accent);
+    }
+    th {
+        position: relative;
+    }
+</style>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <h1 style="font-size: 2rem; margin: 0;">Overview</h1>
+
+        <form action="/dashboard" method="GET" style="display: flex; align-items: center; gap: 1rem; margin: 0;">
+            {% if user.division == 'Admin' %}
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="division-filter"
+                    style="margin: 0; color: var(--text-muted); font-weight: 500;">Division:</label>
+                <select name="division" id="division-filter" onchange="this.form.submit()"
+                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+                    <option value="All" {% if selected_division=="All" %}selected{% endif %}>All Divisions</option>
+                    <option value="BNFC" {% if selected_division=="BNFC" %}selected{% endif %}>BNFC</option>
+                    <option value="Pellet 1" {% if selected_division=="Pellet 1" %}selected{% endif %}>Pellet 1</option>
+                    <option value="Pellet 2" {% if selected_division=="Pellet 2" %}selected{% endif %}>Pellet 2</option>
+                    <option value="SMS 1" {% if selected_division=="SMS 1" %}selected{% endif %}>SMS 1</option>
+                    <option value="SMS 2" {% if selected_division=="SMS 2" %}selected{% endif %}>SMS 2</option>
+                    <option value="DRI 1" {% if selected_division=="DRI 1" %}selected{% endif %}>DRI 1</option>
+                    <option value="DRI 2" {% if selected_division=="DRI 2" %}selected{% endif %}>DRI 2</option>
+                    <option value="CPP" {% if selected_division=="CPP" %}selected{% endif %}>CPP</option>
+                    <option value="CPP 2" {% if selected_division=="CPP 2" %}selected{% endif %}>CPP 2</option>
+                    <option value="PGP" {% if selected_division=="PGP" %}selected{% endif %}>PGP</option>
+                    <option value="FIRE SERVICE" {% if selected_division=="FIRE SERVICE" %}selected{% endif %}>FIRE
+                        SERVICE</option>
+                </select>
+            </div>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="machine-filter"
+                    style="margin: 0; color: var(--text-muted); font-weight: 500;">Equipment:</label>
+                <select name="machine" id="machine-filter" onchange="this.form.submit()"
+                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+                    <option value="All" {% if selected_machine=="All" %}selected{% endif %}>All Equipment</option>
+                    {% for m in all_machines %}
+                    <option value="{{ m }}" {% if selected_machine==m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="date-filter" style="margin: 0; color: var(--text-muted); font-weight: 500;">Date:</label>
+                <select name="date_filter" id="date-filter" onchange="this.form.submit()"
+                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+                    <option value="All Time" {% if selected_date=="All Time" %}selected{% endif %}>All Time</option>
+                    <option value="Last 7 Days" {% if selected_date=="Last 7 Days" %}selected{% endif %}>Last 7 Days
+                    </option>
+                    <option value="Last 30 Days" {% if selected_date=="Last 30 Days" %}selected{% endif %}>Last 30 Days
+                    </option>
+                    <option value="This Month" {% if selected_date=="This Month" %}selected{% endif %}>This Month
+                    </option>
+                    <option value="Last Month" {% if selected_date=="Last Month" %}selected{% endif %}>Last Month
+                    </option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="metrics-grid">
+    <div class="glass-panel metric-card">
+        <div class="metric-title">Total Breakdowns</div>
+        <div class="metric-value accent">{{ total_breakdowns }}</div>
+    </div>
+    <div class="glass-panel metric-card">
+        <div class="metric-title">Total Downtime (Mins)</div>
+        <div class="metric-value danger">{{ total_downtime }}</div>
+    </div>
+    <div class="glass-panel metric-card">
+        <div class="metric-title">Avg Downtime</div>
+        <div class="metric-value">{{ avg_downtime }}<span
+                style="font-size: 1rem; color: var(--text-muted); margin-left: 5px;">min</span></div>
+    </div>
+    <div class="glass-panel metric-card">
+        <div class="metric-title">Resolved Issues</div>
+        <div class="metric-value success">{{ resolved_count }}</div>
+    </div>
+</div>
+
+<div class="charts-grid">
+    <div class="glass-panel">
+        <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">Downtime by Machine</h3>
+        <div class="chart-container">
+            <canvas id="machineChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-panel">
+        <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">Recent Activity</h3>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for log in logs[:4] %}
+            <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
+                <div class="flex justify-between items-center mb-2">
+                    <strong style="color: var(--text-main);">{{ log.machine_name }}</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ log.logged_at.strftime('%b %d, %H:%M')
+                        }}</span>
+                </div>
+                <div
+                    style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                    {{ log.description }}
+                </div>
+                <span class="badge
+                    {% if log.status in ['Open', 'Not Approved'] %}badge-open{% elif log.status in ['In Progress', 'Incomplete'] %}badge-progress{% else %}badge-resolved{% endif %}
+                ">{{ log.status }}</span>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">No logs to show.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="glass-panel">
+    <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">All Breakdown Logs</h3>
+    <div class="table-container" style="overflow-x: auto;">
+        <table id="logsTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Equipment</th>
+                    <th>Division</th>
+                    <th>Description</th>
+                    <th>Downtime</th>
+                    <th>Date Logged</th>
+                    <th>RCA Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="color: var(--text-muted);">#{{ log.id }}</td>
+                    <td style="font-weight: 500;">
+                        {{ log.machine_name }}
+                        {% if log.extended_info %}
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                            title="{{ log.extended_info }}">
+                            + RCA Data Attached
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-muted);">
+                        <span class="badge"
+                            style="background: rgba(0,0,0,0.05); color: var(--text-main); border: 1px solid rgba(0,0,0,0.1);">{{
+                            log.division }}</span>
+                    </td>
+                    <td style="color: var(--text-muted); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help;"
+                        title="{{ log.description }}">
+                        {{ log.description }}
+                    </td>
+                    <td class="text-accent">{{ log.downtime_minutes }} min</td>
+                    <td style="color: var(--text-muted); font-size: 0.9rem;">{{ log.logged_at.strftime('%Y-%m-%d %H:%M')
+                        }}</td>
+                    <td>
+                        <form action="/update-status/{{ log.id }}" method="POST" class="status-form">
+                            <select name="new_status" class="status-select" onchange="this.form.submit()"
+                                style="{% if log.status in ['Open', 'Not Approved'] %}color: var(--danger);{% elif log.status in ['In Progress', 'Incomplete'] %}color: var(--warning);{% else %}color: var(--success);{% endif %}">
+                                <option value="Open" {% if log.status=='Open' %}selected{% endif %}>Open</option>
+                                <option value="In Progress" {% if log.status=='In Progress' %}selected{% endif %}>In
+                                    Progress</option>
+                                <option value="Incomplete" {% if log.status=='Incomplete' %}selected{% endif %}>
+                                    Incomplete</option>
+                                <option value="Preventive" {% if log.status=='Preventive' %}selected{% endif %}>
+                                    Preventive</option>
+                                <option value="Not Approved" {% if log.status=='Not Approved' %}selected{% endif %}>Not
+                                    Approved</option>
+                                <option value="Resolved" {% if log.status=='Resolved' %}selected{% endif %}>Resolved
+                                </option>
+                                <option value="Completed" {% if log.status=='Completed' %}selected{% endif %}>Completed
+                                </option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>
+                        <a href="/create-rca/{{ log.id }}" class="btn btn-primary"
+                            style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 8px; white-space: nowrap;">
+                            {% if log.rca_data and log.rca_data != '[]' and log.rca_data != 'null' %}
+                            Open RCA
+                            {% else %}
+                            Create RCA
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const machinesData = {{ machines | tojson | safe }};
+        const labels = Object.keys(machinesData);
+        const data = Object.values(machinesData);
+
+        Chart.defaults.color = '#718096';
+        Chart.defaults.font.family = "'Outfit', sans-serif";
+
+        if (labels.length > 0) {
+            const ctx = document.getElementById('machineChart').getContext('2d');
+            const gradientColors = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientColors.addColorStop(0, 'rgba(59, 163, 165, 0.5)');
+            gradientColors.addColorStop(1, 'rgba(59, 163, 165, 0.0)');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Incidents per Machine',
+                        data: data,
+                        backgroundColor: gradientColors,
+                        borderColor: '#3ba3a5',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: 'rgba(59, 163, 165, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            titleColor: '#2d3748',
+                            bodyColor: '#2d3748',
+                            titleFont: { size: 14, family: "'Outfit', sans-serif" },
+                            bodyFont: { size: 14, family: "'Outfit', sans-serif" },
+                            padding: 12,
+                            borderColor: 'rgba(0, 0, 0, 0.1)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function (context) {
+                                    return context.parsed.y + ' incidents';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false },
+                            ticks: { precision: 0 }
+                        },
+                        x: { grid: { display: false, drawBorder: false } }
+                    },
+                    animation: { y: { duration: 2000, easing: 'easeOutQuart' } }
+                }
+            });
+        } else {
+            document.getElementById('machineChart').parentElement.innerHTML =
+                '<div style="height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Not enough data for chart</div>';
+        }
+
+        // Initialize DataTable
+        const table = $('#logsTable').DataTable({
+            "order": [[5, "desc"]],
+            "pageLength": 10,
+            "searching": false,
+            "colReorder": true,
+            "language": {
+                "search": "Filter logs:",
+                "lengthMenu": "Show _MENU_ logs per page",
+                "info": "Showing MIN to MAX of TOTAL logs",
+                "infoEmpty": "No records available",
+                "infoFiltered": "(filtered from MAX total logs)",
+                "emptyTable": "No breakdown logs yet. Click \"Log Issue\" to add one."
+            },
+            "columnDefs": [
+                { "orderable": false, "targets": [3, 7] }
+            ]
+        });
+
+        // Column resizer
+        const createResizableTable = function (table) {
+            const cols = table.querySelectorAll('th');
+            [].forEach.call(cols, function (col) {
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                resizer.style.height = table.offsetHeight + 'px';
+                col.appendChild(resizer);
+                createResizableColumn(col, resizer);
+            });
+        };
+
+        const createResizableColumn = function (col, resizer) {
+            let x = 0, w = 0;
+            resizer.addEventListener('mousedown', function (e) {
+                x = e.clientX;
+                w = parseInt(window.getComputedStyle(col).width, 10);
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+                resizer.classList.add('resizing');
+            });
+            const mouseMoveHandler = function (e) {
+                const dx = e.clientX - x;
+                col.style.width = (w + dx) + 'px';
+                col.style.minWidth = (w + dx) + 'px';
+            };
+            const mouseUpHandler = function () {
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+                resizer.classList.remove('resizing');
+            };
+        };
+
+        createResizableTable(document.getElementById('logsTable'));
+    });
+</script>
+{% endblock %}

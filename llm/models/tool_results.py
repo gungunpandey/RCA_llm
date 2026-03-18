@@ -20,6 +20,19 @@ class WhyStep(BaseModel):
 
 
 
+class ImageAnalysisResult(BaseModel):
+    """Structured result from vision-based image analysis."""
+    component: str = Field(..., description="Identified component name")
+    damage_type: str = Field(..., description="Type of damage detected")
+    severity: str = Field(..., description="Severity: None|Minor|Moderate|Severe|Critical")
+    visual_symptoms: List[str] = Field(default_factory=list, description="Visible signs of damage")
+    possible_causes: List[str] = Field(default_factory=list, description="Engineering root causes")
+    ai_description: str = Field(..., description="AI-generated damage description")
+    user_description: Optional[str] = Field(None, description="User-provided image description")
+    combined_observation: str = Field(..., description="Merged AI + user observation")
+    image_filename: str = Field(..., description="Original image filename")
+
+
 class FiveWhysResult(BaseModel):
     """Result from 5 Whys analysis."""
     why_steps: List[WhyStep] = Field(..., description="The 5 why steps")

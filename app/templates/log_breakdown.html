@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .form-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 2rem;
+    }
+
+    .form-box {
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .form-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .form-subtitle {
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--glass-border);
+    }
+
+    .btn-secondary {
+        background: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--glass-border);
+    }
+
+    .btn-secondary:hover {
+        color: var(--text-main);
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    /* Custom select style */
+    select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1em;
+        padding-right: 2.5rem;
+    }
+
+    /* Number input styles */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-suffix {
+        position: absolute;
+        right: 1rem;
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="glass-panel form-box">
+        <div class="form-header">
+            <h1 class="form-title">Log Machinery Breakdown</h1>
+            <p class="form-subtitle">Record details of the incident for tracking and analysis.</p>
+        </div>
+
+        <form action="/log-breakdown" method="POST" enctype="multipart/form-data">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                    <label for="division">Division</label>
+                    <select id="division" name="division" required {% if user.division != 'Admin'
+                        %}style="pointer-events: none; background: rgba(0,0,0,0.1);" {% endif %}>
+                        <option value="BNFC" {% if user.division=='BNFC' %}selected{% endif %}>BNFC</option>
+                        <option value="Pellet 1" {% if user.division=='Pellet 1' %}selected{% endif %}>Pellet 1</option>
+                        <option value="Pellet 2" {% if user.division=='Pellet 2' %}selected{% endif %}>Pellet 2</option>
+                        <option value="SMS 1" {% if user.division=='SMS 1' %}selected{% endif %}>SMS 1</option>
+                        <option value="SMS 2" {% if user.division=='SMS 2' %}selected{% endif %}>SMS 2</option>
+                        <option value="DRI 1" {% if user.division=='DRI 1' %}selected{% endif %}>DRI 1</option>
+                        <option value="DRI 2" {% if user.division=='DRI 2' %}selected{% endif %}>DRI 2</option>
+                        <option value="CPP" {% if user.division=='CPP' %}selected{% endif %}>CPP</option>
+                        <option value="CPP 2" {% if user.division=='CPP 2' %}selected{% endif %}>CPP 2</option>
+                        <option value="PGP" {% if user.division=='PGP' %}selected{% endif %}>PGP</option>
+                        <option value="FIRE SERVICE" {% if user.division=='FIRE SERVICE' %}selected{% endif %}>FIRE
+                            SERVICE</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="machine_name">Equipment</label>
+                    <select id="machine_name" name="machine_name" required>
+                        <option value="" disabled selected>Select Equipment...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="start_time">Issue Start Date &amp; Time</label>
+                    <input type="datetime-local" id="start_time" name="start_time" required>
+                </div>
+                <div class="form-group">
+                    <label for="end_time">Issue End Date &amp; Time (Optional)</label>
+                    <input type="datetime-local" id="end_time" name="end_time">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="feed_loss" name="feed_loss" value="true" style="width: auto;">
+                        <span>Feed Loss Applicable (Y/N)</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="downtime_minutes">Calculated BD Time (Minutes)</label>
+                    <input type="number" id="downtime_minutes" name="downtime_minutes" readonly placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="revenue_loss" style="color: var(--danger);">Estimated Revenue Loss (&#8377;)</label>
+                <input type="number" id="revenue_loss" name="revenue_loss" readonly placeholder="0"
+                    style="color: var(--danger); font-weight: bold;">
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="description">Issue Description</label>
+                <textarea id="description" name="description" rows="4" required
+                    placeholder="Describe what happened..."></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="attached_image">📷 Attach Equipment Image (Optional)</label>
+                    <input type="file" id="attached_image" name="attached_doc" accept=".jpg,.jpeg,.png,.bmp,.webp" style="padding: 0.5rem 0;">
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">JPG, PNG, BMP, or WebP — for AI damage analysis</span>
+                </div>
+                <div class="form-group">
+                    <label for="attached_doc_desc">Image Description (Optional)</label>
+                    <input type="text" id="attached_doc_desc" name="attached_doc_desc"
+                        placeholder="Describe what the image shows, e.g. 'cracked bearing inner race'">
+                </div>
+            </div>
+
+            <div class="form-actions" style="justify-content: space-between;">
+                <input type="hidden" name="action" id="form-action" value="create_rca">
+                <a href="/dashboard" class="btn btn-secondary">Cancel</a>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" class="btn btn-primary" style="background: var(--accent);"
+                        onclick="document.getElementById('form-action').value='rca_ai'; this.form.submit();">RCA AI Assist</button>
+                    <button type="button" class="btn btn-primary"
+                        onclick="document.getElementById('form-action').value='create_rca'; this.form.submit();">Create RCA</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Animation for fields
+    document.addEventListener('DOMContentLoaded', () => {
+        const fields = document.querySelectorAll('.form-group');
+        fields.forEach((field, index) => {
+            field.style.opacity = '0';
+            field.style.transform = 'translateY(10px)';
+            field.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            setTimeout(() => {
+                field.style.opacity = '1';
+                field.style.transform = 'translateY(0)';
+            }, 100 + (index * 100));
+        });
+    });
+
+    const startInput = document.getElementById('start_time');
+    const endInput = document.getElementById('end_time');
+    const feedLossInput = document.getElementById('feed_loss');
+    const divisionInput = document.getElementById('division');
+    const bdTimeInput = document.getElementById('downtime_minutes');
+    const revLossInput = document.getElementById('revenue_loss');
+
+    function calculate() {
+        let diffMinutes = 0;
+        let diffHours = 0;
+
+        if (startInput.value && endInput.value) {
+            const start = new Date(startInput.value);
+            const end = new Date(endInput.value);
+            if (end > start) {
+                diffMinutes = Math.round((end - start) / 60000);
+                diffHours = diffMinutes / 60;
+            }
+        } else if (startInput.value) {
+            const start = new Date(startInput.value);
+            const now = new Date();
+            if (now > start) {
+                diffMinutes = Math.round((now - start) / 60000);
+                diffHours = diffMinutes / 60;
+            }
+        }
+
+        bdTimeInput.value = diffMinutes;
+
+        let revenue = 0;
+        if (feedLossInput.checked && diffHours > 0) {
+            const div = divisionInput.value;
+            let multiplier = 0;
+            if (div === 'Pellet 1' || div === 'Pellet 2') multiplier = 115 * 8000;
+            else if (div === 'DRI 1') multiplier = 12.5 * 20000;
+            else if (div === 'DRI 2') multiplier = 54 * 20000;
+            else if (div === 'SMS 1') multiplier = 12.5 * 20000;
+            else if (div === 'SMS 2') multiplier = 54 * 20000;
+            else if (div === 'CPP') multiplier = 54 * 20000;
+            else if (div === 'CPP 2') multiplier = 54 * 20000;
+            revenue = diffHours * multiplier;
+        }
+
+        revLossInput.value = Math.round(revenue);
+    }
+
+    const rawJson = {{ division_machines_json | tojson | safe }};
+    const divisionMachines = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+    const machineInput = document.getElementById('machine_name');
+
+    function updateMachines() {
+        const selectedDiv = divisionInput.value;
+        const machines = divisionMachines[selectedDiv] || [];
+
+        machineInput.options.length = 0;
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select Equipment...";
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        machineInput.appendChild(defaultOption);
+
+        machines.forEach(machine => {
+            const option = document.createElement('option');
+            option.value = machine;
+            option.textContent = machine;
+            machineInput.appendChild(option);
+        });
+    }
+
+    startInput.addEventListener('change', calculate);
+    endInput.addEventListener('change', calculate);
+    feedLossInput.addEventListener('change', calculate);
+    divisionInput.addEventListener('change', () => {
+        calculate();
+        updateMachines();
+    });
+
+    // Initial population on load
+    updateMachines();
+</script>
+{% endblock %}
