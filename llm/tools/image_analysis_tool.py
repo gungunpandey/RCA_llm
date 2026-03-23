@@ -24,6 +24,7 @@ load_dotenv(os.path.join(_LLM_DIR, ".env"))
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 VISION_MODEL = os.getenv("VISION_MODEL", "qwen/qwen3.5-9b")
+FALLBACK_VISION_MODEL = "qwen/qwen2.5-vl-72b-instruct"
 OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
@@ -155,26 +156,52 @@ def analyze_image(image_path: str, user_description: Optional[str] = None) -> di
         "max_tokens": 2048,
         "thinking": {"type": "disabled"},
     }
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost",
+        "X-Title": "RCA Image Analyzer",
+    }
 
-    resp = requests.post(
-        OPENROUTER_ENDPOINT,
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost",
-            "X-Title": "RCA Image Analyzer",
-        },
-        json=payload,
-        timeout=90,
-    )
-    resp.raise_for_status()
-    resp_json = resp.json()
+    models_to_try = [VISION_MODEL]
+    if FALLBACK_VISION_MODEL and FALLBACK_VISION_MODEL != VISION_MODEL:
+        models_to_try.append(FALLBACK_VISION_MODEL)
 
-    message = resp_json.get("choices", [{}])[0].get("message", {})
-    raw_text = (message.get("content") or message.get("reasoning") or "").strip()
+    raw_text = None
+    used_model = VISION_MODEL
 
-    if not raw_text:
-        raise ValueError("Vision model returned empty content.")
+    for model in models_to_try:
+        payload["model"] = model
+        try:
+            resp = requests.post(
+                OPENROUTER_ENDPOINT,
+                headers=headers,
+                json=payload,
+                timeout=90,
+            )
+            resp.raise_for_status()
+            resp_json = resp.json()
+
+            choice = resp_json.get("choices", [{}])[0]
+            message = choice.get("message", {})
+            raw_text = (message.get("content") or message.get("reasoning") or "").strip()
+
+            if not raw_text:
+                raise ValueError(
+                    f"Empty response — finish_reason={choice.get('finish_reason')}, "
+                    f"message_keys={list(message.keys())}"
+                )
+            used_model = model
+            if model != VISION_MODEL:
+                logger.info(f"[ImageAnalysis] [FALLBACK] Succeeded with {model}")
+            break
+
+        except Exception as e:
+            if model != models_to_try[-1]:
+                logger.warning(f"[ImageAnalysis] {model} failed: {e}. Switching to fallback: {FALLBACK_VISION_MODEL}")
+            else:
+                logger.error(f"[ImageAnalysis] All models failed. Last error: {e}")
+                raise ValueError(f"Vision model returned empty content. Tried: {models_to_try}")
 
     structured = _extract_json(raw_text)
 
@@ -200,7 +227,7 @@ def analyze_image(image_path: str, user_description: Optional[str] = None) -> di
     }
 
     logger.info(
-        f"[ImageAnalysis] Done — component: {result['component']}, "
+        f"[ImageAnalysis] Done (model: {used_model}) — component: {result['component']}, "
         f"damage: {result['damage_type']}, severity: {result['severity']}"
     )
     return result
