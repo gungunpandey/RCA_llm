@@ -22,7 +22,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - LLM_API_URL=http://13.220.164.214:8000   # browser calls this directly
+      - LLM_API_URL=http://54.91.201.119:8000   # browser calls this directly
       - APP_PORT=8080
       - SECRET_KEY=change-me-in-production
       - DATABASE_URL=sqlite:////app/data/plant_dashboard_v2.db
