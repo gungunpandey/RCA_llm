@@ -29,6 +29,7 @@ services:
     volumes:
       - app_data:/app/data
       - app_uploads:/app/static/uploads
+      - ./data_ingestion:/data_ingestion:ro
     restart: unless-stopped
 
 volumes:
