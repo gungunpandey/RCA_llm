@@ -3,497 +3,496 @@
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+    .chart-box { position: relative; width: 100%; }
+    .mttr-filter-bar { display: flex; align-items: center; gap: 6px; }
+    .pie-wrapper { width: 100%; display: flex; align-items: center; gap: 16px; }
+    .pie-chart-area { flex: 0 0 58%; position: relative; }
+    .pie-legend-area { flex: 0 0 38%; display: flex; flex-direction: column; gap: 8px; padding-left: 4px; }
+    .pie-legend-row {
+        display: flex; align-items: center; gap: 8px; cursor: pointer;
+        padding: 5px 10px; border-radius: 8px; transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
-
-    .metric-card {
-        padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+    .pie-legend-row:hover { background: rgba(51,177,176,0.06); }
+    .pie-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .pie-legend-name { flex: 1; font-size: 0.78rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pie-legend-pct { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+    .pie-center-text {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        text-align: center; pointer-events: none;
     }
-
-    .metric-title {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    .metric-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: var(--text-main);
-    }
-
-    .metric-value.accent {
-        color: var(--accent);
-    }
-
-    .metric-value.danger {
-        color: var(--danger);
-    }
-
-    .metric-value.success {
-        color: var(--success);
-    }
-
-    .charts-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 2rem;
-        margin-bottom: 2rem;
-    }
-
-    @media (min-width: 900px) {
-        .charts-grid {
-            grid-template-columns: 2fr 1fr;
-        }
-    }
-
-    .chart-container {
-        position: relative;
-        height: 350px;
-        width: 100%;
-    }
-
-    .table-container {
-        overflow-x: auto;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-
-    th,
-    td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--glass-border);
-    }
-
-    th {
-        color: var(--text-muted);
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 1px;
-    }
-
-    tbody tr {
-        transition: background 0.2s;
-    }
-
-    tbody tr:hover {
-        background: rgba(255, 255, 255, 0.03);
-    }
-
-    .status-select {
-        background: transparent;
-        border: 1px solid var(--glass-border);
-        color: var(--text-main);
-        padding: 0.25rem 1.5rem 0.25rem 0.5rem;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        cursor: pointer;
-        min-width: 130px;
-    }
-
-    .status-select:focus {
-        border-color: var(--accent);
-        outline: none;
-    }
-
-    .status-form {
-        display: inline;
-        margin: 0;
-    }
-
-    /* DataTable Overrides */
-    .dataTables_wrapper {
-        margin-top: 1rem;
-    }
-    .dataTables_wrapper .dataTables_filter input {
-        background: rgba(255,255,255,0.8);
-        border: 1px solid var(--glass-border);
-        border-radius: 8px;
-        padding: 0.4rem 0.8rem;
-        color: var(--text-main);
-        outline: none;
-    }
-    .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: var(--accent);
-    }
-    .dataTables_wrapper .dataTables_length select {
-        background: transparent;
-        border: 1px solid var(--glass-border);
-        border-radius: 6px;
-        padding: 0.2rem;
-    }
-    .dataTables_wrapper .dataTables_paginate .paginate_button {
-        border-radius: 8px !important;
-        padding: 0.3em 0.8em !important;
-        margin: 0 0.2em !important;
-    }
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current,
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-        background: var(--accent) !important;
-        color: white !important;
-        border: none !important;
-    }
-    table.dataTable thead th, table.dataTable thead td {
-        border-bottom: 2px solid var(--glass-border) !important;
-    }
-    table.dataTable.no-footer {
-        border-bottom: 1px solid var(--glass-border) !important;
-    }
-    /* Column Resize styling */
-    table.dataTable {
-        table-layout: auto;
-    }
-    table.dataTable th, table.dataTable td {
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
-    }
-    .resizer {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 5px;
-        cursor: col-resize;
-        user-select: none;
-        height: 100%;
-    }
-    .resizer:hover, .resizing {
-        border-right: 2px solid var(--accent);
-    }
-    th {
-        position: relative;
+    .pie-center-val { font-size: 1.8rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
+    .pie-center-label { font-size: 0.65rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+    @media (max-width: 600px) {
+        .pie-wrapper { flex-direction: column; }
+        .pie-chart-area, .pie-legend-area { flex: none; width: 100%; }
     }
 </style>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<div class="flex justify-between items-center mb-4">
-    <div style="display: flex; align-items: center; gap: 1.5rem;">
-        <h1 style="font-size: 2rem; margin: 0;">Overview</h1>
+<div class="db-page" style="padding-top: 0;">
+    <div class="db-main">
 
-        <form action="/dashboard" method="GET" style="display: flex; align-items: center; gap: 1rem; margin: 0;">
-            {% if user.division == 'Admin' %}
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <label for="division-filter"
-                    style="margin: 0; color: var(--text-muted); font-weight: 500;">Division:</label>
-                <select name="division" id="division-filter" onchange="this.form.submit()"
-                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+        <!-- Page title -->
+        <div style="text-align: center; padding: 0 0 4px; position: relative; z-index: 1;">
+            <h1 style="margin: 0; font-size: 1.85rem; font-weight: 800; color: #1a1a1a; letter-spacing: -0.01em;">
+                Maintenance Dashboard
+            </h1>
+        </div>
+
+        <!-- Filter Bar -->
+        <section class="db-filter-bar glass-card">
+            <span class="db-filter-label">Filters</span>
+            <form action="/dashboard" method="GET" style="display: contents;">
+                {% if user.division == 'Admin' %}
+                <select name="division" class="db-filter-select" onchange="this.form.submit()">
                     <option value="All" {% if selected_division=="All" %}selected{% endif %}>All Divisions</option>
-                    <option value="BNFC" {% if selected_division=="BNFC" %}selected{% endif %}>BNFC</option>
-                    <option value="Pellet 1" {% if selected_division=="Pellet 1" %}selected{% endif %}>Pellet 1</option>
-                    <option value="Pellet 2" {% if selected_division=="Pellet 2" %}selected{% endif %}>Pellet 2</option>
-                    <option value="SMS 1" {% if selected_division=="SMS 1" %}selected{% endif %}>SMS 1</option>
-                    <option value="SMS 2" {% if selected_division=="SMS 2" %}selected{% endif %}>SMS 2</option>
-                    <option value="DRI 1" {% if selected_division=="DRI 1" %}selected{% endif %}>DRI 1</option>
-                    <option value="DRI 2" {% if selected_division=="DRI 2" %}selected{% endif %}>DRI 2</option>
-                    <option value="CPP" {% if selected_division=="CPP" %}selected{% endif %}>CPP</option>
-                    <option value="CPP 2" {% if selected_division=="CPP 2" %}selected{% endif %}>CPP 2</option>
-                    <option value="PGP" {% if selected_division=="PGP" %}selected{% endif %}>PGP</option>
-                    <option value="FIRE SERVICE" {% if selected_division=="FIRE SERVICE" %}selected{% endif %}>FIRE
-                        SERVICE</option>
+                    {% for div in all_divisions %}
+                    <option value="{{ div }}" {% if selected_division==div %}selected{% endif %}>{{ div }}</option>
+                    {% endfor %}
                 </select>
-            </div>
-            {% endif %}
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <label for="machine-filter"
-                    style="margin: 0; color: var(--text-muted); font-weight: 500;">Equipment:</label>
-                <select name="machine" id="machine-filter" onchange="this.form.submit()"
-                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+                {% endif %}
+                <select name="machine" class="db-filter-select" onchange="this.form.submit()">
                     <option value="All" {% if selected_machine=="All" %}selected{% endif %}>All Equipment</option>
                     {% for m in all_machines %}
                     <option value="{{ m }}" {% if selected_machine==m %}selected{% endif %}>{{ m }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <label for="date-filter" style="margin: 0; color: var(--text-muted); font-weight: 500;">Date:</label>
-                <select name="date_filter" id="date-filter" onchange="this.form.submit()"
-                    style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-main); width: auto;">
+                <select name="date_filter" class="db-filter-select" onchange="this.form.submit()">
                     <option value="All Time" {% if selected_date=="All Time" %}selected{% endif %}>All Time</option>
-                    <option value="Last 7 Days" {% if selected_date=="Last 7 Days" %}selected{% endif %}>Last 7 Days
-                    </option>
-                    <option value="Last 30 Days" {% if selected_date=="Last 30 Days" %}selected{% endif %}>Last 30 Days
-                    </option>
-                    <option value="This Month" {% if selected_date=="This Month" %}selected{% endif %}>This Month
-                    </option>
-                    <option value="Last Month" {% if selected_date=="Last Month" %}selected{% endif %}>Last Month
-                    </option>
+                    <option value="Last 7 Days" {% if selected_date=="Last 7 Days" %}selected{% endif %}>Last 7 Days</option>
+                    <option value="Last 30 Days" {% if selected_date=="Last 30 Days" %}selected{% endif %}>Last 30 Days</option>
+                    <option value="This Month" {% if selected_date=="This Month" %}selected{% endif %}>This Month</option>
+                    <option value="Last Month" {% if selected_date=="Last Month" %}selected{% endif %}>Last Month</option>
                 </select>
-            </div>
-        </form>
-    </div>
-</div>
+            </form>
+        </section>
 
-<div class="metrics-grid">
-    <div class="glass-panel metric-card">
-        <div class="metric-title">Total Breakdowns</div>
-        <div class="metric-value accent">{{ total_breakdowns }}</div>
-    </div>
-    <div class="glass-panel metric-card">
-        <div class="metric-title">Total Downtime (Mins)</div>
-        <div class="metric-value danger">{{ total_downtime }}</div>
-    </div>
-    <div class="glass-panel metric-card">
-        <div class="metric-title">Avg Downtime</div>
-        <div class="metric-value">{{ avg_downtime }}<span
-                style="font-size: 1rem; color: var(--text-muted); margin-left: 5px;">min</span></div>
-    </div>
-    <div class="glass-panel metric-card">
-        <div class="metric-title">Resolved Issues</div>
-        <div class="metric-value success">{{ resolved_count }}</div>
-    </div>
-</div>
-
-<div class="charts-grid">
-    <div class="glass-panel">
-        <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">Downtime by Machine</h3>
-        <div class="chart-container">
-            <canvas id="machineChart"></canvas>
-        </div>
-    </div>
-    <div class="glass-panel">
-        <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">Recent Activity</h3>
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-            {% for log in logs[:4] %}
-            <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
-                <div class="flex justify-between items-center mb-2">
-                    <strong style="color: var(--text-main);">{{ log.machine_name }}</strong>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ log.logged_at.strftime('%b %d, %H:%M')
-                        }}</span>
+        <!-- KPI Row -->
+        <section>
+            <h2 class="section-title">Key Performance Indicators</h2>
+            <div class="kpi-row kpi-row-4">
+                <div class="glass-card kpi-card fade-in">
+                    <div class="kpi-icon" style="background: rgba(255,107,107,0.13); color: #ff6b6b;">
+                        <span style="font-size: 1.4rem;">&#128295;</span>
+                    </div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Open Breakdowns</p>
+                        <p class="kpi-value" style="color: #ff6b6b;">{{ open_breakdowns }}</p>
+                        <p class="kpi-sub">Active & In-Progress</p>
+                        <span class="kpi-trend-label trend-label-down">&#9660; active now</span>
+                    </div>
                 </div>
-                <div
-                    style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                    {{ log.description }}
+                <div class="glass-card kpi-card fade-in">
+                    <div class="kpi-icon" style="background: rgba(255,217,61,0.13); color: #ffd93d;">
+                        <span style="font-size: 1.4rem;">&#9888;</span>
+                    </div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">CAPA Overdue</p>
+                        <p class="kpi-value" style="color: #ffd93d;">{{ capa_overdue }}</p>
+                        <p class="kpi-sub">Past due date</p>
+                        <span class="kpi-trend-label trend-label-down">&#9660; need attention</span>
+                    </div>
                 </div>
-                <span class="badge
-                    {% if log.status in ['Open', 'Not Approved'] %}badge-open{% elif log.status in ['In Progress', 'Incomplete'] %}badge-progress{% else %}badge-resolved{% endif %}
-                ">{{ log.status }}</span>
-            </div>
-            {% else %}
-            <p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">No logs to show.</p>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<div class="glass-panel">
-    <h3 class="mb-4" style="color: var(--text-muted); font-weight: 500;">All Breakdown Logs</h3>
-    <div class="table-container" style="overflow-x: auto;">
-        <table id="logsTable" class="display" style="width:100%">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Equipment</th>
-                    <th>Division</th>
-                    <th>Description</th>
-                    <th>Downtime</th>
-                    <th>Date Logged</th>
-                    <th>RCA Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr>
-                    <td style="color: var(--text-muted);">#{{ log.id }}</td>
-                    <td style="font-weight: 500;">
-                        {{ log.machine_name }}
-                        {% if log.extended_info %}
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                            title="{{ log.extended_info }}">
-                            + RCA Data Attached
-                        </div>
+                <div class="glass-card kpi-card fade-in">
+                    <div class="kpi-icon" style="background: rgba(124,107,255,0.13); color: #7c6bff;">
+                        <span style="font-size: 1.4rem;">&#9201;</span>
+                    </div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Avg MTTR (Latest)</p>
+                        <p class="kpi-value" style="color: #7c6bff;">{% if avg_mttr is not none %}{{ avg_mttr }}h{% else %}&mdash;{% endif %}</p>
+                        <p class="kpi-sub">Mean Time To Repair</p>
+                        {% if avg_mttr is not none and avg_mttr < 5 %}
+                        <span class="kpi-trend-label trend-label-up">&#9650; this month</span>
+                        {% else %}
+                        <span class="kpi-trend-label trend-label-down">&#9660; this month</span>
                         {% endif %}
-                    </td>
-                    <td style="color: var(--text-muted);">
-                        <span class="badge"
-                            style="background: rgba(0,0,0,0.05); color: var(--text-main); border: 1px solid rgba(0,0,0,0.1);">{{
-                            log.division }}</span>
-                    </td>
-                    <td style="color: var(--text-muted); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help;"
-                        title="{{ log.description }}">
-                        {{ log.description }}
-                    </td>
-                    <td class="text-accent">{{ log.downtime_minutes }} min</td>
-                    <td style="color: var(--text-muted); font-size: 0.9rem;">{{ log.logged_at.strftime('%Y-%m-%d %H:%M')
-                        }}</td>
-                    <td>
-                        <form action="/update-status/{{ log.id }}" method="POST" class="status-form">
-                            <select name="new_status" class="status-select" onchange="this.form.submit()"
-                                style="{% if log.status in ['Open', 'Not Approved'] %}color: var(--danger);{% elif log.status in ['In Progress', 'Incomplete'] %}color: var(--warning);{% else %}color: var(--success);{% endif %}">
-                                <option value="Open" {% if log.status=='Open' %}selected{% endif %}>Open</option>
-                                <option value="In Progress" {% if log.status=='In Progress' %}selected{% endif %}>In
-                                    Progress</option>
-                                <option value="Incomplete" {% if log.status=='Incomplete' %}selected{% endif %}>
-                                    Incomplete</option>
-                                <option value="Preventive" {% if log.status=='Preventive' %}selected{% endif %}>
-                                    Preventive</option>
-                                <option value="Not Approved" {% if log.status=='Not Approved' %}selected{% endif %}>Not
-                                    Approved</option>
-                                <option value="Resolved" {% if log.status=='Resolved' %}selected{% endif %}>Resolved
-                                </option>
-                                <option value="Completed" {% if log.status=='Completed' %}selected{% endif %}>Completed
-                                </option>
-                            </select>
-                        </form>
-                    </td>
-                    <td>
-                        <a href="/create-rca/{{ log.id }}" class="btn btn-primary"
-                            style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 8px; white-space: nowrap;">
-                            {% if log.rca_data and log.rca_data != '[]' and log.rca_data != 'null' %}
-                            Open RCA
-                            {% else %}
-                            Create RCA
-                            {% endif %}
-                        </a>
-                    </td>
-                </tr>
+                    </div>
+                </div>
+                <div class="glass-card kpi-card fade-in">
+                    <div class="kpi-icon" style="background: rgba(51,177,176,0.13); color: #33B1B0;">
+                        <span style="font-size: 1.4rem;">&#128202;</span>
+                    </div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Total Failures</p>
+                        <p class="kpi-value" style="color: #33B1B0;">{{ total_breakdowns }}</p>
+                        <p class="kpi-sub">Recent breakdowns logged</p>
+                        <span class="kpi-trend-label trend-label-down">&#9660; recent records</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Insight Summary -->
+        {% if total_breakdowns > 0 %}
+        <div class="db-insight fade-in" id="insight-line"></div>
+        {% endif %}
+
+        <!-- Middle row: Top Equipment + Pie Chart -->
+        <div class="db-mid-row">
+            <!-- Top 5 Failing Equipment -->
+            <section class="glass-card db-panel">
+                <h2 class="section-title">Top 5 Failing Equipment</h2>
+                {% if top_equipment|length == 0 %}
+                <div class="chart-empty">No equipment data available.</div>
+                {% else %}
+                {% set gradients = [['#7c6bff','#a78bfa'],['#06b6d4','#38bdf8'],['#10b981','#4ade80'],['#f59e0b','#ffd93d'],['#ef4444','#ff6b6b']] %}
+                {% set max_count = top_equipment[0].breakdown_count %}
+                {% set equip_total = top_equipment|sum(attribute='breakdown_count') %}
+                <div class="top-equip-list">
+                    {% for item in top_equipment %}
+                    {% set pct = ((item.breakdown_count / max_count * 100)|int) if max_count > 0 else 0 %}
+                    {% set pct_total = ((item.breakdown_count / equip_total * 100)|int) if equip_total > 0 else 0 %}
+                    {% set gi = loop.index0 % 5 %}
+                    <div class="top-equip-row">
+                        <div class="top-equip-rank">{{ loop.index }}</div>
+                        <div class="top-equip-info">
+                            <div class="top-equip-header">
+                                <span class="top-equip-name">{{ item.equipment_name }}</span>
+                                <span class="top-equip-count">
+                                    {{ item.breakdown_count }} {{ 'failure' if item.breakdown_count == 1 else 'failures' }}
+                                    <span class="top-equip-pct">({{ pct_total }}%)</span>
+                                </span>
+                            </div>
+                            <div class="top-equip-meta">
+                                <span class="category-tag">{{ item.category }}</span>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="width: {{ pct }}%; background: linear-gradient(90deg, {{ gradients[gi][0] }}, {{ gradients[gi][1] }});"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+
+            <!-- Failures by Category (Pie Chart) -->
+            <section class="glass-card db-panel">
+                <h2 class="section-title">Failures by Division</h2>
+                {% if failures_by_category|length == 0 %}
+                <div class="chart-empty">No failure data available.</div>
+                {% else %}
+                {% set pie_gradients = [['#7c6bff','#a78bfa'],['#06b6d4','#38bdf8'],['#10b981','#4ade80'],['#f59e0b','#ffd93d'],['#ef4444','#ff6b6b'],['#8b5cf6','#d946ef'],['#f97316','#fb923c'],['#0ea5e9','#67e8f9']] %}
+                {% set pie_total = failures_by_category|sum(attribute='count') %}
+                <div class="pie-wrapper">
+                    <div class="pie-chart-area">
+                        <div class="chart-box" style="height: 260px;">
+                            <canvas id="failuresPieChart"></canvas>
+                        </div>
+                        <div class="pie-center-text">
+                            <div class="pie-center-val">{{ pie_total }}</div>
+                            <div class="pie-center-label">TOTAL</div>
+                        </div>
+                    </div>
+                    <div class="pie-legend-area">
+                        {% for item in failures_by_category %}
+                        {% set pi = loop.index0 % 8 %}
+                        {% set item_pct = ((item.count / pie_total * 100)|round(0)|int) if pie_total > 0 else 0 %}
+                        <div class="pie-legend-row" onmouseenter="highlightPieSegment({{ loop.index0 }})" onmouseleave="resetPieSegments()">
+                            <span class="pie-legend-dot" style="background: linear-gradient(135deg, {{ pie_gradients[pi][0] }}, {{ pie_gradients[pi][1] }});"></span>
+                            <span class="pie-legend-name">{{ item.category }}</span>
+                            <span class="pie-legend-pct">{{ item_pct }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+
+        <!-- MTTR Trend Chart -->
+        <section class="glass-card db-panel">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <h2 class="section-title" style="margin-bottom: 0;">MTTR Trend</h2>
+                <div class="mttr-filter-bar">
+                    <select class="db-filter-select" style="font-size: 0.78rem; padding: 4px 28px 4px 8px;" id="mttrRangeSelect" onchange="updateMttrRange()">
+                        <option value="3">Last 3 Months</option>
+                        <option value="6">Last 6 Months</option>
+                        <option value="12" selected>Last 12 Months</option>
+                    </select>
+                </div>
+            </div>
+            {% if mttr_trend|length == 0 %}
+            <div class="chart-empty">No MTTR data available for the last 12 months.</div>
+            {% else %}
+            <div class="chart-box" style="height: 240px; margin-top: 12px;">
+                <canvas id="mttrChart"></canvas>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Recent Breakdowns Table -->
+        <section class="glass-card db-panel">
+            <h2 class="section-title">Recent Breakdowns</h2>
+            {% if logs|length == 0 %}
+            <div class="chart-empty">No breakdown records found.</div>
+            {% else %}
+            <div class="bd-table-wrapper">
+                <table class="bd-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Equipment</th>
+                            <th>Division</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Reported</th>
+                            <th>MTTR (hrs)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set status_colors = {'Open': {'color': '#ff6b6b', 'bg': 'rgba(255,107,107,0.15)'}, 'In Progress': {'color': '#ffd93d', 'bg': 'rgba(255,217,61,0.15)'}, 'Resolved': {'color': '#4ade80', 'bg': 'rgba(74,222,128,0.15)'}, 'Completed': {'color': '#4ade80', 'bg': 'rgba(74,222,128,0.15)'}} %}
+                        {% for log in logs[:20] %}
+                        {% set sc = status_colors.get(log.status, {'color': '#f0f0f0', 'bg': 'rgba(200,200,200,0.1)'}) %}
+                        <tr class="bd-row">
+                            <td style="color: var(--text-secondary); width: 32px;">{{ loop.index }}</td>
+                            <td style="font-weight: 600;">{{ log.machine_name }}</td>
+                            <td><span class="tag">{{ log.division }}</span></td>
+                            <td style="color: var(--text-secondary); max-width: 220px;">
+                                <span class="ellipsis">{{ log.description or '&mdash;' }}</span>
+                            </td>
+                            <td>
+                                <span class="status-badge" style="color: {{ sc.color }}; background: {{ sc.bg }};">
+                                    {{ log.status }}
+                                </span>
+                            </td>
+                            <td style="color: var(--text-secondary); white-space: nowrap;">{{ log.logged_at.strftime('%d %b %Y') }}</td>
+                            <td style="font-weight: 600; text-align: center;">
+                                {% if log.mttr_hours is not none %}{{ log.mttr_hours }}{% elif log.downtime_minutes %}{{ (log.downtime_minutes / 60)|round(1) }}{% else %}&mdash;{% endif %}
+                            </td>
+                            <td>
+                                <a href="/create-rca/{{ log.id }}" class="btn btn-primary"
+                                    style="font-size: 0.78rem; padding: 6px 14px; border-radius: 8px; white-space: nowrap;">
+                                    {% if log.rca_data and log.rca_data != '[]' and log.rca_data != 'null' %}
+                                    Open RCA
+                                    {% else %}
+                                    Create RCA
+                                    {% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- RCA Reports -->
+        <section>
+            <h2 class="section-title">Recent RCA Reports</h2>
+            {% if rca_reports|length == 0 %}
+            <div class="chart-empty">No RCA reports filed yet.</div>
+            {% else %}
+            <div class="rca-list">
+                {% for report in rca_reports %}
+                <div class="rca-card glass-card fade-in">
+                    <div class="rca-header">
+                        <div class="rca-equip">
+                            <span class="rca-icon">&#128269;</span>
+                            <span class="rca-equip-name">{{ report.equipment_name }}</span>
+                        </div>
+                        <span class="rca-date">{{ report.created_at.strftime('%d %b %Y') }}</span>
+                    </div>
+                    <div class="rca-section rca-section-cause">
+                        <span class="rca-section-label">Root Cause</span>
+                        <p class="rca-cause">{{ report.root_cause }}</p>
+                    </div>
+                    {% if report.corrective_action %}
+                    <div class="rca-section rca-section-action">
+                        <span class="rca-section-label">Action</span>
+                        <p class="rca-action">{{ report.corrective_action }}</p>
+                    </div>
+                    {% endif %}
+                    <p class="rca-author">Filed by: {{ report.author }}</p>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+            {% endif %}
+        </section>
+
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const machinesData = {{ machines | tojson | safe }};
-        const labels = Object.keys(machinesData);
-        const data = Object.values(machinesData);
+document.addEventListener('DOMContentLoaded', function () {
 
-        Chart.defaults.color = '#718096';
-        Chart.defaults.font.family = "'Outfit', sans-serif";
+    // ── Gradient color palette (matches RAG_april) ─────────────
+    const GRADIENTS = [
+        ['#7c6bff', '#a78bfa'],
+        ['#06b6d4', '#38bdf8'],
+        ['#10b981', '#4ade80'],
+        ['#f59e0b', '#ffd93d'],
+        ['#ef4444', '#ff6b6b'],
+        ['#8b5cf6', '#d946ef'],
+        ['#f97316', '#fb923c'],
+        ['#0ea5e9', '#67e8f9'],
+    ];
 
-        if (labels.length > 0) {
-            const ctx = document.getElementById('machineChart').getContext('2d');
-            const gradientColors = ctx.createLinearGradient(0, 0, 0, 400);
-            gradientColors.addColorStop(0, 'rgba(59, 163, 165, 0.5)');
-            gradientColors.addColorStop(1, 'rgba(59, 163, 165, 0.0)');
+    // ── Insight line ──────────────────────────────────────────
+    const insightEl = document.getElementById('insight-line');
+    const machinesData = {{ machines | tojson | safe }};
+    const labels = Object.keys(machinesData);
+    const data = Object.values(machinesData);
 
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Incidents per Machine',
-                        data: data,
-                        backgroundColor: gradientColors,
-                        borderColor: '#3ba3a5',
-                        borderWidth: 2,
-                        borderRadius: 8,
-                        hoverBackgroundColor: 'rgba(59, 163, 165, 0.8)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            titleColor: '#2d3748',
-                            bodyColor: '#2d3748',
-                            titleFont: { size: 14, family: "'Outfit', sans-serif" },
-                            bodyFont: { size: 14, family: "'Outfit', sans-serif" },
-                            padding: 12,
-                            borderColor: 'rgba(0, 0, 0, 0.1)',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function (context) {
-                                    return context.parsed.y + ' incidents';
-                                }
+    if (insightEl && labels.length > 0) {
+        const topMachine = labels.reduce((a, b) => machinesData[a] > machinesData[b] ? a : b);
+        const total = data.reduce((s, v) => s + v, 0);
+        const pct = total > 0 ? Math.round((machinesData[topMachine] / total) * 100) : 0;
+        const mttrText = {{ avg_mttr|tojson }} !== null ? ' \u00B7 MTTR ' + {{ avg_mttr|tojson }} + 'h avg' : '';
+        insightEl.textContent = '\u{1F4A1} ' + topMachine + ' accounts for ' + pct + '% of all failures \u00B7 ' +
+            '{{ total_breakdowns }} total breakdowns' + mttrText;
+    } else if (insightEl) {
+        insightEl.style.display = 'none';
+    }
+
+    // ── Failures Pie Chart (Chart.js Doughnut) ────────────────
+    const pieCanvas = document.getElementById('failuresPieChart');
+    if (pieCanvas) {
+        const pieData = {{ failures_by_category | tojson | safe }};
+        const pieLabels = pieData.map(d => d.category);
+        const pieValues = pieData.map(d => d.count);
+        const pieColors = pieData.map((_, i) => GRADIENTS[i % GRADIENTS.length][0]);
+        const pieBorderColors = pieData.map((_, i) => GRADIENTS[i % GRADIENTS.length][1]);
+
+        window._pieChart = new Chart(pieCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    data: pieValues,
+                    backgroundColor: pieColors,
+                    borderColor: pieBorderColors,
+                    borderWidth: 2,
+                    hoverOffset: 12,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(12,12,28,0.94)',
+                        titleColor: 'rgba(200,200,220,0.6)',
+                        bodyColor: '#fff',
+                        padding: 12,
+                        borderColor: 'rgba(255,255,255,0.12)',
+                        borderWidth: 1,
+                        cornerRadius: 12,
+                        callbacks: {
+                            title: function(ctx) { return ctx[0].label; },
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0.0';
+                                return ctx.parsed + ' breakdowns (' + pct + '%)';
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false },
-                            ticks: { precision: 0 }
-                        },
-                        x: { grid: { display: false, drawBorder: false } }
-                    },
-                    animation: { y: { duration: 2000, easing: 'easeOutQuart' } }
+                    }
                 }
-            });
-        } else {
-            document.getElementById('machineChart').parentElement.innerHTML =
-                '<div style="height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Not enough data for chart</div>';
-        }
-
-        // Initialize DataTable
-        const table = $('#logsTable').DataTable({
-            "order": [[5, "desc"]],
-            "pageLength": 10,
-            "searching": false,
-            "colReorder": true,
-            "language": {
-                "search": "Filter logs:",
-                "lengthMenu": "Show _MENU_ logs per page",
-                "info": "Showing MIN to MAX of TOTAL logs",
-                "infoEmpty": "No records available",
-                "infoFiltered": "(filtered from MAX total logs)",
-                "emptyTable": "No breakdown logs yet. Click \"Log Issue\" to add one."
-            },
-            "columnDefs": [
-                { "orderable": false, "targets": [3, 7] }
-            ]
+            }
         });
+    }
 
-        // Column resizer
-        const createResizableTable = function (table) {
-            const cols = table.querySelectorAll('th');
-            [].forEach.call(cols, function (col) {
-                const resizer = document.createElement('div');
-                resizer.classList.add('resizer');
-                resizer.style.height = table.offsetHeight + 'px';
-                col.appendChild(resizer);
-                createResizableColumn(col, resizer);
-            });
-        };
+    // ── MTTR Trend Chart (Chart.js Area/Line) ─────────────────
+    const allMttrData = {{ mttr_trend | tojson | safe }};
+    const mttrCanvas = document.getElementById('mttrChart');
 
-        const createResizableColumn = function (col, resizer) {
-            let x = 0, w = 0;
-            resizer.addEventListener('mousedown', function (e) {
-                x = e.clientX;
-                w = parseInt(window.getComputedStyle(col).width, 10);
-                document.addEventListener('mousemove', mouseMoveHandler);
-                document.addEventListener('mouseup', mouseUpHandler);
-                resizer.classList.add('resizing');
-            });
-            const mouseMoveHandler = function (e) {
-                const dx = e.clientX - x;
-                col.style.width = (w + dx) + 'px';
-                col.style.minWidth = (w + dx) + 'px';
-            };
-            const mouseUpHandler = function () {
-                document.removeEventListener('mousemove', mouseMoveHandler);
-                document.removeEventListener('mouseup', mouseUpHandler);
-                resizer.classList.remove('resizing');
-            };
-        };
+    function renderMttrChart(dataSlice) {
+        if (!mttrCanvas) return;
+        if (window._mttrChart) window._mttrChart.destroy();
 
-        createResizableTable(document.getElementById('logsTable'));
-    });
+        const ctx = mttrCanvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(124,107,255,0.25)');
+        gradient.addColorStop(1, 'rgba(124,107,255,0.02)');
+
+        window._mttrChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dataSlice.map(d => d.month),
+                datasets: [{
+                    label: 'Avg MTTR (hrs)',
+                    data: dataSlice.map(d => d.avgMttr),
+                    borderColor: '#7c6bff',
+                    borderWidth: 2.5,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#7c6bff',
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#a78bfa',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#fff',
+                        titleColor: 'var(--text-secondary)',
+                        bodyColor: '#7c6bff',
+                        bodyFont: { weight: 700 },
+                        padding: 12,
+                        borderColor: 'rgba(0,0,0,0.1)',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(ctx) { return 'MTTR: ' + ctx.parsed.y + ' hrs'; }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(60,61,63,0.10)', drawBorder: false },
+                        ticks: { callback: function(v) { return v + ' h'; }, font: { size: 11 }, color: 'var(--text-secondary)' }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { font: { size: 11 }, color: 'var(--text-secondary)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initial render with all data
+    if (allMttrData.length > 0) {
+        renderMttrChart(allMttrData);
+    }
+
+    // MTTR range filter
+    window.updateMttrRange = function() {
+        const sel = document.getElementById('mttrRangeSelect');
+        const n = parseInt(sel.value, 10);
+        renderMttrChart(allMttrData.slice(-n));
+    };
+
+    // ── Pie chart interactivity from legend ───────────────────
+    window.highlightPieSegment = function(index) {
+        if (!window._pieChart) return;
+        const chart = window._pieChart;
+        chart.setActiveElements([{ datasetIndex: 0, index: index }]);
+        chart.tooltip.setActiveElements([{ datasetIndex: 0, index: index }], { x: 0, y: 0 });
+        chart.update();
+    };
+
+    window.resetPieSegments = function() {
+        if (!window._pieChart) return;
+        const chart = window._pieChart;
+        chart.setActiveElements([]);
+        chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+        chart.update();
+    };
+
+});
 </script>
 {% endblock %}

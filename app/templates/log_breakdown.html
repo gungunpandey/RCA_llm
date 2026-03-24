@@ -2,100 +2,44 @@
 
 {% block head %}
 <style>
-    .form-container {
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding-top: 2rem;
-    }
-
-    .form-box {
-        width: 100%;
-        max-width: 600px;
-    }
-
-    .form-header {
-        margin-bottom: 2rem;
-        text-align: center;
-    }
-
-    .form-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: var(--text-main);
-    }
-
-    .form-subtitle {
-        color: var(--text-muted);
-        margin-top: 0.5rem;
-    }
-
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-        margin-top: 2rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--glass-border);
-    }
-
-    .btn-secondary {
-        background: transparent;
-        color: var(--text-muted);
-        border: 1px solid var(--glass-border);
-    }
-
-    .btn-secondary:hover {
-        color: var(--text-main);
-        background: rgba(0, 0, 0, 0.03);
-    }
-
-    /* Custom select style */
-    select {
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 1rem center;
-        background-size: 1em;
-        padding-right: 2.5rem;
-    }
-
-    /* Number input styles */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
         -webkit-appearance: none;
         margin: 0;
     }
-
-    .input-group {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-
-    .input-suffix {
-        position: absolute;
-        right: 1rem;
-        color: var(--text-muted);
-        pointer-events: none;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="form-container">
-    <div class="glass-panel form-box">
-        <div class="form-header">
-            <h1 class="form-title">Log Machinery Breakdown</h1>
-            <p class="form-subtitle">Record details of the incident for tracking and analysis.</p>
-        </div>
+<div class="bl-page" style="padding-top: 0;">
 
-        <form action="/log-breakdown" method="POST" enctype="multipart/form-data">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                <div class="form-group">
-                    <label for="division">Division</label>
-                    <select id="division" name="division" required {% if user.division != 'Admin'
-                        %}style="pointer-events: none; background: rgba(0,0,0,0.1);" {% endif %}>
+    <!-- Hero -->
+    <div class="bl-hero fade-in">
+        <div class="bl-hero-icon">&#128295;</div>
+        <div>
+            <h1 class="bl-hero-title">Log Machinery Breakdown</h1>
+            <p class="bl-hero-sub">Record details of the incident for tracking and analysis.</p>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="bl-progress fade-in" id="step-progress">Step 1 of 9</div>
+
+    <!-- Form -->
+    <form class="bl-form" action="/log-breakdown" method="POST" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="action" id="form-action" value="create_rca">
+
+        <!-- Row 1: Division | Equipment -->
+        <div class="bl-row-2col">
+            <div class="bl-section">
+                <div class="bl-section-header">
+                    <div class="bl-step">1</div>
+                    <h3 class="bl-section-title">Division</h3>
+                </div>
+                <div class="bl-section-body">
+                    <select id="division" name="division" class="form-input bl-select" required
+                        onfocus="updateStep(1)" onchange="updateStep(1); updateMachines(); calculate();"
+                        {% if user.division != 'Admin' %}style="pointer-events: none; opacity: 0.7;"{% endif %}>
                         <option value="BNFC" {% if user.division=='BNFC' %}selected{% endif %}>BNFC</option>
                         <option value="Pellet 1" {% if user.division=='Pellet 1' %}selected{% endif %}>Pellet 1</option>
                         <option value="Pellet 2" {% if user.division=='Pellet 2' %}selected{% endif %}>Pellet 2</option>
@@ -106,97 +50,198 @@
                         <option value="CPP" {% if user.division=='CPP' %}selected{% endif %}>CPP</option>
                         <option value="CPP 2" {% if user.division=='CPP 2' %}selected{% endif %}>CPP 2</option>
                         <option value="PGP" {% if user.division=='PGP' %}selected{% endif %}>PGP</option>
-                        <option value="FIRE SERVICE" {% if user.division=='FIRE SERVICE' %}selected{% endif %}>FIRE
-                            SERVICE</option>
+                        <option value="FIRE SERVICE" {% if user.division=='FIRE SERVICE' %}selected{% endif %}>FIRE SERVICE</option>
                     </select>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label for="machine_name">Equipment</label>
-                    <select id="machine_name" name="machine_name" required>
+            <div class="bl-section">
+                <div class="bl-section-header">
+                    <div class="bl-step">2</div>
+                    <h3 class="bl-section-title">Equipment</h3>
+                </div>
+                <div class="bl-section-body">
+                    <select id="machine_name" name="machine_name" class="form-input bl-select" required
+                        onfocus="updateStep(2)" onchange="updateStep(2)">
                         <option value="" disabled selected>Select Equipment...</option>
                     </select>
                 </div>
             </div>
+        </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
-                <div class="form-group">
-                    <label for="start_time">Issue Start Date &amp; Time</label>
-                    <input type="datetime-local" id="start_time" name="start_time" required>
+        <!-- Row 2: Start Date | End Date -->
+        <div class="bl-row-2col">
+            <div class="bl-section">
+                <div class="bl-section-header">
+                    <div class="bl-step">3</div>
+                    <h3 class="bl-section-title">Issue Start Date &amp; Time</h3>
                 </div>
-                <div class="form-group">
-                    <label for="end_time">Issue End Date &amp; Time (Optional)</label>
-                    <input type="datetime-local" id="end_time" name="end_time">
+                <div class="bl-section-body">
+                    <input type="datetime-local" id="start_time" name="start_time" class="form-input" required
+                        onfocus="updateStep(3)" onchange="updateStep(3); calculate();">
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="checkbox" id="feed_loss" name="feed_loss" value="true" style="width: auto;">
-                        <span>Feed Loss Applicable (Y/N)</span>
+            <div class="bl-section">
+                <div class="bl-section-header">
+                    <div class="bl-step">4</div>
+                    <h3 class="bl-section-title">Issue End Date &amp; Time</h3>
+                </div>
+                <div class="bl-section-body">
+                    <input type="datetime-local" id="end_time" name="end_time" class="form-input"
+                        onfocus="updateStep(4)" onchange="updateStep(4); calculate();">
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Feed Loss + BD Time -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">5</div>
+                <h3 class="bl-section-title">Feed Loss &amp; Downtime</h3>
+            </div>
+            <div class="bl-section-body">
+                <div style="display: flex; align-items: center; justify-content: space-evenly; flex-wrap: wrap; gap: 16px;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="feed_loss" name="feed_loss" value="true"
+                            style="width: auto; accent-color: var(--accent);"
+                            onfocus="updateStep(5)" onchange="updateStep(5); calculate();">
+                        <span style="font-weight: 500;">Feed Loss Applicable</span>
                     </label>
-                </div>
-                <div class="form-group">
-                    <label for="downtime_minutes">Calculated BD Time (Minutes)</label>
-                    <input type="number" id="downtime_minutes" name="downtime_minutes" readonly placeholder="0">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 600; white-space: nowrap; font-size: 0.88rem;">BD Time (min):</span>
+                        <input type="number" id="downtime_minutes" name="downtime_minutes" readonly
+                            class="form-input" value="0"
+                            style="width: 100px; background: rgba(51,177,176,0.05); cursor: default; text-align: center;">
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="form-group" style="margin-top: 1rem;">
-                <label for="revenue_loss" style="color: var(--danger);">Estimated Revenue Loss (&#8377;)</label>
-                <input type="number" id="revenue_loss" name="revenue_loss" readonly placeholder="0"
-                    style="color: var(--danger); font-weight: bold;">
+        <!-- Row 4: Revenue Loss -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">6</div>
+                <h3 class="bl-section-title">Estimated Revenue Loss (&#8377;)</h3>
             </div>
+            <div class="bl-section-body">
+                <input type="number" id="revenue_loss" name="revenue_loss" class="form-input" readonly
+                    placeholder="0" value="0"
+                    style="background: rgba(51,177,176,0.05); cursor: default; color: var(--danger); font-weight: 700;">
+            </div>
+        </div>
 
-            <div class="form-group" style="margin-top: 1rem;">
-                <label for="description">Issue Description</label>
-                <textarea id="description" name="description" rows="4" required
-                    placeholder="Describe what happened..."></textarea>
+        <!-- Row 5: Description -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">7</div>
+                <h3 class="bl-section-title">Fault Description</h3>
             </div>
+            <div class="bl-section-body">
+                <textarea id="description" name="description" class="form-input" rows="4" required
+                    placeholder="Describe what happened, any error codes, last known good state..."
+                    onfocus="updateStep(7)" oninput="updateStep(7)"></textarea>
+            </div>
+        </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
-                <div class="form-group">
-                    <label for="attached_image">📷 Attach Equipment Image (Optional)</label>
-                    <input type="file" id="attached_image" name="attached_doc" accept=".jpg,.jpeg,.png,.bmp,.webp" style="padding: 0.5rem 0;">
-                    <span style="font-size: 0.78rem; color: var(--text-muted);">JPG, PNG, BMP, or WebP — for AI damage analysis</span>
-                </div>
-                <div class="form-group">
-                    <label for="attached_doc_desc">Image Description (Optional)</label>
-                    <input type="text" id="attached_doc_desc" name="attached_doc_desc"
-                        placeholder="Describe what the image shows, e.g. 'cracked bearing inner race'">
-                </div>
+        <!-- Row 6: Attachments -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">8</div>
+                <h3 class="bl-section-title">Attachments</h3>
             </div>
+            <div class="bl-section-body">
+                <!-- Drag-drop zone -->
+                <div class="fu-wrapper">
+                    <div class="fu-dropzone" id="dropzone"
+                        onclick="document.getElementById('attached_doc').click()">
+                        <div class="fu-icon">&#128193;</div>
+                        <p class="fu-hint"><strong>Click or drag &amp; drop</strong> file here</p>
+                        <p class="fu-sub">JPG, PNG, BMP, WebP &mdash; for AI damage analysis</p>
+                    </div>
+                    <input type="file" id="attached_doc" name="attached_doc"
+                        accept=".jpg,.jpeg,.png,.bmp,.webp" style="display: none;"
+                        onchange="handleFileSelect(this)">
+                    <ul class="fu-list" id="file-list"></ul>
+                </div>
 
-            <div class="form-actions" style="justify-content: space-between;">
-                <input type="hidden" name="action" id="form-action" value="create_rca">
-                <a href="/dashboard" class="btn btn-secondary">Cancel</a>
-                <div style="display: flex; gap: 1rem;">
-                    <button type="button" class="btn btn-primary" style="background: var(--accent);"
-                        onclick="document.getElementById('form-action').value='rca_ai'; this.form.submit();">RCA AI Assist</button>
-                    <button type="button" class="btn btn-primary"
-                        onclick="document.getElementById('form-action').value='create_rca'; this.form.submit();">Create RCA</button>
+                <div style="margin-top: 14px;">
+                    <label class="form-label">Image Description (Optional)</label>
+                    <input type="text" name="attached_doc_desc" class="form-input"
+                        placeholder="Describe what the image shows, e.g. 'cracked bearing inner race'"
+                        onfocus="updateStep(8)" oninput="updateStep(8)">
                 </div>
             </div>
-        </form>
-    </div>
+        </div>
+
+        <!-- Row 7: Severity (pills) -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">9</div>
+                <h3 class="bl-section-title">Severity Level</h3>
+            </div>
+            <div class="bl-section-body">
+                <input type="hidden" name="severity_level" id="severity_level" value="">
+                <div class="pill-group">
+                    <button type="button" class="pill-btn" data-severity="Critical"
+                        onclick="selectSeverity(this, 'Critical')"
+                        style="--pill-color: #ff5e5e; --pill-bg: rgba(255,94,94,0.15);">Critical</button>
+                    <button type="button" class="pill-btn" data-severity="High"
+                        onclick="selectSeverity(this, 'High')"
+                        style="--pill-color: #fb923c; --pill-bg: rgba(251,146,60,0.15);">High</button>
+                    <button type="button" class="pill-btn" data-severity="Medium"
+                        onclick="selectSeverity(this, 'Medium')"
+                        style="--pill-color: #ffd93d; --pill-bg: rgba(255,217,61,0.15);">Medium</button>
+                    <button type="button" class="pill-btn" data-severity="Low"
+                        onclick="selectSeverity(this, 'Low')"
+                        style="--pill-color: #4ade80; --pill-bg: rgba(74,222,128,0.15);">Low</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="bl-actions">
+            <button type="button" class="btn btn-primary bl-submit-btn"
+                onclick="document.getElementById('form-action').value='rca_ai'; this.closest('form').submit();">
+                <span>&#129302;</span> RCA AI Assist
+            </button>
+            <button type="button" class="btn btn-primary bl-submit-btn"
+                onclick="document.getElementById('form-action').value='create_rca'; this.closest('form').submit();">
+                <span>&#128203;</span> Create RCA
+            </button>
+            <a href="/dashboard" class="btn btn-ghost" style="text-decoration: none;">Cancel</a>
+        </div>
+    </form>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-    // Animation for fields
-    document.addEventListener('DOMContentLoaded', () => {
-        const fields = document.querySelectorAll('.form-group');
-        fields.forEach((field, index) => {
-            field.style.opacity = '0';
-            field.style.transform = 'translateY(10px)';
-            field.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-            setTimeout(() => {
-                field.style.opacity = '1';
-                field.style.transform = 'translateY(0)';
-            }, 100 + (index * 100));
-        });
-    });
+    // ── Step progress
+    const TOTAL_STEPS = 9;
+    let currentStep = 1;
+    function updateStep(n) {
+        currentStep = n;
+        document.getElementById('step-progress').textContent = 'Step ' + n + ' of ' + TOTAL_STEPS;
+    }
 
+    // ── Severity pills
+    function selectSeverity(btn, value) {
+        document.getElementById('severity_level').value = value;
+        document.querySelectorAll('.pill-btn[data-severity]').forEach(function(b) {
+            b.classList.remove('pill-active');
+            b.style.color = '';
+            b.style.background = '';
+            b.style.borderColor = '';
+        });
+        btn.classList.add('pill-active');
+        btn.style.color = btn.style.getPropertyValue('--pill-color');
+        btn.style.background = btn.style.getPropertyValue('--pill-bg');
+        btn.style.borderColor = btn.style.getPropertyValue('--pill-color');
+        updateStep(9);
+    }
+
+    // ── Calculate downtime & revenue
     const startInput = document.getElementById('start_time');
     const endInput = document.getElementById('end_time');
     const feedLossInput = document.getElementById('feed_loss');
@@ -205,9 +250,7 @@
     const revLossInput = document.getElementById('revenue_loss');
 
     function calculate() {
-        let diffMinutes = 0;
-        let diffHours = 0;
-
+        let diffMinutes = 0, diffHours = 0;
         if (startInput.value && endInput.value) {
             const start = new Date(startInput.value);
             const end = new Date(endInput.value);
@@ -223,7 +266,6 @@
                 diffHours = diffMinutes / 60;
             }
         }
-
         bdTimeInput.value = diffMinutes;
 
         let revenue = 0;
@@ -239,10 +281,10 @@
             else if (div === 'CPP 2') multiplier = 54 * 20000;
             revenue = diffHours * multiplier;
         }
-
         revLossInput.value = Math.round(revenue);
     }
 
+    // ── Equipment dropdown
     const rawJson = {{ division_machines_json | tojson | safe }};
     const divisionMachines = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
     const machineInput = document.getElementById('machine_name');
@@ -250,32 +292,67 @@
     function updateMachines() {
         const selectedDiv = divisionInput.value;
         const machines = divisionMachines[selectedDiv] || [];
-
         machineInput.options.length = 0;
-        const defaultOption = document.createElement('option');
-        defaultOption.value = "";
-        defaultOption.textContent = "Select Equipment...";
-        defaultOption.disabled = true;
-        defaultOption.selected = true;
-        machineInput.appendChild(defaultOption);
-
-        machines.forEach(machine => {
-            const option = document.createElement('option');
-            option.value = machine;
-            option.textContent = machine;
-            machineInput.appendChild(option);
+        const d = document.createElement('option');
+        d.value = ''; d.textContent = 'Select Equipment...'; d.disabled = true; d.selected = true;
+        machineInput.appendChild(d);
+        machines.forEach(function(m) {
+            const o = document.createElement('option');
+            o.value = m; o.textContent = m;
+            machineInput.appendChild(o);
         });
     }
+    updateMachines();
 
-    startInput.addEventListener('change', calculate);
-    endInput.addEventListener('change', calculate);
-    feedLossInput.addEventListener('change', calculate);
-    divisionInput.addEventListener('change', () => {
-        calculate();
-        updateMachines();
+    // ── File drag-drop
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('attached_doc');
+    const fileList = document.getElementById('file-list');
+
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('fu-drag-over'); });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('fu-drag-over'); });
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('fu-drag-over');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect(fileInput);
+        }
     });
 
-    // Initial population on load
-    updateMachines();
+    function handleFileSelect(input) {
+        fileList.innerHTML = '';
+        if (!input.files.length) return;
+        const file = input.files[0];
+        const icons = { 'image/jpeg': '&#128444;', 'image/png': '&#128444;', 'image/webp': '&#128444;', 'application/pdf': '&#128196;' };
+        const icon = icons[file.type] || '&#128206;';
+        const size = file.size < 1024*1024
+            ? (file.size/1024).toFixed(1) + ' KB'
+            : (file.size/(1024*1024)).toFixed(1) + ' MB';
+        fileList.innerHTML = '<li class="fu-item">' +
+            '<span class="fu-file-icon">' + icon + '</span>' +
+            '<div class="fu-file-info"><span class="fu-file-name">' + file.name + '</span><span class="fu-file-size">' + size + '</span></div>' +
+            '<button type="button" class="fu-remove" onclick="clearFile()" title="Remove">&#10005;</button>' +
+            '</li>';
+        updateStep(8);
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        fileList.innerHTML = '';
+    }
+
+    // ── Animate sections on load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.bl-section').forEach(function(el, i) {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(12px)';
+            el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            setTimeout(function() {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 80 + i * 60);
+        });
+    });
 </script>
 {% endblock %}

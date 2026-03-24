@@ -41,6 +41,11 @@ class BreakdownLog(Base):
     doc_description = Column(String, nullable=True)
     revenue_loss = Column(Float, nullable=True)
 
+    # MTTR & failure classification (matches RAG_april schema)
+    mttr_hours = Column(Float, nullable=True)           # Mean Time To Repair in hours
+    severity_level = Column(String, nullable=True)      # Critical | High | Medium | Low
+    failure_type = Column(String, nullable=True)        # Electrical | Mechanical | Hydraulic | Pneumatic | Software | Structural | Other
+
     # Stores RCA JSON. Two supported formats:
     #
     # AI-generated:
@@ -59,6 +64,49 @@ class BreakdownLog(Base):
 
     author_id = Column(Integer, ForeignKey("users.id"))
     author = relationship("User", back_populates="breakdown_logs")
+
+
+class CAPA(Base):
+    __tablename__ = "capas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    breakdown_log_id = Column(Integer, ForeignKey("breakdown_logs.id"), nullable=True)
+    action_type = Column(String, default="Corrective")   # Corrective | Preventive | Both
+    actions = Column(Text, nullable=True)                 # newline-separated action steps
+    owner = Column(String, nullable=True)
+    due_date = Column(String, nullable=True)              # ISO date string
+    priority = Column(String, nullable=True)              # High | Medium | Low
+    impact_level = Column(String, nullable=True)          # High | Medium | Low
+    status = Column(String, default="Open")               # Open | In Progress | Pending Validation | Completed
+    root_cause = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    tasks = relationship("CAPATask", back_populates="capa", cascade="all, delete-orphan")
+    comments = relationship("CAPAComment", back_populates="capa", cascade="all, delete-orphan")
+
+
+class CAPATask(Base):
+    __tablename__ = "capa_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    capa_id = Column(Integer, ForeignKey("capas.id", ondelete="CASCADE"))
+    task_title = Column(String)
+    is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    capa = relationship("CAPA", back_populates="tasks")
+
+
+class CAPAComment(Base):
+    __tablename__ = "capa_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    capa_id = Column(Integer, ForeignKey("capas.id", ondelete="CASCADE"))
+    comment_text = Column(Text)
+    author_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    capa = relationship("CAPA", back_populates="comments")
 
 
 def init_db():

@@ -2,93 +2,155 @@
 
 {% block head %}
 <style>
-    .login-container {
+    .login-page {
+        min-height: 100vh;
         display: flex;
-        justify-content: center;
         align-items: center;
-        min-height: calc(100vh - 4rem);
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
     }
-
-    .login-box {
+    .login-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        pointer-events: none;
+    }
+    .login-blob-1 {
+        width: 400px; height: 400px;
+        top: 10%; left: 15%;
+        background: rgba(51,177,176,0.15);
+    }
+    .login-blob-2 {
+        width: 300px; height: 300px;
+        bottom: 15%; right: 10%;
+        background: rgba(51,177,176,0.10);
+    }
+    .login-card {
         width: 100%;
-        max-width: 450px;
+        max-width: 420px;
+        padding: 40px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        position: relative;
+        z-index: 1;
+    }
+    .login-header {
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
     }
-
     .login-logo {
-        margin-bottom: 2rem;
+        width: 60px; height: 60px;
+        background: linear-gradient(135deg, #33B1B0, #2a9a99);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 24px rgba(51,177,176,0.35);
     }
-
-    .login-logo svg {
-        width: 64px;
-        height: 64px;
-        stroke: var(--accent);
-        filter: drop-shadow(0 0 10px var(--accent-glow));
-    }
-
     .login-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        color: #1a1a1a;
+        margin: 0;
     }
-
     .login-subtitle {
-        color: var(--text-muted);
-        margin-bottom: 2rem;
-    }
-
-    .form-group {
-        text-align: left;
-    }
-
-    .btn-login {
-        width: 100%;
-        padding: 1rem;
-        font-size: 1.1rem;
-        margin-top: 1rem;
-    }
-
-    .error-msg {
-        color: var(--danger);
-        background: rgba(255, 75, 75, 0.1);
-        border: 1px solid rgba(255, 75, 75, 0.2);
-        padding: 0.75rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
         font-size: 0.9rem;
+        color: rgba(60,61,63,0.6);
+        margin: 0;
+    }
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .login-hint {
+        font-size: 0.78rem;
+        color: rgba(60,61,63,0.5);
+        text-align: center;
+        border-top: 1px solid rgba(60,61,63,0.12);
+        padding-top: 16px;
+    }
+    .login-hint code {
+        background: rgba(51,177,176,0.08);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-family: monospace;
+        font-size: 0.78rem;
+        color: #33B1B0;
+    }
+    .login-error {
+        color: var(--danger);
+        background: rgba(224,60,60,0.08);
+        border: 1px solid rgba(224,60,60,0.2);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        text-align: center;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-container">
-    <div class="glass-panel login-box">
-        <div class="login-logo" style="display: flex; align-items: center; justify-content: center; gap: 0;">
-            <img src="/static/favicon.svg" width="48" height="48" alt="ProdAI Logo">
-            <div style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin-top: 5px;">
-                <span style="color: #3ba3a5;">Prod</span><span style="color: #4a5568;">AI</span>
-            </div>
-        </div>
-        <h1 class="login-title">Welcome Back</h1>
-        <p class="login-subtitle">Sign in to ProdAI Dashboard</p>
+<div class="login-page">
+    <!-- Background blobs -->
+    <div class="login-blob login-blob-1"></div>
+    <div class="login-blob login-blob-2"></div>
 
-        {% if error %}
-        <div class="error-msg">
-            {{ error }}
+    <div class="glass-card login-card fade-in">
+        <!-- Header -->
+        <div class="login-header">
+            <div class="login-logo">
+                <img src="/static/favicon.svg" alt="ProdAI" style="height: 36px; width: auto; display: block; filter: brightness(10);">
+            </div>
+            <h1 class="login-title">Welcome Back</h1>
+            <p class="login-subtitle">Sign in to your account to continue</p>
         </div>
-        {% endif %}
 
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" required placeholder="Enter your email">
+        <!-- Form -->
+        <form action="/login" method="POST" class="login-form">
+            {% if error %}
+            <div class="login-error fade-in">{{ error }}</div>
+            {% endif %}
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="email">Email Address</label>
+                <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    class="form-input"
+                    placeholder="you@example.com"
+                    required
+                    autocomplete="email"
+                >
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="Enter your password">
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="password">Password</label>
+                <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    class="form-input"
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                >
             </div>
-            <button type="submit" class="btn btn-primary btn-login">Sign In</button>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+                Sign In
+            </button>
         </form>
+
+        <!-- Hint -->
+        <p class="login-hint">
+            Demo: <code>admin@plant.com</code> / <code>admin123</code>
+        </p>
     </div>
 </div>
 {% endblock %}

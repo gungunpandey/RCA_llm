@@ -253,5 +253,28 @@
     "Shearing Machine",
     "Transformer",
     "Withdrawl"
+  ],
+  "Jigging": [
+    "Automatic Flocculant Dosing System",
+    "Compressor",
+    "Cyclone Cluster",
+    "High Rate Thickener",
+    "Jig",
+    "Lobe Blower",
+    "Slurry Pump",
+    "Vibrating Screen",
+    "Vibrating Screen Double Deck Desliming",
+    "Vibrating Screen Single Deck Dewatering"
+  ],
+  "PCI": [
+    "BAG FILTER(COAL MILL)",
+    "BAG FILTER(Multicor)",
+    "Blower & Vacuum Pump",
+    "COAL MILL, GRIT SEPRATOR & CYCLONE",
+    "Cyclone Separator",
+    "FK Pump",
+    "Hag Fan",
+    "LBS & LES Pump",
+    "Multicor"
   ]
 }

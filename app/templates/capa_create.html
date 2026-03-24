@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bl-page" style="padding-top: 0;">
+
+    <!-- Hero -->
+    <div class="bl-hero fade-in">
+        <div class="bl-hero-icon" style="font-size: 1.6rem;">&#128737;</div>
+        <div>
+            <h1 class="bl-hero-title">{% if capa %}Edit CAPA{% else %}CAPA Creation{% endif %}</h1>
+            <p class="bl-hero-sub">{% if capa %}Update the details of this Corrective / Preventive Action{% else %}Create a Corrective / Preventive Action from an identified Root Cause{% endif %}</p>
+        </div>
+    </div>
+
+    <form class="bl-form" action="/capa/create" method="POST" novalidate>
+        {% if capa %}
+        <input type="hidden" name="edit_id" value="{{ capa.id }}">
+        {% endif %}
+        {% if breakdown_id %}
+        <input type="hidden" name="breakdown_id" value="{{ breakdown_id }}">
+        {% endif %}
+
+        <!-- 1. Root Cause Reference -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">1</div>
+                <h3 class="bl-section-title">Root Cause Reference</h3>
+            </div>
+            <div class="bl-section-body">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(51,177,176,0.07); border: 1px solid rgba(51,177,176,0.3); border-radius: var(--radius-sm);">
+                    <span style="font-size: 1.2rem;">&#128269;</span>
+                    <div style="flex: 1;">
+                        <p style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 2px;">Root Cause</p>
+                        <input type="text" name="root_cause" class="form-input" value="{{ root_cause or '' }}"
+                            placeholder="Enter the identified root cause..."
+                            style="background: transparent; border: none; padding: 0; font-weight: 600; font-size: 0.95rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Action Type -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">2</div>
+                <h3 class="bl-section-title">Action Type</h3>
+            </div>
+            <div class="bl-section-body">
+                <div class="pill-group">
+                    {% set at = capa.action_type if capa else 'Corrective' %}
+                    <button type="button" class="pill-btn {% if at == 'Corrective' %}pill-active{% endif %}"
+                        onclick="setActionType(this, 'Corrective')">Corrective Action</button>
+                    <button type="button" class="pill-btn {% if at == 'Preventive' %}pill-active{% endif %}"
+                        onclick="setActionType(this, 'Preventive')">Preventive Action</button>
+                    <button type="button" class="pill-btn {% if at == 'Both' %}pill-active{% endif %}"
+                        onclick="setActionType(this, 'Both')">Both</button>
+                </div>
+                <input type="hidden" name="action_type" id="action_type" value="{{ at }}">
+            </div>
+        </div>
+
+        <!-- 3. CAPA Action Steps -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">3</div>
+                <h3 class="bl-section-title">CAPA Action Steps</h3>
+            </div>
+            <div class="bl-section-body" id="steps-container">
+                {% set steps = capa.actions.split('\n') if capa and capa.actions else [''] %}
+                {% for step in steps %}
+                <div class="step-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: rgba(51,177,176,0.15); color: var(--accent); font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" class="step-num">{{ loop.index }}</span>
+                    <input class="form-input step-input" value="{{ step }}" placeholder="Step {{ loop.index }}..." style="flex: 1;">
+                    <button type="button" onclick="removeStep(this)" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1rem; padding: 4px;">&#10005;</button>
+                </div>
+                {% endfor %}
+                <button type="button" class="btn btn-ghost" onclick="addStep()"
+                    style="align-self: flex-start; font-size: 0.85rem; padding: 8px 16px; margin-top: 4px;">
+                    + Add another step
+                </button>
+                <input type="hidden" name="actions" id="actions_hidden">
+            </div>
+        </div>
+
+        <!-- 4. Assignment & Timeline -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">4</div>
+                <h3 class="bl-section-title">Assignment &amp; Timeline</h3>
+            </div>
+            <div class="bl-section-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Assign Owner</label>
+                        <input type="text" name="owner" class="form-input" value="{{ capa.owner if capa else '' }}"
+                            placeholder="Enter owner name...">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" name="due_date" class="form-input"
+                            value="{{ capa.due_date if capa else '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Priority, Risk & Status -->
+        <div class="bl-section">
+            <div class="bl-section-header">
+                <div class="bl-step">5</div>
+                <h3 class="bl-section-title">Priority, Risk &amp; Status</h3>
+            </div>
+            <div class="bl-section-body">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Priority</label>
+                        <select name="priority" class="form-input bl-select">
+                            <option value="">-- Select --</option>
+                            {% set pr = capa.priority if capa else '' %}
+                            <option value="High" {% if pr=='High' %}selected{% endif %}>High</option>
+                            <option value="Medium" {% if pr=='Medium' %}selected{% endif %}>Medium</option>
+                            <option value="Low" {% if pr=='Low' %}selected{% endif %}>Low</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Risk / Impact</label>
+                        <select name="impact_level" class="form-input bl-select">
+                            <option value="">-- Select --</option>
+                            {% set il = capa.impact_level if capa else '' %}
+                            <option value="High" {% if il=='High' %}selected{% endif %}>High Impact</option>
+                            <option value="Medium" {% if il=='Medium' %}selected{% endif %}>Medium Impact</option>
+                            <option value="Low" {% if il=='Low' %}selected{% endif %}>Low Impact</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Status</label>
+                        <select name="capa_status" class="form-input bl-select">
+                            {% set cs = capa.status if capa else 'Open' %}
+                            <option value="Open" {% if cs=='Open' %}selected{% endif %}>Open</option>
+                            <option value="In Progress" {% if cs=='In Progress' %}selected{% endif %}>In Progress</option>
+                            <option value="Pending Validation" {% if cs=='Pending Validation' %}selected{% endif %}>Pending Validation</option>
+                            <option value="Completed" {% if cs=='Completed' %}selected{% endif %}>Completed</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="bl-actions">
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;"
+                onclick="collectSteps()">
+                {% if capa %}Save Changes{% else %}Confirm &amp; Create CAPA{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setActionType(btn, val) {
+    document.getElementById('action_type').value = val;
+    document.querySelectorAll('.pill-btn').forEach(function(b) { b.classList.remove('pill-active'); });
+    btn.classList.add('pill-active');
+}
+
+function addStep() {
+    const container = document.getElementById('steps-container');
+    const rows = container.querySelectorAll('.step-row');
+    const n = rows.length + 1;
+    const div = document.createElement('div');
+    div.className = 'step-row';
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    div.innerHTML = '<span style="width:24px;height:24px;border-radius:50%;background:rgba(51,177,176,0.15);color:var(--accent);font-size:0.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;" class="step-num">' + n + '</span>' +
+        '<input class="form-input step-input" placeholder="Step ' + n + '..." style="flex:1;">' +
+        '<button type="button" onclick="removeStep(this)" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:1rem;padding:4px;">&#10005;</button>';
+    container.insertBefore(div, container.querySelector('.btn'));
+    renumberSteps();
+}
+
+function removeStep(btn) {
+    btn.closest('.step-row').remove();
+    renumberSteps();
+}
+
+function renumberSteps() {
+    document.querySelectorAll('.step-row').forEach(function(row, i) {
+        row.querySelector('.step-num').textContent = i + 1;
+    });
+}
+
+function collectSteps() {
+    var inputs = document.querySelectorAll('.step-input');
+    var vals = [];
+    inputs.forEach(function(inp) { if (inp.value.trim()) vals.push(inp.value.trim()); });
+    document.getElementById('actions_hidden').value = vals.join('\n');
+}
+</script>
+{% endblock %}

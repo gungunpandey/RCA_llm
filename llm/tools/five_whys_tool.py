@@ -569,12 +569,12 @@ Be specific and reference procedures from the documentation where applicable.
 
     async def _summarize_why_step(self, step_number: int, full_answer: str) -> str:
         """
-        Call the LLM (async) to produce a concise 2-sentence summary of a Why step answer.
-        This summary is used in the final RCA report card; the full answer is
+        Call the LLM (async) to produce a concise 1-line summary of a Why step answer.
+        This summary is used in the formal RCA report table; the full answer is
         preserved separately for the detailed reasoning panel.
 
         Returns:
-            A 2-sentence summary string, or the original full_answer if summarization fails.
+            A single-sentence summary string, or the original full_answer if summarization fails.
         """
         import re
 
@@ -586,18 +586,18 @@ The following is the FULL detailed analysis for Why #{step_number}:
 {full_answer}
 \"\"\"
 
-Your task: Rewrite this as a concise 2-sentence summary for the report card that a plant manager will read.
+Your task: Compress the above into a SINGLE short sentence (maximum 20 words) that a plant manager can scan in seconds.
 
 Strict rules:
-1. Write EXACTLY 2 complete sentences.
-2. Sentence 1: State the core causal finding (what caused what and why).
-3. Sentence 2: State the key evidence or mechanism that confirms this.
-4. Do NOT use markdown, bullet points, asterisks, numbers, or bold/italic formatting.
-5. Do NOT start with phrases like "In summary", "The answer is", "This step", etc.
-6. Preserve critical technical terms and any measurement values.
-7. Write in plain, professional English — clear to a non-specialist.
+1. Write EXACTLY 1 sentence — no more.
+2. State only the core cause-and-effect in plain language.
+3. Maximum 20 words. Shorter is better.
+4. Do NOT use markdown, bullet points, asterisks, or any formatting.
+5. Do NOT start with "In summary", "The answer is", "This step", "Because", etc.
+6. Preserve critical technical terms (e.g. equipment names, failure modes).
+7. Example good output: "Internal corrosion caused wall thinning and cracking in the heat exchanger piping."
 
-Respond with ONLY the 2-sentence summary. Nothing else."""
+Respond with ONLY the single sentence. Nothing else."""
 
         try:
             # Use async generate() — never block the event loop with a sync call

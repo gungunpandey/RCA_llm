@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .capa-summary {
+        display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .capa-summary-card {
+        padding: 10px 20px;
+        display: flex; align-items: center; gap: 10px;
+        flex: 1 1 140px;
+    }
+    .capa-summary-val {
+        font-size: 1.5rem; font-weight: 800;
+    }
+    .capa-summary-label {
+        font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;
+    }
+    .kanban-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+    @media (max-width: 900px) { .kanban-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .kanban-grid { grid-template-columns: 1fr; } }
+
+    .kanban-col-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 12px;
+        background: radial-gradient(ellipse at center, #ffffff 30%, rgba(51,177,176,0.14) 100%);
+        border: 1px solid rgba(60,61,63,0.15);
+        border-radius: 10px;
+    }
+    .kanban-col-title {
+        font-weight: 700; font-size: 0.82rem; color: #1a1a1a;
+        text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .kanban-col-count {
+        font-weight: 700; font-size: 0.75rem;
+        background: rgba(51,177,176,0.15); color: var(--accent);
+        padding: 2px 8px; border-radius: 99px;
+    }
+    .capa-card {
+        background: radial-gradient(ellipse at center, #ffffff 30%, rgba(51,177,176,0.14) 100%);
+        border: 1px solid rgba(60,61,63,0.18);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(60,61,63,0.08);
+    }
+    .capa-card:hover {
+        box-shadow: 0 6px 20px rgba(60,61,63,0.13);
+    }
+    .capa-card-strip { height: 4px; }
+    .capa-card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .capa-card-title { font-weight: 700; font-size: 0.88rem; color: #1a1a1a; margin: 0; line-height: 1.4; }
+    .capa-card-meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .capa-card-owner { font-size: 0.75rem; color: var(--text-secondary); }
+    .capa-card-priority {
+        font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+        border-radius: 99px;
+    }
+    .capa-card-actions {
+        display: flex; gap: 6px; border-top: 1px solid rgba(60,61,63,0.10); padding-top: 8px;
+    }
+    .capa-action-btn {
+        font-size: 0.72rem; font-weight: 600; padding: 3px 9px;
+        border-radius: 6px; cursor: pointer; font-family: inherit;
+        transition: background 0.15s; text-decoration: none;
+        display: inline-flex; align-items: center;
+    }
+    .kanban-empty {
+        text-align: center; padding: 28px 12px;
+        color: rgba(60,61,63,0.4); font-size: 0.8rem;
+        border: 1.5px dashed rgba(60,61,63,0.15);
+        border-radius: 10px;
+    }
+    .filter-bar {
+        display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="db-page" style="padding-top: 0;">
+    <div class="db-main" style="max-width: 1400px;">
+
+        <!-- Hero -->
+        <div class="bl-hero" style="max-width: 100%; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="bl-hero-icon">&#128203;</div>
+                <div>
+                    <h1 class="bl-hero-title">CAPA Tracking Board</h1>
+                    <p class="bl-hero-sub">Monitor and manage all corrective &amp; preventive actions</p>
+                </div>
+            </div>
+            <a href="/capa/create" class="btn btn-primary" style="white-space: nowrap; text-decoration: none;">
+                + Create CAPA
+            </a>
+        </div>
+
+        <!-- Summary bar -->
+        {% set total = capas|length %}
+        {% set in_prog = capas|selectattr('status', 'equalto', 'In Progress')|list|length %}
+        {% set completed = capas|selectattr('status', 'equalto', 'Completed')|list|length %}
+        {% set open_count = capas|selectattr('status', 'equalto', 'Open')|list|length %}
+        <div class="capa-summary">
+            <div class="glass-card capa-summary-card">
+                <span class="capa-summary-val" style="color: var(--accent);">{{ total }}</span>
+                <span class="capa-summary-label">Total CAPAs</span>
+            </div>
+            <div class="glass-card capa-summary-card">
+                <span class="capa-summary-val" style="color: #f0a500;">{{ in_prog }}</span>
+                <span class="capa-summary-label">In Progress</span>
+            </div>
+            <div class="glass-card capa-summary-card">
+                <span class="capa-summary-val" style="color: #22a85a;">{{ completed }}</span>
+                <span class="capa-summary-label">Completed</span>
+            </div>
+            <div class="glass-card capa-summary-card">
+                <span class="capa-summary-val" style="color: #e03c3c;">{{ open_count }}</span>
+                <span class="capa-summary-label">Open</span>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        {% if total == 0 %}
+        <div class="glass-card" style="text-align: center; padding: 48px 24px;">
+            <p style="font-size: 1.5rem; margin-bottom: 8px;">&#128237;</p>
+            <p style="font-weight: 700; color: #1a1a1a; margin: 0 0 6px;">No CAPAs found</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                No CAPAs yet. Create one from Root Cause Analysis.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Kanban Board -->
+        {% if total > 0 %}
+        <div class="kanban-grid">
+            {% set columns = ['Open', 'In Progress', 'Pending Validation', 'Completed'] %}
+            {% set priority_colors = {'High': '#e03c3c', 'Medium': '#f0a500', 'Low': '#33B1B0'} %}
+
+            {% for col in columns %}
+            {% set col_capas = capas|selectattr('status', 'equalto', col)|list %}
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Column header -->
+                <div class="kanban-col-header">
+                    <span class="kanban-col-title">{{ col }}</span>
+                    <span class="kanban-col-count">{{ col_capas|length }}</span>
+                </div>
+
+                {% if col_capas|length == 0 %}
+                <div class="kanban-empty">No CAPAs here</div>
+                {% endif %}
+
+                {% for c in col_capas %}
+                {% set pcolor = priority_colors.get(c.priority, '#ccc') %}
+                <div class="capa-card">
+                    <div class="capa-card-strip" style="background: {{ pcolor }};"></div>
+                    <div class="capa-card-body">
+                        <p class="capa-card-title">{{ (c.actions or 'Untitled CAPA').split('\n')[0][:60] }}</p>
+                        <div class="capa-card-meta">
+                            <span class="capa-card-owner">{{ c.owner or 'Unassigned' }}</span>
+                            <span class="capa-card-priority" style="background: {{ pcolor }}18; color: {{ pcolor }};">
+                                {{ c.priority or 'N/A' }}
+                            </span>
+                        </div>
+                        {% if c.due_date %}
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">Due: {{ c.due_date }}</span>
+                        {% endif %}
+                        <div class="capa-card-actions">
+                            {% if c.status != 'Completed' %}
+                            <form action="/capa/{{ c.id }}/status" method="POST" style="display: inline; margin: 0;">
+                                <input type="hidden" name="new_status" value="Completed">
+                                <button type="submit" class="capa-action-btn"
+                                    style="border: 1px solid rgba(34,168,90,0.3); background: rgba(34,168,90,0.08); color: #22a85a;">
+                                    &#10003; Done
+                                </button>
+                            </form>
+                            <a href="/capa/create?edit={{ c.id }}" class="capa-action-btn"
+                                style="border: 1px solid rgba(51,177,176,0.3); background: rgba(51,177,176,0.08); color: var(--accent);">
+                                &#9998; Edit
+                            </a>
+                            {% endif %}
+                            <a href="/capa/{{ c.id }}/detail" class="capa-action-btn"
+                                style="border: 1px solid rgba(60,61,63,0.2); background: rgba(60,61,63,0.05); color: var(--text-secondary);">
+                                &#128065; View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

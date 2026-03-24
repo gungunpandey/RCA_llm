@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .detail-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+        align-items: start;
+    }
+    @media (max-width: 900px) {
+        .detail-layout { grid-template-columns: 1fr; }
+    }
+    .progress-track {
+        height: 8px;
+        background: rgba(60,61,63,0.10);
+        border-radius: 99px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.4s ease;
+    }
+    .task-item {
+        border: 1px solid rgba(60,61,63,0.12);
+        border-radius: 10px;
+        padding: 12px 14px;
+        transition: background 0.2s;
+    }
+    .task-item.done { background: rgba(34,168,90,0.04); }
+    .task-title {
+        flex: 1; font-size: 0.88rem; font-weight: 500;
+    }
+    .task-title.done-text {
+        color: var(--text-secondary);
+        text-decoration: line-through;
+    }
+    .comment-bubble {
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(51,177,176,0.05);
+        border: 1px solid rgba(51,177,176,0.15);
+    }
+    .timeline-dot {
+        width: 15px; height: 15px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #33B1B0, #2a9a99);
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .timeline-line {
+        position: absolute;
+        left: 7px; top: 18px;
+        width: 1px; bottom: 0;
+        background: rgba(51,177,176,0.2);
+    }
+    .section-label {
+        margin: 0 0 14px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set priority_colors = {'High': '#e03c3c', 'Medium': '#f0a500', 'Low': '#33B1B0'} %}
+{% set status_colors = {'In Progress': '#f0a500', 'Pending Validation': '#7c6bff', 'Completed': '#22a85a', 'Open': '#33B1B0'} %}
+{% set pcolor = priority_colors.get(capa.priority, '#ccc') %}
+{% set scolor = status_colors.get(capa.status, '#33B1B0') %}
+{% set done_count = tasks|selectattr('is_completed')|list|length %}
+{% set total_tasks = tasks|length %}
+{% set pct = ((done_count / total_tasks * 100)|int) if total_tasks > 0 else 0 %}
+
+<div class="db-page" style="padding-top: 0;">
+    <div style="max-width: 1300px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1;">
+
+        <!-- Top header card -->
+        <div class="glass-card" style="padding: 20px 24px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-size: 1.3rem; font-weight: 800; color: #1a1a1a;">
+                            &#128737; {{ (capa.actions or 'Untitled CAPA').split('\n')[0][:80] }}
+                        </span>
+                        <span style="font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: {{ scolor }}18; color: {{ scolor }};">{{ capa.status }}</span>
+                        <span style="font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: {{ pcolor }}18; color: {{ pcolor }};">{{ capa.priority or 'N/A' }}</span>
+                    </div>
+                    {% if capa.root_cause %}
+                    <p style="margin: 0; font-size: 0.82rem; color: var(--text-secondary);">
+                        <strong>Root Cause:</strong> {{ capa.root_cause }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                    <div>
+                        <p style="margin: 0 0 2px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Owner</p>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.88rem; color: #1a1a1a;">{{ capa.owner or 'Unassigned' }}</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 2px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Due Date</p>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.88rem; color: #1a1a1a;">{{ capa.due_date or 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div style="margin-top: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);">Task Progress</span>
+                    <span style="font-size: 0.78rem; font-weight: 700; color: var(--accent);">{{ done_count }} / {{ total_tasks }} tasks ({{ pct }}%)</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width: {{ pct }}%; background: {% if pct == 100 %}#22a85a{% else %}linear-gradient(90deg, #33B1B0, #2a9a99){% endif %};"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main 2-col layout -->
+        <div class="detail-layout">
+
+            <!-- LEFT: tasks + comments -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                <!-- Task checklist -->
+                <div class="glass-card" style="padding: 18px 22px;">
+                    <p class="section-label">Task Checklist</p>
+
+                    {% if tasks|length == 0 and action_steps|length > 0 %}
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+                        Action steps from CAPA (add tasks below to track them):
+                    </p>
+                    {% for step in action_steps %}
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <span style="width: 20px; height: 20px; border-radius: 50%; background: rgba(51,177,176,0.12); color: var(--accent); font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ loop.index }}</span>
+                        <span style="font-size: 0.85rem; color: var(--text-primary);">{{ step }}</span>
+                    </div>
+                    {% endfor %}
+                    <div style="border-top: 1px solid rgba(60,61,63,0.08); margin: 14px 0 0;"></div>
+                    {% endif %}
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        {% for task in tasks %}
+                        <div class="task-item {% if task.is_completed %}done{% endif %}">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <form action="/capa/{{ capa.id }}/task/{{ task.id }}/toggle" method="POST" style="display: inline; margin: 0;">
+                                    <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0;">
+                                        <input type="checkbox" {% if task.is_completed %}checked{% endif %}
+                                            style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; pointer-events: none;">
+                                    </button>
+                                </form>
+                                <span class="task-title {% if task.is_completed %}done-text{% endif %}">{{ task.task_title }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add new task -->
+                    <form action="/capa/{{ capa.id }}/task" method="POST" style="display: flex; gap: 8px; margin-top: 14px;">
+                        <input name="task_title" class="form-input" placeholder="New task title..." style="font-size: 0.85rem; padding: 8px 12px;">
+                        <button type="submit" class="btn btn-ghost" style="white-space: nowrap; padding: 8px 14px; font-size: 0.82rem;">+ Add Task</button>
+                    </form>
+                </div>
+
+                <!-- Comments -->
+                <div class="glass-card" style="padding: 18px 22px;">
+                    <p class="section-label">Comments</p>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+                        {% for c in comments %}
+                        <div class="comment-bubble">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span style="font-size: 0.78rem; font-weight: 700; color: #1a1a1a;">{{ c.author_name or 'Team' }}</span>
+                                <span style="font-size: 0.7rem; color: var(--text-secondary);">{{ c.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+                            </div>
+                            <p style="margin: 0; font-size: 0.83rem; color: var(--text-secondary);">{{ c.comment_text }}</p>
+                        </div>
+                        {% else %}
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-align: center; padding: 12px 0;">No comments yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <form action="/capa/{{ capa.id }}/comment" method="POST" style="display: flex; gap: 8px;">
+                        <input name="comment_text" class="form-input" placeholder="Write a comment..." style="font-size: 0.85rem; padding: 8px 12px;" required>
+                        <button type="submit" class="btn btn-ghost" style="white-space: nowrap; padding: 8px 14px; font-size: 0.82rem;">Add Comment</button>
+                    </form>
+                </div>
+
+                <!-- Status update -->
+                {% if capa.status != 'Completed' %}
+                <form action="/capa/{{ capa.id }}/status" method="POST">
+                    <input type="hidden" name="new_status" value="Pending Validation">
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1rem; font-weight: 700;">
+                        &#128278; Mark CAPA Ready for Validation
+                    </button>
+                </form>
+                {% else %}
+                <div class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1rem; font-weight: 700; background: #22a85a; cursor: default; justify-content: center;">
+                    &#9989; CAPA Completed
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- RIGHT: info sidebar -->
+            <div class="glass-card" style="padding: 18px 20px; position: sticky; top: 80px;">
+                <p class="section-label">CAPA Details</p>
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div>
+                        <p style="margin: 0 0 2px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Action Type</p>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.88rem;">{{ capa.action_type }}</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 2px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Impact Level</p>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.88rem;">{{ capa.impact_level or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 2px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Created</p>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.88rem;">{{ capa.created_at.strftime('%d %b %Y, %H:%M') }}</p>
+                    </div>
+
+                    <div style="border-top: 1px solid rgba(60,61,63,0.1); padding-top: 14px; margin-top: 4px;">
+                        <p style="margin: 0 0 8px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Quick Actions</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <a href="/capa/create?edit={{ capa.id }}" class="btn btn-ghost" style="font-size: 0.82rem; padding: 8px 14px; text-decoration: none; justify-content: center;">
+                                &#9998; Edit CAPA
+                            </a>
+                            <a href="/capa/board" class="btn btn-ghost" style="font-size: 0.82rem; padding: 8px 14px; text-decoration: none; justify-content: center;">
+                                &#8592; Back to Board
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

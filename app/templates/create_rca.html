@@ -1402,7 +1402,7 @@
     }
 
     // ── Export: PDF ──────────────────────────────────────────────────────────
-    function exportPDF() {
+    async function exportPDF() {
         if (!currentResult) { alert('No AI result to export.'); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
@@ -1457,7 +1457,7 @@
 
         // Draw a 4-column row: label | value | label | value
         function drawRow4(lbl1, val1, lbl2, val2, rowH) {
-            const cw = [38, 55, 44, 45];
+            const cw = [34, 54, 49, 45];
             const x = [MARGIN, MARGIN + cw[0], MARGIN + cw[0] + cw[1], MARGIN + cw[0] + cw[1] + cw[2]];
             checkPage(rowH + 1);
             doc.setFillColor(...LBLBG);
@@ -1530,6 +1530,7 @@
         y += 7;
 
         steps.forEach((s, idx) => {
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
             const qLines = doc.splitTextToSize(s.question || '', WC[1] - 4);
             const aLines = doc.splitTextToSize(s.answer_summary || s.answer || '', WC[2] - 4);
             const rowH   = Math.max(qLines.length, aLines.length) * 4.5 + 4;
@@ -1548,20 +1549,22 @@
             y += rowH;
         });
 
-        // Root Cause row
-        const rcLines = doc.splitTextToSize(rc, CONTENT - 42);
-        const rcH = Math.max(9, rcLines.length * 4.5 + 4);
+        // Root Cause row — set font FIRST so splitTextToSize uses correct glyph widths
+        const rcLabelW = 38;
+        const rcValW   = CONTENT - rcLabelW;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        const rcLines  = doc.splitTextToSize(rc, rcValW - 12);
+        const rcH      = Math.max(10, rcLines.length * 4.2 + 6);
         checkPage(rcH);
         doc.setFillColor(220, 243, 243);
         doc.rect(MARGIN, y, CONTENT, rcH, 'F');
         doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5);
         doc.rect(MARGIN, y, CONTENT, rcH);
-        doc.line(MARGIN + 38, y, MARGIN + 38, y + rcH);
-        doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5);
+        doc.line(MARGIN + rcLabelW, y, MARGIN + rcLabelW, y + rcH);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACCENT);
         doc.text('Root Cause', MARGIN + 2, y + rcH / 2 + 2.5);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...DARK);
-        doc.text(rcLines, MARGIN + 40, y + 4.5);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+        doc.text(rcLines, MARGIN + rcLabelW + 4, y + 5);
         y += rcH + 4;
 
         // ── Team ──
@@ -1608,6 +1611,77 @@
                 doc.text(r.targetDate     || '\u2014', CX[3] + 2, y + rowH / 2 + 1.5);
                 y += rowH;
             });
+        } // end of capa loop
+
+        // ── Image Analysis Section ──
+        const imgUrl = ATTACHED_IMAGE_URL || (_imageAnalysisResult && _imageAnalysisResult._image_url);
+        if (imgUrl) {
+            try {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = imgUrl;
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = () => resolve(); // skip on error
+                });
+
+                if (img.width && img.height) {
+                    doc.addPage();
+                    y = 15;
+                    drawSectionRow('Image Analysis & Evidence');
+                    
+                    const ia = _imageAnalysisResult || {};
+                    
+                    const MAX_IMG_W = CONTENT;
+                    const MAX_IMG_H = 150; 
+                    let w = img.width;
+                    let h = img.height;
+                    const ratio = Math.min(MAX_IMG_W / w, MAX_IMG_H / h);
+                    w = w * ratio;
+                    h = h * ratio;
+                    
+                    const imgX = MARGIN + (CONTENT - w) / 2;
+                    doc.addImage(img, 'JPEG', imgX, y, w, h);
+                    y += h + 8;
+                    
+                    if (Object.keys(ia).length > 0) {
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...DARK);
+                        let label = 'Observation: ';
+                        if (ia.damage_type && ia.component) {
+                            label = `Observation (${ia.component} - ${ia.damage_type}): `;
+                        }
+                        doc.text(label, MARGIN, y);
+                        y += 6;
+                        
+                        const obs = ia.combined_observation || ia.ai_description || 'No detailed AI analysis available.';
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                        const obsLines = doc.splitTextToSize(obs, CONTENT);
+                        doc.text(obsLines, MARGIN, y);
+                        y += (obsLines.length * 4.5) + 6;
+                        
+                        if (ia.visual_symptoms && ia.visual_symptoms.length > 0) {
+                            doc.setFont('helvetica', 'bold');
+                            doc.text('Visual Symptoms:', MARGIN, y);
+                            y += 5;
+                            doc.setFont('helvetica', 'normal');
+                            const vsLines = doc.splitTextToSize(ia.visual_symptoms.join(', '), CONTENT);
+                            doc.text(vsLines, MARGIN, y);
+                            y += (vsLines.length * 4.5) + 4;
+                        }
+
+                        if (ia.user_description) {
+                             doc.setFont('helvetica', 'bold');
+                             doc.text('Operator Note:', MARGIN, y);
+                             y += 5;
+                             doc.setFont('helvetica', 'normal');
+                             const udLines = doc.splitTextToSize(ia.user_description, CONTENT);
+                             doc.text(udLines, MARGIN, y);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to attach image to PDF', e);
+            }
         }
 
         // ── Footer on every page ──
