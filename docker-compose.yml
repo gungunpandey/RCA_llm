@@ -12,6 +12,8 @@ services:
       - ./llm/.env
     environment:
       - PYTHONUNBUFFERED=1
+    volumes:
+      - app_uploads:/app/static/uploads
     restart: unless-stopped
 
   # ── Web dashboard (port 8080) ──────────────────────────────────────────────
