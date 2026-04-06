@@ -18,6 +18,7 @@ from models.tool_results import ToolResult, DomainInsightsSummary, DomainAnalysi
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 from tools.five_whys_tool import FiveWhysTool
 from tools.fishbone_tool import FishboneTool
+from tools import history_matcher
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,19 @@ class IntegratedRCATool(BaseTool):
                 return None
 
         async def _perform_analysis():
+            # Step 0: Historical incident lookup (fast, non-blocking)
+            await _send_status("📜 Searching historical incident database...")
+            history_matches, history_context = await history_matcher.find_and_format(
+                equipment_name=equipment_name,
+                problem_description=failure_description,
+            )
+            if history_matches:
+                await _send_status(f"✓ Found {len(history_matches)} similar past incident(s)")
+                if status_callback:
+                    await status_callback(("__HISTORY_MATCHES__", history_matches))
+            else:
+                await _send_status("No similar historical incidents found")
+
             # Step 1: Route to domain agents
             await _send_status("🔍 Routing to domain experts...")
             selected_agents = self._route_agents(failure_description, symptoms)
@@ -163,8 +177,9 @@ class IntegratedRCATool(BaseTool):
                 failure_description=failure_description,
                 equipment_name=equipment_name,
                 symptoms=symptoms,
-                domain_insights=domain_insights,  # Pass domain context
-                image_analysis=image_analysis,     # Pass image analysis context
+                domain_insights=domain_insights,    # Pass domain context
+                image_analysis=image_analysis,      # Pass image analysis context
+                historical_context=history_context, # Pass historical reference
                 status_callback=status_callback
             )
             

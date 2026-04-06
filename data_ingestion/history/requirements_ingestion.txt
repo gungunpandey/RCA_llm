@@ -1,0 +1,14 @@
+# Dependencies for Phase 2 data ingestion scripts
+# (build_knowledge_graph.py, query_history.py)
+#
+# Install with:
+#   pip install -r requirements_ingestion.txt
+#
+# On EC2 (CPU-only, saves ~1GB vs default torch):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements_ingestion.txt
+
+neo4j>=5.14
+sentence-transformers>=3.0
+numpy>=1.24
+python-dotenv

@@ -43,8 +43,10 @@ FALLBACK_VISION_MODEL = "qwen/qwen2.5-vl-72b-instruct"
 OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 DATA_DIR = SCRIPT_DIR / "history_data"
-OUTPUT_FILE = SCRIPT_DIR / "extracted_data.json"
-STATUS_FILE = SCRIPT_DIR / "extraction_status.txt"
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "extracted_data.json"
+STATUS_FILE = OUTPUT_DIR / "extraction_status.txt"
 
 MAX_PAGES_SINGLE_CALL = 20
 PDF_DPI = 200  # balance between quality and size
@@ -89,9 +91,12 @@ Required JSON schema:
     {"step": 1, "question": "Why ...?", "answer": "Because ..."},
     {"step": 2, "question": "Why ...?", "answer": "Because ..."}
   ],
-  "root_cause": "the final identified root cause",
+  "root_cause": "the final identified root cause (MUST NOT be null)",
   "capa": [
-    {"action": "corrective action text", "responsibility": "person name or null", "target_date": "YYYY-MM-DD or null"}
+    {"action": "corrective action text", "responsibility": "person name or null", "target_date": "YYYY-MM-DD or null", "status": "Completed / Pending / null"}
+  ],
+  "preventive_actions": [
+    {"action": "preventive action text", "responsibility": "person name or null", "target_date": "YYYY-MM-DD or null", "status": "Completed / Pending / null"}
   ],
   "team_members": ["Name1", "Name2", ...] or [],
   "pm_frequency": "YEARLY / MONTHLY / QUARTERLY / etc. or null",
@@ -118,6 +123,11 @@ Rules:
 - Normalize downtime to minutes (e.g., "3 Hr 40 Min" → 220, "From 05:15 PM To 06:16 PM" → 61).
 - Dates should be in YYYY-MM-DD format. Convert Indian date formats (DD-MM-YY, DD/MM/YYYY, etc.).
 - For why_steps, extract each Why with its question and answer. There are typically 4-5 Whys.
+
+CRITICAL RULES:
+- root_cause MUST NEVER be null. If no explicit "Root Cause" field is found, derive it from the last answered why_step. A root cause can always be inferred from the 5 Whys chain.
+- CAPA (Corrective Action & Preventive Action): Documents often have a combined CAPA section or separate "Corrective Action" and "Preventive Action" sections. Extract ALL items from CAPA tables. If the document has a separate "Preventive Actions" or "Preventive Action to be taken" section, put those in the "preventive_actions" array. If CAPA is combined, put corrective actions in "capa" and preventive actions in "preventive_actions".
+- HANDWRITTEN vs PRINTED text: These are scanned documents. When you see printed/typed text that has been CROSSED OUT / STRUCK THROUGH and handwritten text written over or next to it, ALWAYS prefer the HANDWRITTEN text as the correct value. The handwritten text is the correction made by the engineer. Ignore the crossed-out printed text entirely.
 - YOUR ENTIRE RESPONSE MUST BE VALID JSON ONLY.
 """
 
@@ -223,7 +233,22 @@ REQUIRED_KEYS = {"equipment", "root_cause", "why_steps", "problem_statement"}
 
 def validate_extraction(result: dict) -> bool:
     """Check that the parsed JSON is a full RCA extraction, not a fragment."""
-    return len(result) >= 8 and REQUIRED_KEYS.issubset(result.keys())
+    if not (len(result) >= 8 and REQUIRED_KEYS.issubset(result.keys())):
+        return False
+    # Enforce non-null root_cause: derive from last why_step if missing
+    if not result.get("root_cause"):
+        why_steps = result.get("why_steps", [])
+        if why_steps:
+            # Use the last answered why_step as root cause
+            for ws in reversed(why_steps):
+                if ws.get("answer"):
+                    result["root_cause"] = ws["answer"]
+                    logger.warning(f"  root_cause was null — derived from why_step {ws.get('step')}: {ws['answer'][:80]}")
+                    break
+        if not result.get("root_cause"):
+            result["root_cause"] = result.get("problem_statement", "Root cause not identified")
+            logger.warning(f"  root_cause was null — set to problem_statement")
+    return True
 
 
 def call_vision_api(messages_content: list, max_tokens: int = 4096, retries: int = 2) -> str:

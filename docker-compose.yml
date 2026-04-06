@@ -1,6 +1,27 @@
 version: "3.9"
 
 services:
+  # ── Neo4j knowledge graph (port 7474 browser / 7687 bolt) ─────────────────
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"   # Neo4j browser UI
+      - "7687:7687"   # Bolt protocol (Python driver)
+    environment:
+      - NEO4J_AUTH=neo4j/rcapassword
+      # Conservative memory settings — safe for t2.small (2 GB) EC2
+      - NEO4J_server_memory_pagecache_size=256M
+      - NEO4J_server_memory_heap_initial__size=256M
+      - NEO4J_server_memory_heap_max__size=512M
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7474"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
   # ── AI/LLM backend (port 8000) ─────────────────────────────────────────────
   llm:
     build:
@@ -12,8 +33,16 @@ services:
       - ./llm/.env
     environment:
       - PYTHONUNBUFFERED=1
+      # Neo4j — uses internal Docker hostname (not localhost) when running in Docker
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=rcapassword
+    depends_on:
+      neo4j:
+        condition: service_healthy
     volumes:
       - app_uploads:/app/static/uploads
+      - hf_cache:/root/.cache/huggingface   # sentence-transformers model persists across restarts
     restart: unless-stopped
 
   # ── Web dashboard (port 8080) ──────────────────────────────────────────────
@@ -37,3 +66,5 @@ services:
 volumes:
   app_data:
   app_uploads:
+  neo4j_data:       # graph data persists across container restarts
+  hf_cache:         # HuggingFace model cache — avoids re-downloading on EC2 restarts

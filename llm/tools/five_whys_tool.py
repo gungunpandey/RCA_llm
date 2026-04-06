@@ -55,7 +55,8 @@ class FiveWhysTool(BaseTool):
         """
         # Optional callback for live status updates (used by SSE endpoint)
         status_callback = kwargs.get('status_callback')
-        image_analysis = kwargs.get('image_analysis')  # optional image analysis dict
+        image_analysis = kwargs.get('image_analysis')        # optional image analysis dict
+        historical_context = kwargs.get('historical_context')  # optional historical reference text
 
         async def _send_status(msg: str):
             if status_callback:
@@ -102,8 +103,9 @@ class FiveWhysTool(BaseTool):
                     previous_answer=current_answer,
                     rag_context=rag_context,
                     domain_insights=domain_insights,
-                    image_analysis=image_analysis if step_num == 1 else None,  # inject on step 1 only
-                    is_final=False  # No longer force systemic escalation
+                    image_analysis=image_analysis if step_num == 1 else None,        # inject on step 1 only
+                    historical_context=historical_context if step_num == 1 else None, # inject on step 1 only
+                    is_final=False
                 )
 
                 why_steps.append(why_result)
@@ -268,6 +270,7 @@ CONFIDENCE: [percentage, e.g., 82]
         rag_context: str,
         domain_insights: Optional[DomainInsightsSummary] = None,
         image_analysis: Optional[dict] = None,
+        historical_context: Optional[str] = None,
         is_final: bool = False
     ) -> WhyStep:
         """
@@ -316,14 +319,18 @@ CONFIDENCE: [percentage, e.g., 82]
         if domain_insights and domain_insights.key_findings:
             domain_section = f"\n\nDOMAIN EXPERT ANALYSIS (Pre-Analysis):\nThe following domain experts have already analyzed this failure:\n\n{self._format_domain_insights(domain_insights)}\n"
 
-                # Build prompt for this why step
+        history_section = ""
+        if historical_context:
+            history_section = f"\n\n{historical_context}\n"
+
+        # Build prompt for this why step
         if step_number == 1:
             prompt = f"""You are performing a 5 Whys Root Cause Analysis for industrial equipment failure.
 
 Equipment: {equipment_name}
 Failure Description: {failure_description}
 Observed Symptoms: {', '.join(symptoms)}
-{domain_section}{image_section}
+{domain_section}{history_section}{image_section}
 Relevant Technical Documentation:
 {rag_context}
 

@@ -17,6 +17,7 @@ data_old/
 pdfs/
 history/PLAN.md
 history/history_data
+history/output
 
 # IDE
 .vscode/

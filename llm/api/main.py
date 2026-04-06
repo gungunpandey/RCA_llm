@@ -366,6 +366,13 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
                 yield f"event: error\ndata: {json.dumps({'detail': item[1]})}\n\n"
                 break
 
+            # ── Intermediate: historical matches ready ────────────────────────
+            if isinstance(item, tuple) and item[0] == "__HISTORY_MATCHES__":
+                payload = json.dumps({"history_matches": item[1]}, default=str)
+                yield f"event: history_matches\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
             # ── Intermediate: domain insights ready ──────────────────────────
             if isinstance(item, tuple) and item[0] == "__DOMAIN_INSIGHTS__":
                 payload = json.dumps({"domain_insights": item[1]}, default=str)

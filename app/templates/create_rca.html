@@ -256,6 +256,135 @@
     }
     .btn-del-capa:hover { color: var(--danger); background: #fee2e2; }
 
+    /* ── Fishbone Diagram ── */
+    .fishbone-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+    @media (max-width: 768px) { .fishbone-grid { grid-template-columns: 1fr; } }
+    .fishbone-cat {
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 1rem 1.2rem;
+        position: relative;
+    }
+    .fishbone-cat.fb-primary {
+        border-color: rgba(59,163,165,0.45);
+        box-shadow: 0 2px 12px rgba(59,163,165,0.08);
+    }
+    .fishbone-cat-title {
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 0.6rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .fishbone-cat-icon {
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.72rem;
+        flex-shrink: 0;
+    }
+    .fishbone-cause {
+        font-size: 0.86rem;
+        color: var(--text-main);
+        padding: 0.45rem 0;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+    .fishbone-cause:last-child { border-bottom: none; }
+    .fb-evidence-tag {
+        display: inline-block;
+        padding: 0.12rem 0.45rem;
+        border-radius: 10px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .fb-ev-confirmed  { background: #dcfce7; color: #166534; }
+    .fb-ev-supported  { background: #fef3c7; color: #92400e; }
+    .fb-ev-possible   { background: #f1f5f9; color: #64748b; }
+    .fishbone-sub {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        padding-left: 0.6rem;
+        margin-top: 0.2rem;
+    }
+    .fishbone-empty {
+        color: var(--text-muted);
+        font-size: 0.82rem;
+        font-style: italic;
+        padding: 0.4rem 0;
+    }
+
+    /* ── Historical Matches ── */
+    .history-match-card {
+        background: #fff;
+        border: 1px solid rgba(59,163,165,0.25);
+        border-radius: 14px;
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 0.9rem;
+    }
+    .history-match-card:last-child { margin-bottom: 0; }
+    .history-match-header {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        margin-bottom: 0.7rem;
+        flex-wrap: wrap;
+    }
+    .history-sim-badge {
+        background: rgba(59,163,165,0.12);
+        color: var(--accent);
+        border: 1px solid rgba(59,163,165,0.3);
+        border-radius: 20px;
+        padding: 0.2rem 0.65rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .history-meta {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.6rem;
+    }
+    .history-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-muted);
+        margin-bottom: 0.2rem;
+    }
+    .history-value {
+        font-size: 0.9rem;
+        color: var(--text-main);
+        line-height: 1.5;
+        margin-bottom: 0.6rem;
+    }
+    .history-capa-list {
+        margin: 0.3rem 0 0 0;
+        padding-left: 1.1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    .history-capa-list li { margin-bottom: 0.25rem; }
+
     /* ── Manual Tree CSS (from new_design) ── */
     .rca-container {
         padding: 2rem;
@@ -328,6 +457,7 @@
     .node.drag-over { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(59,163,165,0.2); }
     .node[draggable=true] { cursor: grab; }
     .node[draggable=true]:active { cursor: grabbing; }
+    /* downward arrow connector between nodes */
     .tree ul ul li .node::before {
         content: '';
         position: absolute;
@@ -337,14 +467,23 @@
         border-right: 6px solid transparent;
         border-top: 6px solid var(--accent);
     }
-    .node-header { display: flex; align-items: center; justify-content: center; margin-bottom: 0.8rem; }
-    .node-badge {
-        background: #e0f2fe; color: #0369a1;
-        padding: 0.25rem 0.6rem; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 0.5px;
+    /* Root cause node — amber accent */
+    .node.node-root-cause {
+        border: 1.5px solid rgba(245,158,11,0.55);
+        background: linear-gradient(145deg, rgba(255,252,235,0.97), rgba(255,244,210,0.75));
+        box-shadow: 0 8px 32px rgba(245,158,11,0.10), inset 0 0 0 1px rgba(255,255,255,0.5);
     }
-    .node-badge.event { background: #fee2e2; color: #b91c1c; }
+    .node.node-root-cause:hover { box-shadow: 0 12px 40px rgba(245,158,11,0.18), inset 0 0 0 1px rgba(255,255,255,0.8); }
+    .node-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+    .node-badge {
+        padding: 0.22rem 0.65rem; border-radius: 20px;
+        font-size: 0.72rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .node-badge.event      { background: #fee2e2; color: #b91c1c; }
+    .node-badge.why        { background: rgba(59,163,165,0.12); color: var(--accent); border: 1px solid rgba(59,163,165,0.2); }
+    .node-badge.root-cause { background: #fef3c7; color: #92400e; border: 1px solid rgba(245,158,11,0.3); }
     .node-content textarea {
         width: 100%; min-height: 70px; padding: 0.75rem;
         border-radius: 8px; border: 1px solid transparent; resize: vertical;
@@ -604,6 +743,24 @@
         </div>
     </div>
 
+    <!-- Historical Matches (appears immediately when history_matches SSE event arrives) -->
+    <div id="history-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+        <div class="collapsible-header open" onclick="toggleSection('history-body', this)">
+            <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Historical Reference
+                <span id="history-count-badge" class="history-sim-badge" style="margin-left: 0.2rem;"></span>
+            </h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="history-body" style="margin-top: 1rem;">
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Similar past incidents from verified plant records. These have been injected into the AI analysis as reference — validate against current symptoms before applying.
+            </p>
+            <div id="history-content"></div>
+        </div>
+    </div>
+
     <!-- AI Report (shown after result) -->
     <div id="report-section" style="display: none;">
 
@@ -617,6 +774,17 @@
                 <table class="rca-formal-table">
                     <tbody id="rca-formal-tbody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Fishbone (Ishikawa) Diagram -->
+        <div id="fishbone-section" class="glass-panel" style="margin-bottom: 1.5rem; display: none;">
+            <div class="collapsible-header open" onclick="toggleSection('fishbone-body', this)">
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Fishbone (Ishikawa) Diagram</h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="fishbone-body" style="margin-top: 1rem;">
+                <div id="fishbone-content"></div>
             </div>
         </div>
 
@@ -700,11 +868,19 @@
 
 <!-- ══════════════════════ MANUAL PANEL ══════════════════════ -->
 <div id="panel-manual" class="tab-panel" style="display: none;">
-    <div class="glass-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <div class="glass-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
         <div>
             <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem;">Manual 5 Whys Tree</h3>
             <p class="text-muted" style="font-size: 0.88rem;">Drag nodes to rearrange. Click &ldquo;Next Why&rdquo; to dig deeper.</p>
         </div>
+        <button type="button" id="btn-reset-from-ai" onclick="populateTreeFromAI()" style="display:none; padding:0.4rem 0.9rem; font-size:0.82rem; border-radius:8px; border:1px solid rgba(59,163,165,0.4); background:rgba(59,163,165,0.07); color:var(--accent); font-weight:600; cursor:pointer;">
+            ↺ Reset from AI Report
+        </button>
+    </div>
+    <!-- Notice: shown when tree was auto-built from AI -->
+    <div id="ai-tree-notice" style="display:none; align-items:center; gap:0.6rem; background:rgba(59,163,165,0.07); border:1px solid rgba(59,163,165,0.25); border-radius:10px; padding:0.65rem 1rem; margin-bottom:1.2rem; font-size:0.85rem; color:var(--accent);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Tree auto-generated from AI Analysis — edit any node freely or drag to rearrange.
     </div>
     <div class="rca-container">
         <div class="tree" id="tree-container"></div>
@@ -726,12 +902,19 @@
     const IMAGE_DESC   = {{ (image_description or '') | tojson }};
 
     // ── Tab Management ───────────────────────────────────────────────────────
+    let _treeSourceResult = null; // which AI result the tree was last built from
+
     function switchTab(tab) {
         document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('panel-' + tab).style.display = 'block';
         document.getElementById('tab-' + tab).classList.add('active');
         currentTab = tab;
+
+        // Auto-populate tree from AI result when switching to manual tab
+        if (tab === 'manual' && currentResult && currentResult !== _treeSourceResult) {
+            populateTreeFromAI();
+        }
     }
 
     let currentTab = 'ai';
@@ -824,6 +1007,8 @@
         document.getElementById('status-collapsible').classList.add('open');
         document.getElementById('status-body').style.display = 'block';
         document.getElementById('status-log').innerHTML = '';
+        document.getElementById('history-section').style.display = 'none';
+        document.getElementById('history-content').innerHTML = '';
 
         const payload = {
             equipment_name:      document.getElementById('hid-equipment').value,
@@ -885,6 +1070,7 @@
     }
 
     let _pendingDomainInsights = null;
+    let _pendingHistoryMatches = null;
 
     function handleSSEData(eventType, dataStr) {
         if (!dataStr || dataStr === '""') return;
@@ -892,6 +1078,9 @@
             const data = JSON.parse(dataStr);
             if (eventType === 'status') {
                 addStatusLine(data.message || dataStr);
+            } else if (eventType === 'history_matches') {
+                _pendingHistoryMatches = data.history_matches;
+                renderHistoryMatches(data.history_matches);
             } else if (eventType === 'domain_insights') {
                 _pendingDomainInsights = data.domain_insights;
                 addStatusLine('Domain analysis complete.', 'done');
@@ -966,6 +1155,58 @@
         // Show section but keep body collapsed — user can expand
         document.getElementById('domain-body').style.display = 'none';
         document.getElementById('domain-section').querySelector('.collapsible-header').classList.remove('open');
+    }
+
+    // ── Historical Matches Renderer ──────────────────────────────────────────
+    function renderHistoryMatches(matches) {
+        const section = document.getElementById('history-section');
+        const content = document.getElementById('history-content');
+        const badge   = document.getElementById('history-count-badge');
+
+        if (!matches || matches.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        badge.textContent = matches.length + ' match' + (matches.length > 1 ? 'es' : '');
+        section.style.display = 'block';
+
+        let html = '';
+        matches.forEach((m, idx) => {
+            const pct      = Math.round((m.similarity_score || 0) * 100);
+            const date     = m.occurrence_from ? m.occurrence_from.split('T')[0] : 'Unknown';
+            const downtime = m.downtime_minutes ? m.downtime_minutes + ' min' : '?';
+
+            html += `<div class="history-match-card">
+                <div class="history-match-header">
+                    <span class="history-sim-badge">${pct}% match</span>
+                    <strong style="font-size: 0.95rem;">${escHtml(m.plant)} — ${escHtml(m.equipment)}</strong>
+                </div>
+                <div class="history-meta">
+                    <span>Date: ${escHtml(date)}</span>
+                    <span>Downtime: ${escHtml(downtime)}</span>
+                    <span>Dept: ${escHtml(m.department || '—')}</span>
+                </div>
+                <div class="history-label">Problem</div>
+                <div class="history-value">${escHtml(m.problem_statement)}</div>
+                <div class="history-label">Root Cause Found</div>
+                <div class="history-value">${escHtml(m.root_cause)}</div>`;
+
+            const capa = (m.capa || []).filter(c => c.action).slice(0, 3);
+            if (capa.length > 0) {
+                html += `<div class="history-label">Actions Taken</div>
+                <ul class="history-capa-list">`;
+                capa.forEach(c => {
+                    const owner = c.responsibility ? ` <em>[${escHtml(c.responsibility)}]</em>` : '';
+                    html += `<li>${escHtml(c.action)}${owner}</li>`;
+                });
+                html += `</ul>`;
+            }
+
+            html += `</div>`;
+        });
+
+        content.innerHTML = html;
     }
 
     // ── AI Report Renderer ───────────────────────────────────────────────────
@@ -1087,6 +1328,11 @@
             document.getElementById('team-list-input').value = result.team_list;
         }
 
+        // Render fishbone diagram if available
+        if (result.fishbone_analysis) {
+            renderFishbone(result.fishbone_analysis);
+        }
+
         // Render image analysis section if we have results
         const imgData = result.image_analysis || _imageAnalysisResult;
         if (imgData) {
@@ -1136,6 +1382,51 @@
     let treeData    = [];
     let treeCounter = 100;
 
+    // Build treeData from a 5 Whys step array (used for both AI result and saved AI data)
+    function buildTreeFromWhySteps(steps, rootCause) {
+        const initText = document.getElementById('hid-description').value || 'Failure Event';
+        treeData    = [];
+        treeCounter = 100;
+
+        // Root node = failure event description
+        treeData.push({ id: 0, parentId: null, text: initText, type: 'event' });
+
+        let prevId = 0;
+        (steps || []).forEach((step, idx) => {
+            const text = ((step.answer_summary || step.answer) || '').trim();
+            if (!text) return;
+            treeCounter++;
+            treeData.push({
+                id:       treeCounter,
+                parentId: prevId,
+                text:     text,   // clean text — no "Why #N:" prefix
+                type:     'why',
+                stepNum:  step.step_number || idx + 1
+            });
+            prevId = treeCounter;
+        });
+
+        // Append root cause node only if it adds something beyond the last why step
+        if (rootCause) {
+            const lastText = (treeData[treeData.length - 1] || {}).text || '';
+            if (!lastText.toLowerCase().includes(rootCause.slice(0, 40).toLowerCase())) {
+                treeCounter++;
+                treeData.push({ id: treeCounter, parentId: prevId, text: rootCause, type: 'root_cause' });
+            }
+        }
+    }
+
+    // Populate tree from the current AI result and refresh display
+    function populateTreeFromAI() {
+        if (!currentResult) return;
+        const fw = currentResult.five_whys_analysis || {};
+        buildTreeFromWhySteps(fw.why_steps, currentResult.final_root_cause || fw.root_cause || '');
+        _treeSourceResult = currentResult;
+        renderTree();
+        document.getElementById('ai-tree-notice').style.display  = 'flex';
+        document.getElementById('btn-reset-from-ai').style.display = 'inline-block';
+    }
+
     function initTree() {
         const initialText = document.getElementById('hid-description').value;
         if (SAVED_TYPE === 'manual_tree' && SAVED_DATA && SAVED_DATA.nodes) {
@@ -1148,6 +1439,12 @@
                 n.parentId = (i === 0) ? null : treeData[i-1].id;
                 if (n.id >= treeCounter) treeCounter = n.id + 1;
             });
+        } else if (SAVED_TYPE === 'ai_generated' && SAVED_DATA && SAVED_DATA.five_whys_analysis) {
+            // Page loaded with a saved AI report — build tree from its why steps
+            const fw = SAVED_DATA.five_whys_analysis;
+            buildTreeFromWhySteps(fw.why_steps, SAVED_DATA.final_root_cause || fw.root_cause || '');
+            document.getElementById('ai-tree-notice').style.display   = 'flex';
+            document.getElementById('btn-reset-from-ai').style.display = 'none'; // no live result to reset from
         } else {
             treeData = [{ id: 0, parentId: null, text: initialText }];
         }
@@ -1161,7 +1458,7 @@
 
     function addChild(parentId) {
         treeCounter++;
-        treeData.push({ id: treeCounter, parentId, text: '', animate: true });
+        treeData.push({ id: treeCounter, parentId, text: '', animate: true, type: 'why' });
         renderTree();
     }
 
@@ -1169,9 +1466,15 @@
         const node = treeData.find(n => n.id === nodeId);
         if (node && node.parentId !== null) {
             treeCounter++;
-            treeData.push({ id: treeCounter, parentId: node.parentId, text: '', animate: true });
+            treeData.push({ id: treeCounter, parentId: node.parentId, text: '', animate: true, type: 'why' });
             renderTree();
         }
+    }
+
+    function getNodeDepth(nodeId) {
+        let depth = 0, node = treeData.find(n => n.id === nodeId);
+        while (node && node.parentId !== null) { depth++; node = treeData.find(n => n.id === node.parentId); }
+        return depth;
     }
 
     function removeNodeAndChildren(nodeId) {
@@ -1226,8 +1529,25 @@
         children.forEach(child => {
             const li  = document.createElement('li');
             const div = document.createElement('div');
-            const isRoot = parentId === null;
-            div.className = 'node' + (child.animate ? ' shake-animate' : '');
+            const isRoot      = parentId === null;
+            const isRootCause = child.type === 'root_cause';
+            const depth       = isRoot ? 0 : getNodeDepth(child.id);
+            const whyNum      = child.stepNum || depth;
+
+            // Badge
+            let badgeCls, badgeHTML;
+            if (isRoot) {
+                badgeCls  = 'event';
+                badgeHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Event';
+            } else if (isRootCause) {
+                badgeCls  = 'root-cause';
+                badgeHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Root Cause';
+            } else {
+                badgeCls  = 'why';
+                badgeHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Why ${whyNum}`;
+            }
+
+            div.className = 'node' + (isRootCause ? ' node-root-cause' : '') + (child.animate ? ' shake-animate' : '');
             if (!isRoot) {
                 div.setAttribute('draggable', 'true');
                 div.setAttribute('ondragstart', `dragStart(event, ${child.id})`);
@@ -1236,20 +1556,21 @@
             div.setAttribute('ondragover', 'dragOver(event)');
             div.setAttribute('ondragleave', 'dragLeave(event)');
             div.setAttribute('ondrop', `dropNode(event, ${child.id})`);
+
             div.innerHTML = `
                 <div class="node-header">
-                    <span class="node-badge ${isRoot ? 'event' : ''}">${isRoot ? '&#127919; Event' : '&#128269; Why?'}</span>
+                    <span class="node-badge ${badgeCls}">${badgeHTML}</span>
                 </div>
                 <div class="node-content">
-                    <textarea placeholder="${isRoot ? 'Describe the problem...' : 'Enter root cause...'}"
+                    <textarea placeholder="${isRoot ? 'Describe the problem...' : isRootCause ? 'Root cause statement...' : 'Why did this happen?'}"
                         onchange="updateNodeText(${child.id}, this.value)"
                         onkeyup="updateNodeText(${child.id}, this.value)"
                         ${isRoot ? 'readonly' : ''}>${escHtml(child.text || '')}</textarea>
                 </div>
                 <div class="node-actions">
-                    <button type="button" class="btn btn-sm btn-outline" onclick="addChild(${child.id})" title="Ask Why?">
+                    ${!isRootCause ? `<button type="button" class="btn btn-sm btn-outline" onclick="addChild(${child.id})" title="Ask Why?">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Next Why
-                    </button>
+                    </button>` : ''}
                     ${!isRoot ? `
                     <button type="button" class="btn btn-sm btn-outline" onclick="addSibling(${child.id})" title="Parallel cause">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Parallel Cause
@@ -1264,6 +1585,64 @@
             ul.appendChild(li);
         });
         return ul;
+    }
+
+    // ── Fishbone Renderer ──────────────────────────────────────────────────────
+    const FB_ICONS = {
+        'Man':         { bg: '#fee2e2', color: '#b91c1c', icon: '👤' },
+        'Machine':     { bg: '#dbeafe', color: '#1d4ed8', icon: '⚙' },
+        'Material':    { bg: '#fef3c7', color: '#92400e', icon: '📦' },
+        'Method':      { bg: '#dcfce7', color: '#166534', icon: '📋' },
+        'Measurement': { bg: '#ede9fe', color: '#6d28d9', icon: '📏' },
+        'Environment': { bg: '#e0f2fe', color: '#0369a1', icon: '🌡' },
+    };
+
+    function renderFishbone(fb) {
+        if (!fb || !fb.categories) return;
+        const section = document.getElementById('fishbone-section');
+        const content = document.getElementById('fishbone-content');
+        const primary = (fb.primary_category || '').toLowerCase();
+
+        let html = '<div class="fishbone-grid">';
+
+        const catOrder = ['Man', 'Machine', 'Material', 'Method', 'Measurement', 'Environment'];
+        catOrder.forEach(catName => {
+            const causes = fb.categories[catName] || [];
+            const style  = FB_ICONS[catName] || { bg: '#f1f5f9', color: '#64748b', icon: '?' };
+            const isPrimary = catName.toLowerCase() === primary;
+
+            html += `<div class="fishbone-cat ${isPrimary ? 'fb-primary' : ''}">
+                <div class="fishbone-cat-title" style="color: ${style.color};">
+                    <span class="fishbone-cat-icon" style="background: ${style.bg}; color: ${style.color};">${style.icon}</span>
+                    ${escHtml(catName)}
+                    ${isPrimary ? '<span style="font-size:0.65rem; background:rgba(59,163,165,0.12); color:var(--accent); padding:0.12rem 0.45rem; border-radius:8px; margin-left:auto;">PRIMARY</span>' : ''}
+                </div>`;
+
+            if (causes.length === 0) {
+                html += '<div class="fishbone-empty">No contributing causes identified</div>';
+            } else {
+                causes.forEach(c => {
+                    const evLower = (c.evidence_level || 'possible').toLowerCase();
+                    const evCls   = evLower === 'confirmed' ? 'fb-ev-confirmed' : evLower === 'supported' ? 'fb-ev-supported' : 'fb-ev-possible';
+                    html += `<div class="fishbone-cause">
+                        <span class="fb-evidence-tag ${evCls}">${escHtml(c.evidence_level || 'Possible')}</span>
+                        <div>
+                            <div>${escHtml(c.cause)}</div>`;
+                    if (c.sub_causes && c.sub_causes.length > 0) {
+                        c.sub_causes.forEach(sc => {
+                            html += `<div class="fishbone-sub">— ${escHtml(sc)}</div>`;
+                        });
+                    }
+                    html += `</div></div>`;
+                });
+            }
+            html += '</div>';
+        });
+
+        html += '</div>';
+
+        content.innerHTML = html;
+        section.style.display = 'block';
     }
 
     // ── Image Analysis Renderer ───────────────────────────────────────────────
