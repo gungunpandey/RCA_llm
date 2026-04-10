@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .admin-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 0 24px 48px;
+        position: relative;
+    }
+    .admin-main {
+        max-width: 1100px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+        z-index: 1;
+    }
+    .admin-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .admin-hero-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .admin-hero-icon {
+        font-size: 2rem;
+        width: 56px; height: 56px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(51,177,176,0.12);
+        border-radius: 14px;
+        flex-shrink: 0;
+    }
+    .admin-hero-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .admin-hero-sub {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        margin: 4px 0 0;
+    }
+
+    /* Stats row */
+    .user-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    @media (max-width: 640px) { .user-stats { grid-template-columns: 1fr; } }
+    .user-stat {
+        padding: 20px;
+        text-align: center;
+    }
+    .user-stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin: 0;
+    }
+    .user-stat-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 6px 0 0;
+    }
+
+    /* Table */
+    .users-table-wrapper {
+        overflow-x: auto;
+        border-radius: var(--radius-sm);
+    }
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .users-table th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+    }
+    .users-table td {
+        padding: 14px 16px;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(60,61,63,0.08);
+        vertical-align: middle;
+    }
+    .users-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .users-table tbody tr:hover td {
+        background: rgba(51,177,176,0.06);
+    }
+    .user-avatar {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #33B1B0, #2a9a99);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .user-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .user-name-text {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .division-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        background: rgba(51,177,176,0.10);
+        color: var(--accent);
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .admin-badge {
+        background: rgba(240,165,0,0.12);
+        color: #d49300;
+    }
+    .date-text {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+    .id-cell {
+        font-family: monospace;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        background: rgba(60,61,63,0.05);
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    /* Search filter */
+    .users-search-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+    }
+    .users-search-input {
+        flex: 1;
+        max-width: 320px;
+    }
+    .users-count {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-left: auto;
+    }
+
+    /* Export button */
+    .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+    }
+    .btn-export:hover {
+        background: rgba(51,177,176,0.06);
+        border-color: var(--accent);
+        color: var(--text-primary);
+    }
+
+    /* Activity count */
+    .activity-count {
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="admin-main fade-in">
+        <!-- Hero -->
+        <div class="admin-hero">
+            <div class="admin-hero-left">
+                <div class="admin-hero-icon">👥</div>
+                <div>
+                    <h1 class="admin-hero-title">Registered Users</h1>
+                    <p class="admin-hero-sub">Manage and monitor all user accounts</p>
+                </div>
+            </div>
+            <button class="btn-export" onclick="exportCSV()" title="Export user list as CSV">
+                📥 Export CSV
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="user-stats">
+            <div class="glass-card user-stat">
+                <p class="user-stat-value" style="color: var(--accent);">{{ users|length }}</p>
+                <p class="user-stat-label">Total Users</p>
+            </div>
+            <div class="glass-card user-stat">
+                {% set div_set = users | map(attribute='division') | unique | list %}
+                <p class="user-stat-value" style="color: var(--warning);">{{ div_set|length }}</p>
+                <p class="user-stat-label">Divisions Active</p>
+            </div>
+            <div class="glass-card user-stat">
+                {% set recent = [] %}
+                {% for u in users %}
+                    {% if u.registered_at and (u.registered_at.strftime('%Y-%m-%d') >= (now|default(''))) %}
+                    {% endif %}
+                {% endfor %}
+                {% set admin_count = users | selectattr('division', 'equalto', 'Admin') | list | length %}
+                <p class="user-stat-value" style="color: var(--success);">{{ admin_count }}</p>
+                <p class="user-stat-label">Admins</p>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div class="users-search-bar">
+                <input
+                    type="text"
+                    id="user-search"
+                    class="form-input users-search-input"
+                    placeholder="🔍  Search by name, email, or division…"
+                    oninput="filterUsers()"
+                >
+                <span class="users-count" id="users-count">{{ users|length }} users</span>
+            </div>
+
+            <div class="users-table-wrapper">
+                <table class="users-table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Division</th>
+                            <th>Breakdowns Logged</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        {% for u in users %}
+                        <tr class="user-row">
+                            <td><span class="id-cell">#{{ u.id }}</span></td>
+                            <td>
+                                <div class="user-name-cell">
+                                    <div class="user-avatar">{{ u.name[0]|upper if u.name else '?' }}</div>
+                                    <span class="user-name-text">{{ u.name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                <span class="division-badge {% if u.division == 'Admin' %}admin-badge{% endif %}">
+                                    {{ u.division }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="activity-count">{{ u.breakdown_logs|length }}</span>
+                            </td>
+                            <td>
+                                <span class="date-text">
+                                    {% if u.registered_at %}
+                                        {{ u.registered_at.strftime('%d %b %Y, %I:%M %p') }}
+                                    {% else %}
+                                        Pre-seeded
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterUsers() {
+        const q = document.getElementById('user-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.user-row');
+        let visible = 0;
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const match = text.includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        document.getElementById('users-count').textContent = visible + ' user' + (visible !== 1 ? 's' : '');
+    }
+
+    function exportCSV() {
+        const rows = document.querySelectorAll('#users-table tr');
+        let csv = [];
+        rows.forEach(row => {
+            const cols = row.querySelectorAll('th, td');
+            const rowData = [];
+            cols.forEach(col => {
+                let text = col.textContent.trim().replace(/"/g, '""');
+                rowData.push('"' + text + '"');
+            });
+            csv.push(rowData.join(','));
+        });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'registered_users_' + new Date().toISOString().split('T')[0] + '.csv';
+        a.click();
+    }
+</script>
+{% endblock %}

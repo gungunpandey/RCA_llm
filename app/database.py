@@ -20,6 +20,7 @@ class User(Base):
     name = Column(String)
     # Admin sees all divisions; any other value restricts to that division only
     division = Column(String, default="Admin")
+    registered_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
     breakdown_logs = relationship("BreakdownLog", back_populates="author")
 

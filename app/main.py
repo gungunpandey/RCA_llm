@@ -142,8 +142,6 @@ async def home_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
     if user:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -152,8 +150,6 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
     if user:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -187,7 +183,101 @@ async def logout():
     return response
 
 
+# ── Signup ────────────────────────────────────────────────────────────────────
+
+DIVISIONS = [
+    "BNFC", "Pellet 1", "Pellet 2", "SMS 1", "SMS 2",
+    "DRI 1", "DRI 2", "CPP", "CPP 2", "PGP", "FIRE SERVICE",
+]
+
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user_from_cookie(request, db)
+    if user:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse("signup.html", {"request": request, "divisions": DIVISIONS})
+
+
+@app.post("/signup", response_class=HTMLResponse)
+async def signup_post(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    division: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    errors = {}
+    # Validate
+    if len(name.strip()) < 2:
+        errors["name"] = "Name must be at least 2 characters."
+    if len(password) < 6:
+        errors["password"] = "Password must be at least 6 characters."
+    if password != confirm_password:
+        errors["confirm_password"] = "Passwords do not match."
+    if division not in DIVISIONS:
+        errors["division"] = "Please select a valid division."
+
+    # Check if email already exists
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        errors["email"] = "An account with this email already exists."
+
+    if errors:
+        return templates.TemplateResponse(
+            "signup.html",
+            {
+                "request": request,
+                "divisions": DIVISIONS,
+                "errors": errors,
+                "form_name": name,
+                "form_email": email,
+                "form_division": division,
+            },
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    new_user = User(
+        email=email.strip().lower(),
+        hashed_password=get_password_hash(password),
+        name=name.strip(),
+        division=division,
+    )
+    db.add(new_user)
+    db.commit()
+
+    # Auto-login after signup
+    token = create_access_token(
+        data={"sub": new_user.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True, max_age=86400)
+    return response
+
+
+# ── Admin: Registered Users ──────────────────────────────────────────────────
+
+@app.get("/admin/users", response_class=HTMLResponse)
+async def admin_users_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    if user.division != "Admin":
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    users = db.query(User).order_by(User.id).all()
+    return templates.TemplateResponse("admin_users.html", {
+        "request": request,
+        "user": user,
+        "users": users,
+        "active_page": "admin-users",
+    })
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
@@ -200,8 +290,6 @@ async def dashboard_page(
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
 
     query = db.query(BreakdownLog)
     if user.division != "Admin":
@@ -372,8 +460,6 @@ async def log_breakdown_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
 
     # Start from the static catalogue so the dropdown is always pre-populated
     division_machines: dict = {k: list(v) for k, v in EQUIPMENT_CATALOGUE.items()}
@@ -575,8 +661,6 @@ async def capa_board_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
 
     capas = db.query(CAPA).order_by(CAPA.created_at.desc()).all()
     return templates.TemplateResponse("capa_board.html", {
@@ -598,8 +682,6 @@ async def capa_create_page(
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
 
     capa = None
     if edit:
@@ -689,8 +771,6 @@ async def capa_detail_page(capa_id: int, request: Request, db: Session = Depends
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    if SPA_ENABLED:
-        return _serve_spa()
 
     capa = db.query(CAPA).filter(CAPA.id == capa_id).first()
     if not capa:

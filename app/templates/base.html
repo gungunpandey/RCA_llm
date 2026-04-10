@@ -905,6 +905,9 @@
                         Hello, {{ user.name }} &#9662;
                     </button>
                     <div class="nav-dropdown-menu">
+                        {% if user.division == 'Admin' %}
+                        <a href="/admin/users">Manage Users</a>
+                        {% endif %}
                         <a href="/logout">Logout</a>
                     </div>
                 </div>

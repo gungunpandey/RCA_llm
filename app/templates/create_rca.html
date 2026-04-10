@@ -1732,7 +1732,9 @@
                 final_confidence:  currentResult.final_confidence  || 0,
                 team_list:         document.getElementById('team-list-input').value,
                 capa:              getCapaData(),
-                image_analysis:    _imageAnalysisResult || currentResult.image_analysis || null
+                image_analysis:    _imageAnalysisResult || currentResult.image_analysis || null,
+                fishbone_analysis: currentResult.fishbone_analysis || null,
+                history_matches:   _pendingHistoryMatches || currentResult.history_matches || null
             };
         } else if (currentTab === 'manual') {
             payload = {
@@ -2106,6 +2108,15 @@
             // Render saved image analysis
             if (SAVED_DATA.image_analysis) {
                 renderImageAnalysis(SAVED_DATA.image_analysis);
+            }
+            // Render saved fishbone diagram
+            if (SAVED_DATA.fishbone_analysis) {
+                renderFishbone(SAVED_DATA.fishbone_analysis);
+            }
+            // Render saved historical matches
+            if (SAVED_DATA.history_matches) {
+                _pendingHistoryMatches = SAVED_DATA.history_matches;
+                renderHistoryMatches(SAVED_DATA.history_matches);
             }
             switchTab('ai');
         } else if (AUTO_AI) {

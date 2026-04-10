@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    .login-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        pointer-events: none;
+    }
+    .login-blob-1 {
+        width: 400px; height: 400px;
+        top: 10%; left: 15%;
+        background: rgba(51,177,176,0.15);
+    }
+    .login-blob-2 {
+        width: 300px; height: 300px;
+        bottom: 15%; right: 10%;
+        background: rgba(51,177,176,0.10);
+    }
+    .login-blob-3 {
+        width: 250px; height: 250px;
+        top: 50%; left: 60%;
+        background: rgba(51,177,176,0.08);
+    }
+    .signup-card {
+        width: 100%;
+        max-width: 480px;
+        padding: 36px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+        z-index: 1;
+    }
+    .login-header {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .login-logo {
+        width: 56px; height: 56px;
+        background: linear-gradient(135deg, #33B1B0, #2a9a99);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 24px rgba(51,177,176,0.35);
+    }
+    .login-title {
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+    .login-subtitle {
+        font-size: 0.88rem;
+        color: rgba(60,61,63,0.6);
+        margin: 0;
+    }
+    .signup-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .signup-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    @media (max-width: 520px) {
+        .signup-row-2 { grid-template-columns: 1fr; }
+    }
+    .signup-form .form-group {
+        margin-bottom: 0;
+    }
+    .signup-form .form-label {
+        font-size: 0.8rem;
+        margin-bottom: 5px;
+    }
+    .signup-form .form-input,
+    .signup-form select {
+        padding: 9px 13px;
+        font-size: 0.88rem;
+    }
+    .field-err {
+        color: var(--danger);
+        font-size: 0.76rem;
+        margin: 4px 0 0;
+        font-weight: 500;
+    }
+    .input-err {
+        border-color: var(--danger) !important;
+    }
+    .login-footer {
+        font-size: 0.85rem;
+        color: rgba(60,61,63,0.6);
+        text-align: center;
+        border-top: 1px solid rgba(60,61,63,0.12);
+        padding-top: 16px;
+    }
+    .login-footer a {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .login-footer a:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+    }
+    .password-strength {
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(60,61,63,0.10);
+        overflow: hidden;
+        margin-top: 6px;
+    }
+    .password-strength-bar {
+        height: 100%;
+        border-radius: 99px;
+        width: 0;
+        transition: width 0.3s ease, background 0.3s ease;
+    }
+    .strength-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 3px;
+        text-align: right;
+    }
+    .signup-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233C3D3F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 1em;
+        padding-right: 2.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <!-- Background blobs -->
+    <div class="login-blob login-blob-1"></div>
+    <div class="login-blob login-blob-2"></div>
+    <div class="login-blob login-blob-3"></div>
+
+    <div class="glass-card signup-card fade-in">
+        <!-- Header -->
+        <div class="login-header">
+            <div class="login-logo">
+                <img src="/static/favicon.svg" alt="ProdAI" style="height: 32px; width: auto; display: block; filter: brightness(10);">
+            </div>
+            <h1 class="login-title">Create Account</h1>
+            <p class="login-subtitle">Join ProdAI to start tracking plant breakdowns</p>
+        </div>
+
+        <!-- Form -->
+        <form action="/signup" method="POST" class="signup-form" id="signup-form">
+            <!-- Name -->
+            <div class="form-group">
+                <label class="form-label" for="name">Full Name</label>
+                <input
+                    id="name"
+                    type="text"
+                    name="name"
+                    class="form-input {% if errors and errors.name %}input-err{% endif %}"
+                    placeholder="e.g. Rahul Sharma"
+                    value="{{ form_name or '' }}"
+                    required
+                    autocomplete="name"
+                >
+                {% if errors and errors.name %}
+                <p class="field-err">{{ errors.name }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    class="form-input {% if errors and errors.email %}input-err{% endif %}"
+                    placeholder="you@company.com"
+                    value="{{ form_email or '' }}"
+                    required
+                    autocomplete="email"
+                >
+                {% if errors and errors.email %}
+                <p class="field-err">{{ errors.email }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Division -->
+            <div class="form-group">
+                <label class="form-label" for="division">Division / Department</label>
+                <select
+                    id="division"
+                    name="division"
+                    class="form-input signup-select {% if errors and errors.division %}input-err{% endif %}"
+                    required
+                >
+                    <option value="" disabled {% if not form_division %}selected{% endif %}>Select your division</option>
+                    {% for div in divisions %}
+                    <option value="{{ div }}" {% if form_division == div %}selected{% endif %}>{{ div }}</option>
+                    {% endfor %}
+                </select>
+                {% if errors and errors.division %}
+                <p class="field-err">{{ errors.division }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Passwords -->
+            <div class="signup-row-2">
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        class="form-input {% if errors and errors.password %}input-err{% endif %}"
+                        placeholder="Min 6 characters"
+                        required
+                        autocomplete="new-password"
+                        minlength="6"
+                    >
+                    {% if errors and errors.password %}
+                    <p class="field-err">{{ errors.password }}</p>
+                    {% endif %}
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="pw-bar"></div>
+                    </div>
+                    <p class="strength-label" id="pw-label"></p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">Confirm Password</label>
+                    <input
+                        id="confirm_password"
+                        type="password"
+                        name="confirm_password"
+                        class="form-input {% if errors and errors.confirm_password %}input-err{% endif %}"
+                        placeholder="Re-enter password"
+                        required
+                        autocomplete="new-password"
+                    >
+                    {% if errors and errors.confirm_password %}
+                    <p class="field-err">{{ errors.confirm_password }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 4px;" id="signup-btn">
+                Create Account
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <p class="login-footer">
+            Already have an account? <a href="/login">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Password strength meter
+    const pwInput = document.getElementById('password');
+    const bar = document.getElementById('pw-bar');
+    const label = document.getElementById('pw-label');
+
+    pwInput.addEventListener('input', function() {
+        const pw = this.value;
+        let score = 0;
+        if (pw.length >= 6) score++;
+        if (pw.length >= 10) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[0-9]/.test(pw)) score++;
+        if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+        const pct = Math.min(score / 5, 1) * 100;
+        bar.style.width = pct + '%';
+
+        if (score <= 1) {
+            bar.style.background = '#e03c3c';
+            label.textContent = pw.length ? 'Weak' : '';
+            label.style.color = '#e03c3c';
+        } else if (score <= 3) {
+            bar.style.background = '#f0a500';
+            label.textContent = 'Medium';
+            label.style.color = '#f0a500';
+        } else {
+            bar.style.background = '#22a85a';
+            label.textContent = 'Strong';
+            label.style.color = '#22a85a';
+        }
+    });
+
+    // Client-side password match check
+    document.getElementById('signup-form').addEventListener('submit', function(e) {
+        const pw = document.getElementById('password').value;
+        const cpw = document.getElementById('confirm_password').value;
+        if (pw !== cpw) {
+            e.preventDefault();
+            document.getElementById('confirm_password').classList.add('input-err');
+            let errEl = document.getElementById('confirm_password').parentElement.querySelector('.field-err');
+            if (!errEl) {
+                errEl = document.createElement('p');
+                errEl.className = 'field-err';
+                document.getElementById('confirm_password').parentElement.appendChild(errEl);
+            }
+            errEl.textContent = 'Passwords do not match.';
+        }
+    });
+</script>
+{% endblock %}
