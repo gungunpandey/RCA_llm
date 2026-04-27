@@ -64,6 +64,7 @@ class AnalyzeRequest(BaseModel):
     operator_observations: Optional[str] = None
     image_path: Optional[str] = None   # absolute path to uploaded image
     image_desc: Optional[str] = None   # user description of image
+    pdf_text: Optional[str] = None     # extracted text from uploaded PDF document
 
 
 # ── Lifespan: startup / shutdown ──
@@ -143,12 +144,27 @@ app.add_middleware(
 
 def _build_failure_text(req: AnalyzeRequest) -> str:
     failure_text = req.failure_description
+    if req.occurrence_from or req.occurrence_to:
+        occurrence_window = " to ".join(
+            [value for value in [req.occurrence_from, req.occurrence_to] if value]
+        )
+        failure_text += f"\nOccurrence window: {occurrence_window}"
+    if req.department:
+        failure_text += f"\nDepartment: {req.department}"
+    if req.total_downtime:
+        failure_text += f"\nTotal downtime: {req.total_downtime}"
+    if req.production_loss:
+        failure_text += f"\nProduction loss: {req.production_loss}"
+    if req.impact_top_line:
+        failure_text += f"\nOperational impact: {req.impact_top_line}"
     if req.operator_observations:
         failure_text += f"\nOperator observations: {req.operator_observations}"
     if req.error_codes:
         failure_text += f"\nError codes: {', '.join(req.error_codes)}"
     if req.image_desc:
         failure_text += f"\nImage description: {req.image_desc}"
+    if req.pdf_text:
+        failure_text += f"\n\nATTACHED DOCUMENT CONTENT:\n{req.pdf_text}"
     return failure_text
 
 

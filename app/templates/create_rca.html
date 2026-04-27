@@ -683,6 +683,7 @@
 <input type="hidden" id="hid-image-path"  value="{{ attached_image_path or '' }}">
 <input type="hidden" id="hid-image-url"   value="{{ attached_image_url or '' }}">
 <input type="hidden" id="hid-image-desc"  value="{{ image_description or '' }}">
+<input type="hidden" id="hid-pdf-text"   value="{{ attached_pdf_text or '' }}">
 
 <!-- ── Page Header ── -->
 <div class="glass-panel" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -1022,7 +1023,8 @@
             symptoms:            [],
             operator_observations: document.getElementById('operator-obs').value || null,
             image_path:          document.getElementById('hid-image-path').value || null,
-            image_desc:          document.getElementById('hid-image-desc').value || null
+            image_desc:          document.getElementById('hid-image-desc').value || null,
+            pdf_text:            document.getElementById('hid-pdf-text').value || null
         };
 
         try {

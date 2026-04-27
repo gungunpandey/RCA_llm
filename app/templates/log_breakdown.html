@@ -157,18 +157,18 @@
                         onclick="document.getElementById('attached_doc').click()">
                         <div class="fu-icon">&#128193;</div>
                         <p class="fu-hint"><strong>Click or drag &amp; drop</strong> file here</p>
-                        <p class="fu-sub">JPG, PNG, BMP, WebP &mdash; for AI damage analysis</p>
+                        <p class="fu-sub">JPG, PNG, BMP, WebP, PDF &mdash; for AI damage analysis</p>
                     </div>
                     <input type="file" id="attached_doc" name="attached_doc"
-                        accept=".jpg,.jpeg,.png,.bmp,.webp" style="display: none;"
+                        accept=".jpg,.jpeg,.png,.bmp,.webp,.pdf" style="display: none;"
                         onchange="handleFileSelect(this)">
                     <ul class="fu-list" id="file-list"></ul>
                 </div>
 
                 <div style="margin-top: 14px;">
-                    <label class="form-label">Image Description (Optional)</label>
+                    <label class="form-label">Attachment Description (Optional)</label>
                     <input type="text" name="attached_doc_desc" class="form-input"
-                        placeholder="Describe what the image shows, e.g. 'cracked bearing inner race'"
+                        placeholder="Describe what the image/PDF shows, e.g. 'cracked bearing inner race' or 'OEM inspection report'"
                         onfocus="updateStep(8)" oninput="updateStep(8)">
                 </div>
             </div>

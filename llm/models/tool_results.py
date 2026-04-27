@@ -42,6 +42,8 @@ class FiveWhysResult(BaseModel):
     documents_used: List[str] = Field(default_factory=list, description="All documents referenced")
     stopped_early: bool = Field(default=False, description="Whether analysis stopped before 5 steps due to causal sufficiency")
     stop_reason: Optional[str] = Field(default=None, description="Reason for early stop, e.g. 'Causal sufficiency achieved at Why #3'")
+    next_investigation_paths: List[str] = Field(default_factory=list, description="Suggested next steps for unconfirmed upstream causes")
+    risk_assessment: Optional[str] = Field(default=None, description="Criticality + urgency statement, e.g. 'CRITICAL — Imminent risk of bearing seizure within 48 hours'")
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
 
 
@@ -140,6 +142,7 @@ class FishboneCause(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this cause (0-1)")
     evidence_level: str = Field(default="POSSIBLE", description="Evidence classification: CONFIRMED, SUPPORTED, or POSSIBLE")
     evidence: str = Field(default="", description="Supporting evidence from documents or observations")
+    severity: str = Field(default="MEDIUM", description="Impact severity: CRITICAL, HIGH, MEDIUM, or LOW")
 
 
 class FishboneResult(BaseModel):
@@ -155,6 +158,10 @@ class FishboneResult(BaseModel):
     primary_category: str = Field(
         ...,
         description="The Ishikawa category that contains the dominant contributing cause"
+    )
+    category_confidence: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Per-category confidence scores (e.g. {'Machine': 0.90, 'Material': 0.85})"
     )
     documents_used: List[str] = Field(default_factory=list, description="OEM manuals and docs referenced")
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")

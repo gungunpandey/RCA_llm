@@ -68,11 +68,13 @@ ANALYSIS CHECKLIST (evaluate each area):
 
 RULES:
 1. Focus ONLY on mechanical aspects (vibration, wear, alignment, lubrication, structural)
-2. Back every claim with evidence from symptoms, sensor data, or OEM manual references
+2. Back every claim with observable evidence from symptoms, sensor data, maintenance history, or OEM manual references
 3. If inferring without direct evidence, say "Based on inference"
-4. Keep each finding to 1-2 sentences
-5. Do NOT use markdown formatting (no ** or *)
-6. Do NOT use HTTP/API error codes as failure modes
+4. In the HYPOTHESIS, mention at least 2 plausible alternative mechanical causes and briefly reject them using the available evidence
+5. In the HYPOTHESIS, identify any recent mechanical change or trigger if one is present in the failure description, observations, or history; if not available, say "No recent change data provided"
+6. Keep each finding to 1-2 sentences
+7. Do NOT use markdown formatting (no ** or *)
+8. Do NOT use HTTP/API error codes as failure modes
 
 Respond in EXACTLY this format:
 

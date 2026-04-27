@@ -145,7 +145,7 @@ class FiveWhysTool(BaseTool):
 
             # Step 3: Synthesize root cause from ALL why steps + domain insights
             await _send_status("Synthesizing final root cause from all findings...")
-            root_cause, root_cause_confidence = await self._synthesize_root_cause(
+            root_cause, root_cause_confidence, investigation_paths, risk_assessment = await self._synthesize_root_cause(
                 equipment_name=equipment_name,
                 failure_description=failure_description,
                 why_steps=why_steps,
@@ -165,7 +165,9 @@ class FiveWhysTool(BaseTool):
                 corrective_actions=corrective_actions,
                 documents_used=list(set(doc_sources)),  # Remove duplicates, keep unique only
                 stopped_early=stopped_early,
-                stop_reason=stop_reason
+                stop_reason=stop_reason,
+                next_investigation_paths=investigation_paths,
+                risk_assessment=risk_assessment
             )
 
             return result.model_dump()
@@ -222,15 +224,29 @@ Your task: Synthesize ONE concise root cause statement that:
 1. Is the deepest, most fundamental cause identified in the causal chain above
 2. Is DIFFERENT from any single why step — it integrates the full chain into a single, clear statement
 3. Explains WHY the failure occurred at its root, not just what happened
-4. Is 1-3 sentences maximum — precise and actionable, not verbose
-5. Is consistent with the domain expert hypotheses where relevant
-6. Does NOT repeat the failure description or the symptom — it answers the fundamental "why"
-7. Does NOT use markdown bold/italic formatting
-8. Focuses on the equipment-level or process-level root cause, NOT IT/API/software failures
+4. Goes BEYOND the event — identify the SYSTEM or PROCESS GAP that allowed this event to cause failure. Move from "what failed" to "what design/maintenance/monitoring gap enabled the failure"
+5. Is 1-3 sentences maximum — precise and actionable, not verbose
+6. Is consistent with the domain expert hypotheses where relevant
+7. Does NOT repeat the failure description or the symptom — it answers the fundamental "why"
+8. Does NOT use markdown bold/italic formatting
+9. Focuses on the equipment-level or process-level root cause, NOT IT/API/software failures
+10. Prefer the cause best supported by observable evidence, not the most dramatic explanation
+11. If the chain contains a recent trigger or change event, include it only when it materially contributed to the failure
+12. Ensure the selected root cause remains stronger than at least 2 plausible alternatives implied by the chain
+
+Example of depth expected:
+  BAD:  "Fines increased and were not managed"
+  GOOD: "No condition-based monitoring or adaptive maintenance strategy for varying material abrasiveness"
+  BAD:  "Bearing failed due to overheating"
+  GOOD: "Absence of vibration trending and oil analysis programme to detect progressive bearing degradation before catastrophic failure"
+
+Also identify any UNCONFIRMED upstream causes or gaps that need further investigation.
 
 Respond in EXACTLY this format:
-ROOT_CAUSE: [1-3 sentences — the synthesized root cause]
+ROOT_CAUSE: [1-3 sentences — the synthesized root cause focusing on system/process gap]
 CONFIDENCE: [percentage, e.g., 82]
+RISK_ASSESSMENT: [One sentence: state the criticality level (CRITICAL/HIGH/MEDIUM) and the failure urgency. Example: "CRITICAL — Imminent risk of catastrophic bearing seizure if not addressed within 48 hours" or "HIGH — Progressive degradation will lead to unplanned shutdown within 2-4 weeks without intervention"]
+NEXT_INVESTIGATION: [2-3 bullet points of what to investigate next for unconfirmed causes, or "None — all causes confirmed" if fully resolved]
 """
 
         try:
@@ -247,18 +263,40 @@ CONFIDENCE: [percentage, e.g., 82]
             conf_match = re.search(r'CONFIDENCE:\s*(\d+)', response, re.IGNORECASE)
             raw_conf = float(conf_match.group(1)) / 100.0 if conf_match else 0.75
 
+            # Parse risk assessment
+            risk_match = re.search(
+                r'RISK_ASSESSMENT:\s*(.+?)(?=\nNEXT_INVESTIGATION:|\Z)',
+                response, re.DOTALL | re.IGNORECASE
+            )
+            risk_assessment = risk_match.group(1).strip() if risk_match else None
+
+            # Parse next investigation paths
+            inv_match = re.search(
+                r'NEXT_INVESTIGATION:\s*(.+?)(?=\Z)',
+                response, re.DOTALL | re.IGNORECASE
+            )
+            investigation_paths = []
+            if inv_match:
+                inv_text = inv_match.group(1).strip()
+                if "none" not in inv_text.lower()[:20]:
+                    # Parse bullet points (- or • or numbered)
+                    inv_items = re.findall(r'[-•\d.]+\s*(.+)', inv_text)
+                    investigation_paths = [item.strip() for item in inv_items if item.strip()]
+
             # Cap at max confidence seen across why steps
             max_step_conf = max((s.confidence for s in why_steps), default=0.75)
             confidence = min(raw_conf, max_step_conf + 0.05)  # allow slight boost for synthesis
             confidence = round(max(0.0, min(1.0, confidence)), 3)
 
             self.logger.info(f"Root cause synthesized: {root_cause[:120]}... (confidence {confidence:.0%})")
-            return root_cause, confidence
+            if investigation_paths:
+                self.logger.info(f"Next investigation paths: {investigation_paths}")
+            return root_cause, confidence, investigation_paths, risk_assessment
 
         except Exception as e:
             self.logger.error(f"Root cause synthesis failed: {e}")
             # Graceful fallback: use last why step
-            return why_steps[-1].answer, why_steps[-1].confidence
+            return why_steps[-1].answer, why_steps[-1].confidence, [], None
 
     async def _generate_why_step(
         self,
@@ -339,12 +377,24 @@ This is Why #1 of the 5 Whys analysis.
 RULES:
 1. NEVER use HTTP/API errors (503, 404, 500, etc.) as plant failure modes
 2. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
-3. Back every claim with evidence (sensor data, OEM manual rules, or documented procedures)
-4. If inferring without direct evidence, say "Based on inference"
-5. Keep your answer CONCISE: 2-4 sentences. State the cause and the evidence. No lengthy explanations.
-6. Do NOT use markdown formatting (no ** or * for bold/italic)
-7. Do NOT escalate to governance, maintenance policy, or design failures unless there is direct evidence (alarm logs, maintenance records, design specifications) that these are causal. The goal is the LOWEST sufficient explanation, not the deepest.
-8. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
+3. Support each causal claim with observable evidence (sensor data, alarms, trends, operator observations, maintenance history, or OEM manual rules)
+4. EVIDENCE LANGUAGE HIERARCHY (use the strongest applicable phrase):
+   - When sensor/alarm/log data directly confirms: "Confirmed by [data source]"
+   - When evidence trend supports: "Consistent with observed [trend/data]"
+   - When physics/engineering principles support: "Supported by [principle]"
+   - ONLY when NO data exists at all: "Based on inference — no direct measurement available"
+   Do NOT overuse "Based on inference" — use it ONLY as a last resort when zero evidence is available.
+5. If the case data shows any recent change or trigger, state it explicitly; if no such data is available, say "No recent change data provided"
+6. Briefly consider at least 2 plausible alternative causes and reject them using the available evidence
+7. Keep your answer CONCISE: 2-4 sentences. State the cause, the evidence, and any trigger. No lengthy explanations.
+8. Do NOT use markdown formatting (no ** or * for bold/italic)
+9. Do NOT escalate to governance, maintenance policy, or design failures unless there is direct evidence (alarm logs, maintenance records, design specifications) that these are causal. The goal is the LOWEST sufficient explanation, not the deepest.
+10. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
+11. QUANTIFICATION: When sensor values are mentioned (vibration, current, temperature, pressure, etc.), ALWAYS interpret them:
+   - State the % change (e.g., "180% increase from baseline")
+   - Compare against known thresholds (ISO 10816 for vibration, OEM rated current, design temperature limits)
+   - State the severity implication (e.g., "exceeds ISO alert threshold", "above OEM maximum rated current")
+   Example: Instead of "vibration increased from 3.5 to 9.8 mm/s", write "vibration increased from 3.5 to 9.8 mm/s (180% increase, exceeding ISO 10816 Zone C alert threshold of 7.1 mm/s for Class III machines, indicating severe condition)"
 
 Question: {why_question}
 
@@ -369,13 +419,24 @@ Previous Answer (Why #{step_number-1}): {previous_answer}
 RULES:
 1. NEVER use HTTP/API errors (503, 404, 500, etc.) as plant failure modes
 2. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
-3. Back every claim with evidence (sensor data, OEM manual rules, or documented procedures)
-4. If inferring without direct evidence, say "Based on inference"
-5. Keep your answer CONCISE: 2-4 sentences. State the cause and evidence only.
-6. Do NOT use markdown formatting (no ** or * for bold/italic)
-7. Do NOT repeat document names inside the ANSWER. Put them only in SUPPORTING_DOCUMENTS.
-8. Only escalate to a deeper root cause if the current cause cannot explain at least one observed symptom. If all symptoms are explained, declare the current cause as the root cause. Do NOT infer governance, maintenance, or design failures without direct evidence such as alarms, logs, or sensor data.
-9. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
+3. Support each causal claim with observable evidence (sensor data, alarms, trends, operator observations, maintenance history, or OEM manual rules)
+4. EVIDENCE LANGUAGE HIERARCHY (use the strongest applicable phrase):
+   - When sensor/alarm/log data directly confirms: "Confirmed by [data source]"
+   - When evidence trend supports: "Consistent with observed [trend/data]"
+   - When physics/engineering principles support: "Supported by [principle]"
+   - ONLY when NO data exists at all: "Based on inference — no direct measurement available"
+   Do NOT overuse "Based on inference" — use it ONLY as a last resort when zero evidence is available.
+5. If the case data shows any recent change or trigger, state it explicitly; if no such data is available, say "No recent change data provided"
+6. Briefly consider at least 2 plausible alternative causes and reject them using the available evidence
+7. Keep your answer CONCISE: 2-4 sentences. State the cause, the evidence, and any trigger only.
+8. Do NOT use markdown formatting (no ** or * for bold/italic)
+9. Do NOT repeat document names inside the ANSWER. Put them only in SUPPORTING_DOCUMENTS.
+10. Only escalate to a deeper root cause if the current cause cannot explain at least one observed symptom. If all symptoms are explained, declare the current cause as the root cause. Do NOT infer governance, maintenance, or design failures without direct evidence such as alarms, logs, or sensor data.
+11. CAUSAL BOUNDARY: Identify the first equipment whose intended function failed using alarms and observations. Do NOT move upstream beyond that equipment failure unless a measurement or alarm explicitly confirms upstream failure. Root cause = first functional failure, NOT the physical origin of material behavior.
+12. QUANTIFICATION: When sensor values are mentioned (vibration, current, temperature, pressure, etc.), ALWAYS interpret them:
+   - State the % change (e.g., "180% increase from baseline")
+   - Compare against known thresholds (ISO 10816 for vibration, OEM rated current, design temperature limits)
+   - State the severity implication (e.g., "exceeds ISO alert threshold", "above OEM maximum rated current")
 
 Question: {why_question}
 

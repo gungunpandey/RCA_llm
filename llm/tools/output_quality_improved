@@ -1,0 +1,115 @@
+# RCA Output Quality Improvements — Walkthrough
+
+## Summary
+
+Implemented 6 enhancements across 3 files to improve root cause analysis depth and fishbone diagram quality.
+
+## Changes Made
+
+### 1. [models/tool_results.py](file:///c:/Users/GUNGUN%20PANDEY/OneDrive/Desktop/rca/llm/models/tool_results.py) — Data Models
+
+| Field Added | Model | Purpose |
+|---|---|---|
+| `next_investigation_paths` | `FiveWhysResult` | Suggested next steps for unconfirmed causes |
+| `severity` | `FishboneCause` | Impact tier: CRITICAL / HIGH / MEDIUM / LOW |
+| `category_confidence` | `FishboneResult` | Per-category confidence dict (e.g., Machine: 90%, Material: 85%) |
+
+---
+
+### 2. [tools/five_whys_tool.py](file:///c:/Users/GUNGUN%20PANDEY/OneDrive/Desktop/rca/llm/tools/five_whys_tool.py) — Root Cause Synthesis
+
+**Root cause depth** (prompt rule #4 + examples):
+- New rule: *"Goes BEYOND the event — identify the SYSTEM or PROCESS GAP that allowed this event to cause failure"*
+- Added BAD/GOOD examples to calibrate LLM output depth
+
+**Next investigation paths** (new output field):
+- Prompt asks for `NEXT_INVESTIGATION` bullet points
+- Parsed from LLM response and stored in `FiveWhysResult.next_investigation_paths`
+- Returns `"None — all causes confirmed"` when fully resolved
+
+render_diffs(file:///c:/Users/GUNGUN%20PANDEY/OneDrive/Desktop/rca/llm/tools/five_whys_tool.py)
+
+---
+
+### 3. [tools/fishbone_tool.py](file:///c:/Users/GUNGUN%20PANDEY/OneDrive/Desktop/rca/llm/tools/fishbone_tool.py) — Fishbone Analysis
+
+**Environment never empty** (prompt rule #8):
+- Environment category must ALWAYS have ≥1 cause (dust, temperature, humidity, vibration)
+- Even if not confirmed, include as SUPPORTED
+
+**Machine/Method → design gap** (prompt rule #9):
+- Explicitly instructs: go beyond symptom to design/maintenance gap
+- Example: "No locking mechanism (nylock/spring washer)" instead of "Vibration loosening"
+
+**Severity tier** (new field):
+- Each cause now has a `severity`: CRITICAL / HIGH / MEDIUM / LOW
+- Parsed and validated in `_parse_response()`
+
+**Per-category confidence** (new field):
+- LLM returns `category_confidence` dict in JSON response
+- Fallback: derived from average cause confidence per category
+- Stored in `FishboneResult.category_confidence`
+
+render_diffs(file:///c:/Users/GUNGUN%20PANDEY/OneDrive/Desktop/rca/llm/tools/fishbone_tool.py)
+
+---
+
+## Round 2 — Output Quality Improvements (14 Apr 2026)
+
+### 4. Quantification Interpretation (Why #1 + Why #2+ prompts, rule 11/12)
+
+When sensor values appear in the analysis, the LLM must now:
+- State the **% change** from baseline (e.g., "180% increase")
+- Compare against **known thresholds** (ISO 10816 for vibration, OEM rated current, design temperature limits)
+- State the **severity implication** (e.g., "exceeds ISO alert threshold")
+
+**Before:** `"vibration increased from 3.5 to 9.8 mm/s"`
+**After:** `"vibration increased from 3.5 to 9.8 mm/s (180% increase, exceeding ISO 10816 Zone C alert threshold of 7.1 mm/s for Class III machines, indicating severe condition)"`
+
+---
+
+### 5. Evidence Language Hierarchy (Why #1 + Why #2+ prompts, rule 4)
+
+Replaced blanket `"say Based on inference"` with a 4-tier hierarchy:
+
+| Tier | Phrase | When to use |
+|---|---|---|
+| 1 (strongest) | `"Confirmed by [data source]"` | Sensor/alarm/log data directly confirms |
+| 2 | `"Consistent with observed [trend/data]"` | Evidence trend supports the claim |
+| 3 | `"Supported by [principle]"` | Physics/engineering principles support |
+| 4 (last resort) | `"Based on inference — no direct measurement available"` | ONLY when zero evidence exists |
+
+`"Based on inference"` is now explicitly marked as **last resort only**.
+
+---
+
+### 6. Risk Assessment (Root cause synthesis prompt + FiveWhysResult model)
+
+New `RISK_ASSESSMENT` output field added to root cause synthesis:
+- States **criticality level**: CRITICAL / HIGH / MEDIUM
+- States **failure urgency** with timeframe
+- Stored in `FiveWhysResult.risk_assessment`
+
+**Examples:**
+- `"CRITICAL — Imminent risk of catastrophic bearing seizure if not addressed within 48 hours"`
+- `"HIGH — Progressive degradation will lead to unplanned shutdown within 2-4 weeks without intervention"`
+
+---
+
+## What Was NOT Changed (Deferred to v2)
+
+| Item | Reason |
+|---|---|
+| Cross-links between fishbone factors | Complex output structure + frontend rendering work |
+| Time dimension / [TRIGGER] tags | Knowledge graph (Phase 3) handles this better |
+| Failure Mode Library (equipment-specific templates) | Needs structured data engineering effort — separate from prompt improvements |
+| Full narrative uniqueness per equipment | Depends on Failure Mode Library |
+
+## Validation
+
+- All 3 files pass `py_compile` syntax check ✓
+- New fields have defaults, so existing data won't break (backward compatible) ✓
+- `FishboneResult.category_confidence` defaults to `{}` if not provided ✓
+- `FiveWhysResult.next_investigation_paths` defaults to `[]` if not provided ✓
+- `FiveWhysResult.risk_assessment` defaults to `None` if not provided ✓
+

@@ -68,12 +68,14 @@ ANALYSIS CHECKLIST (evaluate each area):
 
 RULES:
 1. Focus ONLY on electrical aspects (motor, protection, power supply, control circuits, interlocks)
-2. Back every claim with evidence from symptoms, sensor data, or OEM manual references
+2. Back every claim with observable evidence from symptoms, sensor data, maintenance history, or OEM manual references
 3. If inferring without direct evidence, say "Based on inference"
-4. Keep each finding to 1-2 sentences
-5. Do NOT use markdown formatting (no ** or *)
-6. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
-7. Do NOT use HTTP/API error codes (503, 404, etc.) as plant failure modes
+4. In the HYPOTHESIS, mention at least 2 plausible alternative electrical causes and briefly reject them using the available evidence
+5. In the HYPOTHESIS, identify any recent electrical or control-system change or trigger if one is present in the failure description, observations, or history; if not available, say "No recent change data provided"
+6. Keep each finding to 1-2 sentences
+7. Do NOT use markdown formatting (no ** or *)
+8. Plant signal failures are: "Bad Quality", "Comm Fail", "Signal Unhealthy", "Input Forced", "Loss of Signal"
+9. Do NOT use HTTP/API error codes (503, 404, etc.) as plant failure modes
 
 Respond in EXACTLY this format:
 

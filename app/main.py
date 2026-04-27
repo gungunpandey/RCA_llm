@@ -552,6 +552,26 @@ async def log_breakdown_post(
 
 # ── Create / View RCA ─────────────────────────────────────────────────────────
 
+
+def _extract_pdf_text(pdf_path: str) -> str:
+    """Extract text from a PDF file using PyPDF2. Returns extracted text (max 10k chars)."""
+    try:
+        from PyPDF2 import PdfReader
+        reader = PdfReader(pdf_path)
+        text_parts = []
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text.strip())
+        full_text = "\n\n".join(text_parts)
+        # Cap at 10,000 chars to avoid overwhelming LLM context
+        if len(full_text) > 10000:
+            full_text = full_text[:10000] + "\n...[truncated]"
+        return full_text
+    except Exception as e:
+        logging.error(f"PDF text extraction failed for {pdf_path}: {e}")
+        return ""
+
 @app.get("/create-rca/{log_id}", response_class=HTMLResponse)
 async def create_rca_page(
     log_id: int,
@@ -587,8 +607,10 @@ async def create_rca_page(
 
     # Check if an image is attached (image extensions)
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+    pdf_extensions = {'.pdf'}
     attached_image_url = None
     attached_image_path = None
+    attached_pdf_text = None
     if log.attached_doc:
         ext = os.path.splitext(log.attached_doc)[1].lower()
         if ext in image_extensions:
@@ -598,6 +620,13 @@ async def create_rca_page(
                 os.path.dirname(os.path.abspath(__file__)),
                 log.attached_doc
             )
+        elif ext in pdf_extensions:
+            # Extract text from uploaded PDF
+            pdf_abs_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                log.attached_doc
+            )
+            attached_pdf_text = _extract_pdf_text(pdf_abs_path)
 
     return templates.TemplateResponse("create_rca.html", {
         "request":       request,
@@ -612,6 +641,7 @@ async def create_rca_page(
         "attached_image_url": attached_image_url,
         "attached_image_path": attached_image_path,
         "image_description": log.doc_description or "",
+        "attached_pdf_text": attached_pdf_text or "",
         "active_page": "",
     })
 

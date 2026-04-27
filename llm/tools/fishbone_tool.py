@@ -226,7 +226,8 @@ CRITICAL RULES:
 5. Evidence must be ONE sentence max (under 15 words).
 6. Do NOT repeat the root cause itself — map what CONTRIBUTED to it.
 7. The primary_category must contain ONLY CONFIRMED or SUPPORTED causes, never POSSIBLE.
-8. If a category has no relevant causes, use an empty array [].
+8. If a category has no relevant causes, use an empty array []. EXCEPTION: "Environment" must ALWAYS have at least 1 cause — in industrial plants, environmental factors (dust, temperature, humidity, vibration from adjacent equipment) are always present. Even if not confirmed, include plausible environmental factors as SUPPORTED.
+9. For Machine and Method categories: go BEYOND the symptom to the DESIGN or MAINTENANCE GAP. Example: Instead of "Mounting joint prone to vibration loosening", write "No locking mechanism (nylock/spring washer) on mounting bolts". Instead of "Bearing overheated", write "No vibration trending to detect progressive degradation".
 
 EVIDENCE CLASSIFICATION — For each cause, assign an evidence_level:
 - "CONFIRMED": Directly observed or logged (alarms, sensor data, operator report)
@@ -234,6 +235,12 @@ EVIDENCE CLASSIFICATION — For each cause, assign an evidence_level:
 - "POSSIBLE": Plausible but unverified
 
 Confidence scores: CONFIRMED → 0.90, SUPPORTED → 0.75, POSSIBLE → 0.50
+
+SEVERITY CLASSIFICATION — For each cause, assign a severity:
+- "CRITICAL": Directly caused or enabled the failure, must be addressed immediately
+- "HIGH": Significantly contributed to the failure, should be addressed soon
+- "MEDIUM": Contributed to conditions that enabled the failure
+- "LOW": Minor contributing factor
 
 Respond ONLY with valid JSON in this exact format:
 {{
@@ -244,7 +251,8 @@ Respond ONLY with valid JSON in this exact format:
         "sub_causes": ["short sub-cause"],
         "confidence": 0.90,
         "evidence_level": "CONFIRMED",
-        "evidence": "One sentence of evidence"
+        "evidence": "One sentence of evidence",
+        "severity": "CRITICAL"
       }}
     ],
     "Machine": [...],
@@ -254,6 +262,14 @@ Respond ONLY with valid JSON in this exact format:
     "Environment": [...]
   }},
   "primary_category": "Machine",
+  "category_confidence": {{
+    "Man": 0.60,
+    "Machine": 0.90,
+    "Material": 0.85,
+    "Method": 0.70,
+    "Measurement": 0.75,
+    "Environment": 0.50
+  }},
   "summary": "One sentence explaining the dominant causal pathway"
 }}
 """
@@ -292,6 +308,11 @@ Respond ONLY with valid JSON in this exact format:
                 if evidence_level not in ("CONFIRMED", "SUPPORTED", "POSSIBLE"):
                     evidence_level = "POSSIBLE"
 
+                # Parse severity, default to MEDIUM
+                severity = c.get("severity", "MEDIUM").upper()
+                if severity not in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+                    severity = "MEDIUM"
+
                 causes.append(FishboneCause(
                     category=cat_name,
                     cause=cause_text,
@@ -299,6 +320,7 @@ Respond ONLY with valid JSON in this exact format:
                     confidence=float(c.get("confidence", 0.5)),
                     evidence_level=evidence_level,
                     evidence=c.get("evidence", ""),
+                    severity=severity,
                 ))
             categories[cat_name] = causes
 
@@ -309,9 +331,23 @@ Respond ONLY with valid JSON in this exact format:
                 categories, key=lambda k: len(categories[k]), default="Machine"
             )
 
+        # Extract per-category confidence scores from LLM response
+        raw_cat_conf = data.get("category_confidence", {})
+        category_confidence = {}
+        for cat_name in ISHIKAWA_CATEGORIES:
+            if cat_name in raw_cat_conf:
+                category_confidence[cat_name] = round(float(raw_cat_conf[cat_name]), 2)
+            elif categories.get(cat_name):
+                # Derive from average cause confidence
+                avg_conf = sum(c.confidence for c in categories[cat_name]) / len(categories[cat_name])
+                category_confidence[cat_name] = round(avg_conf, 2)
+            else:
+                category_confidence[cat_name] = 0.0
+
         return FishboneResult(
             categories=categories,
             root_cause_confirmed=root_cause,
             primary_category=primary_category,
+            category_confidence=category_confidence,
             documents_used=list(set(docs_used)),
         )

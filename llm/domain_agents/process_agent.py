@@ -69,11 +69,13 @@ ANALYSIS CHECKLIST (evaluate each area):
 RULES:
 1. Focus ONLY on process aspects (operating conditions, material quality, process stability, environment)
 2. Compare observed parameters against design limits and OEM specifications where available
-3. Back every claim with evidence from symptoms, sensor data, or OEM manual references
+3. Back every claim with observable evidence from symptoms, sensor data, maintenance history, or OEM manual references
 4. If inferring without direct evidence, say "Based on inference"
-5. Keep each finding to 1-2 sentences
-6. Do NOT use markdown formatting (no ** or *)
-7. Do NOT use HTTP/API error codes as failure modes
+5. In the HYPOTHESIS, mention at least 2 plausible alternative process causes and briefly reject them using the available evidence
+6. In the HYPOTHESIS, identify any recent process change or trigger if one is present in the failure description, observations, or history; if not available, say "No recent change data provided"
+7. Keep each finding to 1-2 sentences
+8. Do NOT use markdown formatting (no ** or *)
+9. Do NOT use HTTP/API error codes as failure modes
 
 Respond in EXACTLY this format:
 

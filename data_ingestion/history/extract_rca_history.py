@@ -393,19 +393,34 @@ def extract_two_pass(images: list, plant: str, filename: str) -> dict:
     return result
 
 
-def extract_pdf(pdf_path: Path, plant: str) -> Optional[dict]:
-    """Extract structured data from a single PDF."""
-    filename = pdf_path.name
+def extract_file(file_path: Path, plant: str) -> Optional[dict]:
+    """Extract structured data from a PDF or image file (JPG/JPEG/PNG)."""
+    from PIL import Image
+
+    filename = file_path.name
     logger.info(f"Processing: {plant}/{filename}")
 
     source_file = f"{plant}/{filename}"
+    is_image = file_path.suffix.lower() in {".jpg", ".jpeg", ".png"}
 
-    try:
-        images = pdf_to_images(pdf_path)
-    except Exception as e:
-        logger.error(f"  Failed to convert PDF to images: {e}")
-        log_status(source_file, "FAILED (pdf2image)")
-        return None
+    if is_image:
+        # Direct image file -- load as single-page PIL Image
+        try:
+            img = Image.open(str(file_path)).convert("RGB")
+            images = [img]
+            logger.info(f"  Loaded image file directly ({img.size[0]}x{img.size[1]})")
+        except Exception as e:
+            logger.error(f"  Failed to load image file: {e}")
+            log_status(source_file, "FAILED (image load)")
+            return None
+    else:
+        # PDF -- convert to images using pdf2image
+        try:
+            images = pdf_to_images(file_path)
+        except Exception as e:
+            logger.error(f"  Failed to convert PDF to images: {e}")
+            log_status(source_file, "FAILED (pdf2image)")
+            return None
 
     num_pages = len(images)
     logger.info(f"  {num_pages} page(s) detected")
@@ -457,21 +472,26 @@ def load_completed_from_status() -> set:
     return completed
 
 
-def discover_pdfs() -> list:
-    """Find all PDFs in history_data/ subfolders."""
-    pdfs = []
+# Supported file extensions for extraction
+SUPPORTED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+
+
+def discover_files() -> list:
+    """Find all PDFs and image files (JPG/JPEG/PNG) in history_data/ subfolders."""
+    files = []
     for plant_dir in sorted(DATA_DIR.iterdir()):
         if not plant_dir.is_dir():
             continue
-        plant = plant_dir.name  # CPP1, CPP2
-        for pdf_file in sorted(plant_dir.glob("*.pdf")):
-            pdfs.append((plant, pdf_file))
-    return pdfs
+        plant = plant_dir.name  # CPP1, CPP2, DRI1
+        for file_path in sorted(plant_dir.iterdir()):
+            if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                files.append((plant, file_path))
+    return files
 
 
 def main():
     parser = argparse.ArgumentParser(description="Extract RCA data from historical PDFs")
-    parser.add_argument("--single", type=str, help="Extract a single PDF (e.g., 'CPP1/15MW RCA 19-1-26.pdf')")
+    parser.add_argument("--single", type=str, help="Extract a single file (e.g., 'CPP1/15MW RCA 19-1-26.pdf' or 'DRI1/RCA.jpeg')")
     parser.add_argument("--data-dir", type=str, help="Override data directory (default: history_data/)")
     args = parser.parse_args()
 
@@ -505,15 +525,18 @@ def main():
         # Single file mode
         parts = args.single.replace("\\", "/").split("/", 1)
         if len(parts) != 2:
-            logger.error("Use format: 'CPP1/filename.pdf'")
+            logger.error("Use format: 'CPP1/filename.pdf' or 'DRI1/RCA.jpeg'")
             sys.exit(1)
         plant, fname = parts
-        pdf_path = DATA_DIR / plant / fname
-        if not pdf_path.exists():
-            logger.error(f"File not found: {pdf_path}")
+        file_path = DATA_DIR / plant / fname
+        if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
+            sys.exit(1)
+        if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            logger.error(f"Unsupported file type: {file_path.suffix}. Supported: {SUPPORTED_EXTENSIONS}")
             sys.exit(1)
 
-        result = extract_pdf(pdf_path, plant)
+        result = extract_file(file_path, plant)
         if result:
             # Replace if already exists, else append
             existing = [r for r in existing if r["source_file"] != result["source_file"]]
@@ -527,23 +550,23 @@ def main():
             sys.exit(1)
     else:
         # Full extraction mode
-        pdfs = discover_pdfs()
-        logger.info(f"Found {len(pdfs)} PDFs to process")
+        files = discover_files()
+        logger.info(f"Found {len(files)} files to process (PDFs + images)")
 
         results = list(existing)  # start with existing
         success = 0
         skipped = 0
         failed = 0
 
-        for plant, pdf_path in pdfs:
-            source_file = f"{plant}/{pdf_path.name}"
+        for plant, file_path in files:
+            source_file = f"{plant}/{file_path.name}"
 
             if source_file in skip_files:
                 logger.info(f"Skipping (already extracted): {source_file}")
                 skipped += 1
                 continue
 
-            result = extract_pdf(pdf_path, plant)
+            result = extract_file(file_path, plant)
             if result:
                 results.append(result)
                 success += 1

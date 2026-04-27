@@ -205,14 +205,9 @@ def analyze_image(image_path: str, user_description: Optional[str] = None) -> di
 
     structured = _extract_json(raw_text)
 
-    # Build combined observation
+    # Keep the observation AI-only so the UI can render operator notes separately
     ai_desc = structured.get("description", "")
-    combined = ai_desc
-    if user_description and user_description.strip():
-        combined = (
-            f"Visual AI analysis: {ai_desc} "
-            f"Operator note: {user_description.strip()}"
-        )
+    combined = f"Visual AI analysis: {ai_desc}" if ai_desc else ""
 
     result = {
         "component": structured.get("component", "Unknown"),
