@@ -209,6 +209,88 @@
         margin-top: 0.7rem;
     }
 
+    /* AI-Suggested CAPA Plan (read-only cards above the editable table) */
+    .capa-ai-section {
+        margin-bottom: 1.2rem;
+    }
+    .capa-ai-summary {
+        background: rgba(59, 163, 165, 0.07);
+        border-left: 3px solid var(--accent);
+        padding: 0.7rem 0.95rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.88rem;
+        color: var(--text);
+    }
+    .capa-ai-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    @media (max-width: 720px) { .capa-ai-grid { grid-template-columns: 1fr; } }
+    .capa-ai-col {
+        background: #f8fafc;
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    .capa-ai-col-title {
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-size: 0.78rem;
+        color: var(--accent);
+        margin-bottom: 0.7rem;
+    }
+    .capa-ai-card {
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 0.8rem 0.95rem;
+        margin-bottom: 0.6rem;
+    }
+    .capa-ai-card:last-child { margin-bottom: 0; }
+    .capa-ai-card-action {
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: var(--text);
+        margin-bottom: 0.4rem;
+        line-height: 1.4;
+    }
+    .capa-ai-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-bottom: 0.4rem;
+    }
+    .capa-ai-tag {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+    }
+    .capa-tag-priority-immediate  { background: #fef2f2; color: #b91c1c; }
+    .capa-tag-priority-short_term { background: #fff7ed; color: #c2410c; }
+    .capa-tag-priority-long_term  { background: #eff6ff; color: #1d4ed8; }
+    .capa-tag-resp     { background: rgba(59,163,165,0.10); color: var(--accent); }
+    .capa-tag-cat      { background: rgba(0,0,0,0.06); color: var(--text-muted); }
+    .capa-tag-date     { background: #f0fdf4; color: #166534; }
+    .capa-ai-card-rationale {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-style: italic;
+        line-height: 1.4;
+    }
+    .capa-ai-card-refs {
+        margin-top: 0.4rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    .capa-ai-card-refs strong { color: var(--text); }
+
     /* CAPA Table */
     .capa-table {
         width: 100%;
@@ -667,6 +749,192 @@
         font-size: 0.78rem;
         margin: 0.15rem 0.2rem;
     }
+
+    /* ── Chatbot (clarification) Modal ── */
+    .chatbot-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+    }
+    .chatbot-dialog {
+        width: 100%;
+        max-width: 720px;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 2rem;
+        border-radius: 18px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        background: #fff;
+    }
+    .chatbot-header {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        align-items: flex-start;
+    }
+    .chatbot-icon {
+        font-size: 1.5rem;
+        background: var(--accent);
+        color: #fff;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .chatbot-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 0.3rem 0;
+    }
+    .chatbot-subtitle {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+    .chatbot-questions {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .chatbot-question-card {
+        background: #f8fafc;
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 1.2rem;
+        transition: all 0.18s;
+    }
+    .chatbot-question-card.answered {
+        border-color: var(--accent);
+        background: rgba(59, 163, 165, 0.04);
+    }
+    .chatbot-q-badge {
+        display: inline-block;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        background: rgba(59, 163, 165, 0.12);
+        color: var(--accent);
+        padding: 0.18rem 0.55rem;
+        border-radius: 999px;
+        margin-bottom: 0.55rem;
+        font-weight: 700;
+    }
+    .chatbot-q-text {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.3rem;
+        font-size: 0.94rem;
+        line-height: 1.4;
+    }
+    .chatbot-q-rationale {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.85rem;
+        font-style: italic;
+    }
+    .chatbot-q-input {
+        width: 100%;
+        padding: 0.6rem 0.9rem;
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 0.92rem;
+        background: #fff;
+        box-sizing: border-box;
+    }
+    .chatbot-q-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(59, 163, 165, 0.15);
+    }
+    .chatbot-q-input-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .chatbot-q-units {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    .chatbot-q-yesno {
+        display: flex;
+        gap: 0.6rem;
+    }
+    .chatbot-q-yesno button {
+        flex: 1;
+        padding: 0.6rem;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+        background: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--text-muted);
+        font-family: inherit;
+        transition: all 0.15s;
+    }
+    .chatbot-q-yesno button.selected {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+    }
+    .chatbot-q-dontknow {
+        margin-top: 0.55rem;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        font-family: inherit;
+    }
+    .chatbot-q-dontknow:hover { color: var(--accent); }
+    .chatbot-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid var(--glass-border);
+    }
+    .chatbot-progress {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+    .chatbot-continue-btn {
+        padding: 0.65rem 1.4rem;
+        border-radius: 10px;
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s;
+    }
+    .chatbot-continue-btn:disabled {
+        background: #cbd5e1;
+        cursor: not-allowed;
+    }
+    .chatbot-continue-btn:not(:disabled):hover {
+        box-shadow: 0 4px 12px var(--accent-glow);
+        transform: translateY(-1px);
+    }
 </style>
 {% endblock %}
 
@@ -795,6 +1063,24 @@
             <input type="text" id="team-list-input" placeholder="e.g. John Smith (Mech), Priya Verma (Elect), Raju Kumar (Process)" style="max-width: 600px;">
         </div>
 
+        <!-- AI-Suggested CAPA Plan (read-only, rich cards) -->
+        <div id="capa-ai-section" class="glass-panel capa-ai-section" style="display: none;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.6rem;">
+                AI-Suggested CAPA Plan
+            </h3>
+            <div id="capa-ai-summary" class="capa-ai-summary"></div>
+            <div class="capa-ai-grid">
+                <div class="capa-ai-col">
+                    <div class="capa-ai-col-title">Corrective Actions</div>
+                    <div id="capa-ai-corrective"></div>
+                </div>
+                <div class="capa-ai-col">
+                    <div class="capa-ai-col-title">Preventive Actions</div>
+                    <div id="capa-ai-preventive"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- CAPA -->
         <div class="glass-panel" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -892,6 +1178,27 @@
 <form id="rca-form" action="/save-rca/{{ log.id }}" method="POST">
     <input type="hidden" id="rca_data" name="rca_data" value="">
 </form>
+
+<!-- ══════════════════════ CHATBOT MODAL ══════════════════════ -->
+<div id="chatbot-modal" class="chatbot-overlay" style="display: none;">
+    <div class="chatbot-dialog">
+        <div class="chatbot-header">
+            <div class="chatbot-icon">💬</div>
+            <div>
+                <h3 class="chatbot-title">A few more details</h3>
+                <p class="chatbot-subtitle">The AI has flagged some gaps. Please answer to refine the analysis.</p>
+            </div>
+        </div>
+        <div id="chatbot-questions-list" class="chatbot-questions"></div>
+        <div class="chatbot-footer">
+            <span id="chatbot-progress" class="chatbot-progress">0 / 0 answered</span>
+            <button type="button" id="chatbot-continue-btn" class="chatbot-continue-btn" disabled
+                    onclick="submitClarifications()">
+                Continue Analysis →
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
     // ── Constants passed from server ─────────────────────────────────────────
@@ -1028,7 +1335,7 @@
         };
 
         try {
-            const response = await fetch(LLM_API_URL + '/analyze-integrated-stream', {
+            const response = await fetch(LLM_API_URL + '/analyze-prepare-stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1038,41 +1345,62 @@
                 throw new Error('HTTP ' + response.status + ': ' + response.statusText);
             }
 
-            const reader  = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '', lastEvent = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-
-                const lines = buffer.split('\n');
-                buffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('event: ')) {
-                        lastEvent = trimmed.slice(7);
-                    } else if (trimmed.startsWith('data: ')) {
-                        const data = trimmed.slice(6);
-                        handleSSEData(lastEvent, data);
-                        lastEvent = '';
-                    }
-                }
-            }
+            await readSSE(response);
         } catch (err) {
             addStatusLine('Connection error: ' + err.message, 'error-line');
-        } finally {
-            document.getElementById('status-spinner').style.display = 'none';
-            btn.disabled = false;
-            document.getElementById('run-btn-content').innerHTML =
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run AI Analysis';
+            resetRunButton();
         }
+        // NOTE: do NOT reset the button here. After /analyze-prepare-stream
+        // completes, the chatbot modal opens and the user must submit
+        // clarifications — the button is reset only when the final
+        // 'result' or 'error' event arrives from /analyze-finalize-stream.
+    }
+
+    /**
+     * Read an SSE response body and dispatch each event to handleSSEData.
+     * Shared between /analyze-prepare-stream and /analyze-finalize-stream.
+     */
+    async function readSSE(response) {
+        const reader  = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '', lastEvent = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('event: ')) {
+                    lastEvent = trimmed.slice(7);
+                } else if (trimmed.startsWith('data: ')) {
+                    handleSSEData(lastEvent, trimmed.slice(6));
+                    lastEvent = '';
+                }
+            }
+        }
+    }
+
+    function resetRunButton() {
+        document.getElementById('status-spinner').style.display = 'none';
+        const btn = document.getElementById('run-ai-btn');
+        if (btn) btn.disabled = false;
+        const content = document.getElementById('run-btn-content');
+        if (content) content.innerHTML =
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run AI Analysis';
     }
 
     let _pendingDomainInsights = null;
     let _pendingHistoryMatches = null;
+    let _pendingCapaResult     = null;
+    // Chatbot (clarification) state
+    let _sessionId = null;
+    let _questions = [];
+    let _answers   = {};
 
     function handleSSEData(eventType, dataStr) {
         if (!dataStr || dataStr === '""') return;
@@ -1090,18 +1418,198 @@
                 _imageAnalysisResult = data.image_analysis;
                 _imageAnalysisResult._image_url = ATTACHED_IMAGE_URL;
                 addStatusLine('Image analysis complete.', 'done');
+            } else if (eventType === 'capa') {
+                _pendingCapaResult = data.capa || null;
+                if (_pendingCapaResult) {
+                    addStatusLine('CAPA plan ready.', 'done');
+                    renderCAPASuggestions(_pendingCapaResult);
+                }
+            } else if (eventType === 'clarifying_questions') {
+                // Phase 1: questions arrived — render the modal cards (modal
+                // is opened on prepare_complete, which always follows).
+                renderClarifyingQuestions(data.questions || []);
+            } else if (eventType === 'prepare_complete') {
+                // Phase 1 done. Show the modal and wait for user input.
+                _sessionId = data.session_id;
+                addStatusLine('Awaiting your input — please answer the follow-up questions.', 'done');
+                showChatbotModal();
             } else if (eventType === 'result') {
+                // Phase 2 done — final report.
                 addStatusLine('Analysis complete!', 'done');
                 renderReport(data.result);
                 if (_pendingDomainInsights) {
                     renderDomainInsights(_pendingDomainInsights);
                     _pendingDomainInsights = null;
                 }
+                resetRunButton();
             } else if (eventType === 'error') {
                 addStatusLine('Error: ' + (data.detail || dataStr), 'error-line');
+                resetRunButton();
             }
         } catch (e) {
             // padding / non-json lines — ignore
+        }
+    }
+
+    // ── Clarification Modal ──────────────────────────────────────────────────
+
+    const _SOURCE_BADGE = {
+        'discriminating': '⚖ Decisive',
+        'missing_metric': '📊 Missing Data',
+        'historical':     '📚 Past Pattern',
+        'domain_check':   '🔍 Verification'
+    };
+
+    function renderClarifyingQuestions(questions) {
+        _questions = Array.isArray(questions) ? questions : [];
+        _answers = {};
+        const container = document.getElementById('chatbot-questions-list');
+        container.innerHTML = '';
+
+        if (_questions.length === 0) {
+            // Defensive: server should always send at least the generic fallback.
+            container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No follow-up questions — you may continue.</p>';
+            document.getElementById('chatbot-continue-btn').disabled = false;
+            updateChatbotProgress();
+            return;
+        }
+
+        _questions.forEach((q, idx) => {
+            const card = document.createElement('div');
+            card.className = 'chatbot-question-card';
+            card.id = 'q-card-' + q.id;
+
+            const badge = _SOURCE_BADGE[q.source] || q.source || 'Follow-up';
+
+            let inputHtml;
+            if (q.expected_format === 'number') {
+                const units = q.units ? '<span class="chatbot-q-units">' + escHtml(q.units) + '</span>' : '';
+                inputHtml =
+                    '<div class="chatbot-q-input-row">' +
+                        '<input type="text" inputmode="decimal" class="chatbot-q-input" ' +
+                               'id="q-input-' + q.id + '" placeholder="Enter value..." ' +
+                               'oninput="onChatbotAnswerChange(\'' + q.id + '\', this.value)">' +
+                        units +
+                    '</div>';
+            } else if (q.expected_format === 'yes_no') {
+                inputHtml =
+                    '<div class="chatbot-q-yesno" id="q-yn-' + q.id + '">' +
+                        '<button type="button" onclick="onChatbotYesNo(\'' + q.id + '\', \'Yes\', this)">Yes</button>' +
+                        '<button type="button" onclick="onChatbotYesNo(\'' + q.id + '\', \'No\', this)">No</button>' +
+                    '</div>';
+            } else {
+                inputHtml =
+                    '<textarea class="chatbot-q-input" id="q-input-' + q.id + '" rows="2" ' +
+                              'placeholder="Type your answer..." ' +
+                              'oninput="onChatbotAnswerChange(\'' + q.id + '\', this.value)"></textarea>';
+            }
+
+            card.innerHTML =
+                '<span class="chatbot-q-badge">' + escHtml(badge) + '</span>' +
+                '<div class="chatbot-q-text">' + (idx + 1) + '. ' + escHtml(q.question) + '</div>' +
+                '<div class="chatbot-q-rationale">💡 ' + escHtml(q.rationale || '') + '</div>' +
+                inputHtml +
+                '<div><button type="button" class="chatbot-q-dontknow" ' +
+                              'onclick="onChatbotDontKnow(\'' + q.id + '\')">I don\'t know</button></div>';
+
+            container.appendChild(card);
+        });
+
+        updateChatbotProgress();
+    }
+
+    function onChatbotAnswerChange(qid, value) {
+        if (value && value.trim()) {
+            _answers[qid] = value.trim();
+            document.getElementById('q-card-' + qid).classList.add('answered');
+        } else {
+            delete _answers[qid];
+            document.getElementById('q-card-' + qid).classList.remove('answered');
+        }
+        updateChatbotProgress();
+    }
+
+    function onChatbotYesNo(qid, val, btn) {
+        _answers[qid] = val;
+        const row = btn.parentElement;
+        row.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('q-card-' + qid).classList.add('answered');
+        updateChatbotProgress();
+    }
+
+    function onChatbotDontKnow(qid) {
+        _answers[qid] = "I don't know";
+        const card = document.getElementById('q-card-' + qid);
+        card.classList.add('answered');
+        const input = document.getElementById('q-input-' + qid);
+        if (input) input.value = "I don't know";
+        const ynRow = document.getElementById('q-yn-' + qid);
+        if (ynRow) {
+            ynRow.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+        }
+        updateChatbotProgress();
+    }
+
+    function updateChatbotProgress() {
+        const total = _questions.length;
+        const answered = Object.keys(_answers).length;
+        const prog = document.getElementById('chatbot-progress');
+        if (prog) prog.textContent = answered + ' / ' + total + ' answered';
+        const btn = document.getElementById('chatbot-continue-btn');
+        if (btn) btn.disabled = (total > 0 && answered < total);
+    }
+
+    function showChatbotModal() {
+        document.getElementById('chatbot-modal').style.display = 'flex';
+    }
+    function hideChatbotModal() {
+        document.getElementById('chatbot-modal').style.display = 'none';
+    }
+
+    /** Submit the user's clarifications and stream the finalize result. */
+    async function submitClarifications() {
+        if (!_sessionId) {
+            addStatusLine('Error: missing session id — please retry the analysis.', 'error-line');
+            resetRunButton();
+            return;
+        }
+        const clarifications = _questions.map(q => ({
+            question_id: q.id,
+            question:    q.question,
+            answer:      _answers[q.id] || "I don't know"
+        }));
+
+        hideChatbotModal();
+        addStatusLine('Submitting ' + clarifications.length + ' clarification(s) — finalizing analysis...', 'done');
+        document.getElementById('status-spinner').style.display = 'inline-block';
+
+        try {
+            const response = await fetch(LLM_API_URL + '/analyze-finalize-stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id:     _sessionId,
+                    clarifications: clarifications
+                })
+            });
+            if (!response.ok) {
+                let detail = response.statusText;
+                try {
+                    const err = await response.json();
+                    detail = err.detail || detail;
+                } catch (_) { /* keep statusText */ }
+                throw new Error('HTTP ' + response.status + ': ' + detail);
+            }
+            await readSSE(response);
+        } catch (err) {
+            addStatusLine('Finalize error: ' + err.message, 'error-line');
+            resetRunButton();
+        } finally {
+            // Clear chatbot state regardless of outcome — session is single-use.
+            _sessionId = null;
+            _questions = [];
+            _answers   = {};
         }
     }
 
@@ -1315,12 +1823,29 @@
         }
 
         // ── CAPA ──
-        const actions = fw.corrective_actions || [];
+        // Source priority for pre-fill:
+        //   1. result.capa_actions (rich structured AI output — new)
+        //   2. result.capa (previously saved manual rows)
+        //   3. fw.corrective_actions (legacy list of strings — backfilled)
         document.getElementById('capa-tbody').innerHTML = '';
-        const savedCapa = result.capa || null;
+
+        const capaActions = result.capa_actions || _pendingCapaResult || null;
+        const savedCapa   = result.capa || null;
+
+        // Always render the read-only AI suggestion cards if AI output exists.
+        if (capaActions) renderCAPASuggestions(capaActions);
+
         if (savedCapa && savedCapa.length > 0) {
+            // Restoring a saved RCA — keep the user's edited rows in the table.
             savedCapa.forEach(row => addCapaRow(row.action, row.responsibility, row.targetDate));
+        } else if (capaActions && (capaActions.corrective || capaActions.preventive)) {
+            // Fresh AI run — pre-fill from structured CAPA (corrective + preventive)
+            const merged = [].concat(capaActions.corrective || [], capaActions.preventive || []);
+            merged.forEach(a => addCapaRow(a.action || '', a.responsibility || '', ''));
+            if (merged.length === 0) addCapaRow('', '', '');
         } else {
+            // Legacy fallback: just a list of strings.
+            const actions = fw.corrective_actions || [];
             actions.slice(0, 5).forEach(a => addCapaRow(a, '', ''));
             if (actions.length === 0) addCapaRow('', '', '');
         }
@@ -1345,6 +1870,58 @@
         document.getElementById('report-section').style.display = 'block';
         document.getElementById('ai-input-section').style.display = 'none';
         document.getElementById('status-section').style.display = 'none';
+    }
+
+    // ── AI-Suggested CAPA Cards (read-only display above editable table) ─────
+    function renderCAPASuggestions(capa) {
+        if (!capa) return;
+        const section = document.getElementById('capa-ai-section');
+        if (!section) return;
+        section.style.display = 'block';
+
+        const summaryEl = document.getElementById('capa-ai-summary');
+        if (summaryEl) summaryEl.textContent = capa.summary || 'AI-generated CAPA plan based on the confirmed root cause.';
+
+        document.getElementById('capa-ai-corrective').innerHTML =
+            buildCAPACards(capa.corrective || [], 'No corrective actions generated.');
+        document.getElementById('capa-ai-preventive').innerHTML =
+            buildCAPACards(capa.preventive || [], 'No preventive actions generated.');
+    }
+
+    function buildCAPACards(actions, emptyMsg) {
+        if (!actions || actions.length === 0) {
+            return '<div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">' +
+                   escHtml(emptyMsg) + '</div>';
+        }
+        return actions.map(a => {
+            const priorityClass = 'capa-tag-priority-' + (a.priority || 'short_term').replace(/-/g, '_');
+            const priorityLabel = (a.priority || 'short_term').replace('_', ' ');
+
+            const tags = [];
+            tags.push('<span class="capa-ai-tag ' + priorityClass + '">' + escHtml(priorityLabel) + '</span>');
+            if (a.responsibility) {
+                tags.push('<span class="capa-ai-tag capa-tag-resp">' + escHtml(a.responsibility) + '</span>');
+            }
+            if (a.related_category) {
+                tags.push('<span class="capa-ai-tag capa-tag-cat">' + escHtml(a.related_category) + '</span>');
+            }
+            if (a.target_date_hint) {
+                tags.push('<span class="capa-ai-tag capa-tag-date">' + escHtml(a.target_date_hint) + '</span>');
+            }
+
+            let refsHtml = '';
+            if (a.references && a.references.length > 0) {
+                refsHtml = '<div class="capa-ai-card-refs"><strong>Refs:</strong> ' +
+                           a.references.map(r => escHtml(r)).join(', ') + '</div>';
+            }
+
+            return '<div class="capa-ai-card">' +
+                       '<div class="capa-ai-card-action">' + escHtml(a.action || '') + '</div>' +
+                       '<div class="capa-ai-card-meta">' + tags.join('') + '</div>' +
+                       (a.rationale ? '<div class="capa-ai-card-rationale">' + escHtml(a.rationale) + '</div>' : '') +
+                       refsHtml +
+                   '</div>';
+        }).join('');
     }
 
     // ── CAPA Table ───────────────────────────────────────────────────────────

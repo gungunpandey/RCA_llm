@@ -7,6 +7,8 @@ import BreakdownLogPage from './pages/BreakdownLogPage';
 import CAPACreationPage from './pages/CAPACreationPage';
 import CAPATrackingBoard from './pages/CAPATrackingBoard';
 import CAPADetailPage from './pages/CAPADetailPage';
+import EquipmentMasterPage from './pages/EquipmentMasterPage';
+import HistoricalAnalyticsPage from './pages/HistoricalAnalyticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -57,6 +59,24 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <CAPADetailPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/equipment"
+                        element={
+                            <ProtectedRoute>
+                                <EquipmentMasterPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/analytics"
+                        element={
+                            <ProtectedRoute>
+                                <HistoricalAnalyticsPage />
                             </ProtectedRoute>
                         }
                     />

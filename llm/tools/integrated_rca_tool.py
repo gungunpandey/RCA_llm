@@ -1,12 +1,19 @@
 """
-Integrated RCA Tool - Domain Agents + 5 Whys + Fishbone Pipeline
+Integrated RCA Tool — split into two phases for the chatbot pipeline.
 
-Orchestrates sequential execution:
-1. Run domain agents in parallel
-2. Aggregate domain insights
-3. Run enhanced 5 Whys with domain context
-4. Run Fishbone analysis using confirmed root cause
-5. Return comprehensive root cause analysis
+Phase 1: run_prepare()
+    Historical lookup → domain agents (+ image analysis in parallel)
+    → clarification question generation. Returns all state needed to resume
+    after the user answers the chatbot.
+
+Phase 2: run_finalize(session_fields, clarifications)
+    Appends user clarifications to failure_text → 5 Whys → Fishbone →
+    returns the final comprehensive result (same shape the old analyze()
+    produced).
+
+The original analyze() method is kept as a convenience wrapper that runs
+both phases back-to-back with empty clarifications — useful for tests and
+any programmatic caller that doesn't need the chatbot step.
 """
 
 from typing import List, Dict, Any, Optional
@@ -14,10 +21,18 @@ import asyncio
 import logging
 
 from tools.base_tool import BaseTool
-from models.tool_results import ToolResult, DomainInsightsSummary, DomainAnalysisResult
+from models.tool_results import (
+    ToolResult,
+    DomainInsightsSummary,
+    DomainAnalysisResult,
+    ClarifyingQuestion,
+    ClarificationAnswer,
+)
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 from tools.five_whys_tool import FiveWhysTool
 from tools.fishbone_tool import FishboneTool
+from tools.capa_tool import CAPATool
+from tools.clarification_generator import ClarificationGenerator
 from tools import history_matcher
 
 logger = logging.getLogger(__name__)
@@ -25,29 +40,29 @@ logger = logging.getLogger(__name__)
 
 class IntegratedRCATool(BaseTool):
     """
-    Integrated RCA pipeline combining domain agents and 5 Whys.
-    
-    Executes a sequential analysis:
-    1. Domain agents analyze failure (parallel execution)
-    2. Aggregate domain insights
-    3. Enhanced 5 Whys uses domain insights + RAG
-    4. Return comprehensive, domain-backed root cause
+    Two-phase integrated RCA pipeline.
+
+    Phase 1 (run_prepare): history → domain agents → image analysis →
+                           clarification questions
+    Phase 2 (run_finalize): apply user clarifications → 5 Whys → Fishbone
     """
-    
+
     def __init__(self, llm_adapter: Any, rag_manager: Any):
         super().__init__(llm_adapter, rag_manager, tool_name="integrated_rca")
-        
-        # Initialize domain agents
+
+        # Domain agents
         self.mechanical_agent = MechanicalAgent(llm_adapter, rag_manager)
         self.electrical_agent = ElectricalAgent(llm_adapter, rag_manager)
         self.process_agent = ProcessAgent(llm_adapter, rag_manager)
-        
-        # Initialize 5 Whys tool
+
+        # Downstream tools
         self.five_whys = FiveWhysTool(llm_adapter, rag_manager)
-        
-        # Initialize Fishbone tool
         self.fishbone = FishboneTool(llm_adapter, rag_manager)
-        
+        self.capa = CAPATool(llm_adapter, rag_manager)
+
+        # Clarification chatbot
+        self.clarification_generator = ClarificationGenerator(llm_adapter)
+
         # Agent routing keywords
         self.agent_routing = {
             "mechanical_agent": [
@@ -66,43 +81,34 @@ class IntegratedRCATool(BaseTool):
                 "flame", "damper", "draft", "kiln speed"
             ]
         }
-    
-    async def analyze(
+
+    # ── Phase 1: prepare ────────────────────────────────────────────────────
+
+    async def run_prepare(
         self,
         failure_description: str,
         equipment_name: str,
         symptoms: List[str],
-        **kwargs
+        **kwargs,
     ) -> ToolResult:
         """
-        Execute integrated RCA pipeline.
-        
-        Steps:
-        1. Route to appropriate domain agents
-        2. Run domain agents in parallel
-        3. Aggregate domain insights
-        4. Run 5 Whys with domain context
-        5. Return comprehensive result
-        
-        Args:
-            failure_description: Description of the failure
-            equipment_name: Name of the equipment
-            symptoms: List of observed symptoms
-            **kwargs: Additional parameters (status_callback, etc.)
-            
+        Phase 1 — history + domain agents + image + clarification questions.
+
         Returns:
-            ToolResult containing integrated analysis
+            ToolResult whose .result is a dict carrying:
+              failure_text, equipment_name, symptoms, domain_insights,
+              history_context, history_matches, image_analysis,
+              selected_agents, questions
         """
         status_callback = kwargs.get("status_callback")
-        image_path = kwargs.get("image_path")    # optional: absolute path to image file
-        image_desc = kwargs.get("image_desc")    # optional: user description of image
-        
+        image_path = kwargs.get("image_path")
+        image_desc = kwargs.get("image_desc")
+
         async def _send_status(msg: str):
             if status_callback:
                 await status_callback(msg)
-        
+
         async def _analyze_image_async():
-            """Run image analysis in a thread (it uses synchronous requests)."""
             if not image_path:
                 return None
             try:
@@ -119,8 +125,8 @@ class IntegratedRCATool(BaseTool):
                 await _send_status(f"⚠ Image analysis failed: {e}")
                 return None
 
-        async def _perform_analysis():
-            # Step 0: Historical incident lookup (fast, non-blocking)
+        async def _perform():
+            # 0. Historical lookup
             await _send_status("📜 Searching historical incident database...")
             history_matches, history_context = await history_matcher.find_and_format(
                 equipment_name=equipment_name,
@@ -133,12 +139,15 @@ class IntegratedRCATool(BaseTool):
             else:
                 await _send_status("No similar historical incidents found")
 
-            # Step 1: Route to domain agents
+            # 1. Route to domain agents
             await _send_status("🔍 Routing to domain experts...")
             selected_agents = self._route_agents(failure_description, symptoms)
-            await _send_status(f"✓ Selected experts: {', '.join([a.replace('_agent', '').title() for a in selected_agents])}")
-            
-            # Step 2: Run domain agents AND image analysis in PARALLEL
+            await _send_status(
+                "✓ Selected experts: "
+                + ", ".join(a.replace("_agent", "").title() for a in selected_agents)
+            )
+
+            # 2. Domain agents + image analysis in parallel
             await _send_status("🔬 Domain experts + Image analysis running in parallel...")
             domain_results, image_analysis = await asyncio.gather(
                 self._run_domain_agents(
@@ -146,129 +155,274 @@ class IntegratedRCATool(BaseTool):
                     failure_description,
                     equipment_name,
                     symptoms,
-                    status_callback
+                    status_callback,
                 ),
                 _analyze_image_async(),
             )
-            
-            # Step 3: Aggregate domain insights
+
+            # 3. Aggregate domain insights
             await _send_status("📊 Aggregating domain expert insights...")
             domain_insights = self._aggregate_domain_insights(domain_results)
             await _send_status(
                 f"✓ Domain analysis complete — {len(domain_insights.key_findings)} "
-                f"key findings identified (avg confidence: {domain_insights.overall_confidence*100:.0f}%)"
+                f"key findings (avg confidence: {domain_insights.overall_confidence*100:.0f}%)"
             )
-            
-            # ── Emit domain insights immediately as a special event ──────────
-            if status_callback:
-                await status_callback(("__DOMAIN_INSIGHTS__", domain_insights.model_dump(mode='json')))
 
-            # ── Emit image analysis immediately as a special event ────────────
+            if status_callback:
+                await status_callback(
+                    ("__DOMAIN_INSIGHTS__", domain_insights.model_dump(mode="json"))
+                )
             if image_analysis and status_callback:
                 await status_callback(("__IMAGE_ANALYSIS__", image_analysis))
 
-            
-            # Step 4: Run enhanced 5 Whys
+            # 4. Generate clarifying questions
+            await _send_status("💬 Preparing follow-up questions for the chatbot...")
+            questions = await self.clarification_generator.generate(
+                failure_text=failure_description,
+                domain_insights=domain_insights,
+                history_matches=history_matches,
+                image_analysis=image_analysis,
+            )
+            await _send_status(f"✓ Prepared {len(questions)} clarifying question(s)")
+
+            if status_callback:
+                await status_callback(
+                    ("__CLARIFYING_QUESTIONS__", [q.model_dump() for q in questions])
+                )
+
+            return {
+                "failure_text": failure_description,
+                "equipment_name": equipment_name,
+                "symptoms": symptoms,
+                "domain_insights": domain_insights,      # Pydantic object, kept as-is
+                "history_context": history_context,
+                "history_matches": history_matches,
+                "image_analysis": image_analysis,
+                "selected_agents": selected_agents,
+                "questions": questions,                  # List[ClarifyingQuestion]
+            }
+
+        return await self._execute_with_timing(_perform)
+
+    # ── Phase 2: finalize ───────────────────────────────────────────────────
+
+    async def run_finalize(
+        self,
+        equipment_name: str,
+        failure_text: str,
+        symptoms: List[str],
+        domain_insights: DomainInsightsSummary,
+        history_context: str,
+        image_analysis: Optional[dict],
+        selected_agents: List[str],
+        clarifications: List[ClarificationAnswer],
+        history_matches: Optional[List[dict]] = None,
+        **kwargs,
+    ) -> ToolResult:
+        """
+        Phase 2 — apply clarifications, then run 5 Whys → Fishbone → CAPA.
+
+        `history_matches` is the raw output from history_matcher (top similar
+        past incidents with their CAPAs). Used to ground the CAPA generation
+        in actions that were actually applied to similar failures.
+
+        Returns the same final-result shape as the legacy analyze() method,
+        plus a `capa_actions` field.
+        """
+        status_callback = kwargs.get("status_callback")
+
+        async def _send_status(msg: str):
+            if status_callback:
+                await status_callback(msg)
+
+        async def _perform():
+            # Append clarifications into a structured block on failure_text
+            enriched_failure_text = self._append_clarifications(failure_text, clarifications)
+            if clarifications:
+                await _send_status(
+                    f"✓ Applied {len(clarifications)} user clarification(s) to the analysis"
+                )
+
+            # 5 Whys
             await _send_status("🎯 Starting main root cause analysis (5 Whys)...")
             await _send_status("Using domain expert insights as foundation...")
-
-            
             five_whys_result = await self.five_whys.analyze(
-                failure_description=failure_description,
+                failure_description=enriched_failure_text,
                 equipment_name=equipment_name,
                 symptoms=symptoms,
-                domain_insights=domain_insights,    # Pass domain context
-                image_analysis=image_analysis,      # Pass image analysis context
-                historical_context=history_context, # Pass historical reference
-                status_callback=status_callback
+                domain_insights=domain_insights,
+                image_analysis=image_analysis,
+                historical_context=history_context,
+                status_callback=status_callback,
             )
-            
-            # Step 5: Run Fishbone analysis using confirmed root cause
-            root_cause = five_whys_result.result.get("root_cause", failure_description)
+
+            # Fishbone using confirmed root cause
+            root_cause = five_whys_result.result.get("root_cause", enriched_failure_text)
             fishbone_result = await self.fishbone.analyze(
-                failure_description=failure_description,
+                failure_description=enriched_failure_text,
                 equipment_name=equipment_name,
                 symptoms=symptoms,
                 root_cause=root_cause,
                 domain_insights=domain_insights,
-                status_callback=status_callback
+                status_callback=status_callback,
             )
-            
-            # Step 6: Build comprehensive result
+
             fishbone_data = None
             if fishbone_result.success:
                 fishbone_data = fishbone_result.result
             else:
-                logger.error(
-                    f"Fishbone analysis failed: {fishbone_result.error}"
-                )
+                logger.error(f"Fishbone analysis failed: {fishbone_result.error}")
 
-            result_dict = {
+            # CAPA — corrective + preventive plan from the confirmed root cause
+            await _send_status("🛠 Generating corrective + preventive action plan...")
+            capa_result = await self.capa.analyze(
+                failure_description=enriched_failure_text,
+                equipment_name=equipment_name,
+                symptoms=symptoms,
+                root_cause=root_cause,
+                why_steps=five_whys_result.result.get("why_steps", []),
+                fishbone_result=fishbone_data,
+                domain_insights=domain_insights,
+                historical_capas=history_matches or [],
+                user_clarifications=[c.model_dump() for c in clarifications],
+                status_callback=status_callback,
+            )
+
+            capa_data: Optional[Dict[str, Any]] = None
+            if capa_result.success:
+                capa_data = capa_result.result
+                # Stream CAPA to the frontend as an early event so cards can
+                # render before the final 'result' event.
+                if status_callback:
+                    await status_callback(("__CAPA__", capa_data))
+                # Backfill the legacy FiveWhysResult.corrective_actions field
+                # so older callers (tests, manual UI) still find a list there.
+                try:
+                    five_whys_result.result["corrective_actions"] = [
+                        a["action"] for a in capa_data.get("corrective", []) if a.get("action")
+                    ]
+                except Exception as e:
+                    logger.warning(f"Could not backfill corrective_actions: {e}")
+            else:
+                logger.error(f"CAPA generation failed: {capa_result.error}")
+
+            method = (
+                "domain_enhanced_5_whys_fishbone_capa_with_clarifications"
+                if clarifications
+                else "domain_enhanced_5_whys_fishbone_capa"
+            )
+
+            result_dict: Dict[str, Any] = {
                 "domain_insights": domain_insights.model_dump(),
                 "five_whys_analysis": five_whys_result.result,
                 "fishbone_analysis": fishbone_data,
+                "capa_actions": capa_data,
                 "final_root_cause": root_cause,
                 "final_confidence": five_whys_result.result["root_cause_confidence"],
-                "analysis_method": "domain_enhanced_5_whys_fishbone",
-                "agents_used": selected_agents
+                "analysis_method": method,
+                "agents_used": selected_agents,
+                "user_clarifications": [c.model_dump() for c in clarifications],
             }
-            # Include image analysis in result if present
             if image_analysis:
                 result_dict["image_analysis"] = image_analysis
             return result_dict
-        
-        return await self._execute_with_timing(_perform_analysis)
-    
+
+        return await self._execute_with_timing(_perform)
+
+    # ── Legacy convenience wrapper ──────────────────────────────────────────
+
+    async def analyze(
+        self,
+        failure_description: str,
+        equipment_name: str,
+        symptoms: List[str],
+        **kwargs,
+    ) -> ToolResult:
+        """
+        Run both phases back-to-back with NO user clarifications.
+
+        Kept for: legacy callers, tests, and any programmatic use that
+        bypasses the chatbot. The HTTP API uses run_prepare and run_finalize
+        directly so that the chatbot step is mandatory.
+        """
+        prep = await self.run_prepare(
+            failure_description=failure_description,
+            equipment_name=equipment_name,
+            symptoms=symptoms,
+            **kwargs,
+        )
+        if not prep.success:
+            return prep
+
+        p = prep.result
+        return await self.run_finalize(
+            equipment_name=equipment_name,
+            failure_text=p["failure_text"],
+            symptoms=symptoms,
+            domain_insights=p["domain_insights"],
+            history_context=p["history_context"],
+            image_analysis=p["image_analysis"],
+            selected_agents=p["selected_agents"],
+            clarifications=[],
+            history_matches=p.get("history_matches") or [],
+            **kwargs,
+        )
+
+    # ── Helpers ─────────────────────────────────────────────────────────────
+
+    def _append_clarifications(
+        self,
+        failure_text: str,
+        clarifications: List[ClarificationAnswer],
+    ) -> str:
+        """Append a structured USER CLARIFICATIONS block to failure_text."""
+        if not clarifications:
+            return failure_text
+
+        lines = ["", "━━━ USER CLARIFICATIONS (Round 1) ━━━"]
+        for c in clarifications:
+            lines.append(f"Q: {c.question}")
+            lines.append(f"A: {c.answer}")
+            lines.append("")
+        lines.append("━━━ END USER CLARIFICATIONS ━━━")
+        return failure_text + "\n" + "\n".join(lines)
+
     def _route_agents(self, failure_description: str, symptoms: List[str]) -> List[str]:
-        """Route to appropriate domain agents based on keywords."""
         text = f"{failure_description} {' '.join(symptoms)}".lower()
-        
-        selected = []
-        for agent_name, keywords in self.agent_routing.items():
-            if any(kw in text for kw in keywords):
-                selected.append(agent_name)
-        
-        # Default to mechanical if no match
+        selected = [
+            name for name, keywords in self.agent_routing.items()
+            if any(kw in text for kw in keywords)
+        ]
         if not selected:
             selected.append("mechanical_agent")
-        
         return selected
-    
+
     async def _run_domain_agents(
         self,
         agent_names: List[str],
         failure_description: str,
         equipment_name: str,
         symptoms: List[str],
-        status_callback
+        status_callback,
     ) -> List[ToolResult]:
-        """Run selected domain agents in parallel."""
-        
         async def _run_one(agent_name: str):
             agent = getattr(self, agent_name)
             return await agent.analyze(
                 failure_description=failure_description,
                 equipment_name=equipment_name,
                 symptoms=symptoms,
-                status_callback=status_callback
+                status_callback=status_callback,
             )
-        
+
         tasks = [_run_one(name) for name in agent_names]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Filter out failures
         valid_results = [r for r in results if isinstance(r, ToolResult) and r.success]
-        
         if not valid_results:
-            self.logger.warning("All domain agents failed, will fallback to RAG-only 5 Whys")
-        
+            self.logger.warning("All domain agents failed, will fall back to RAG-only 5 Whys")
         return valid_results
-    
+
     def _aggregate_domain_insights(self, results: List[ToolResult]) -> DomainInsightsSummary:
-        """Aggregate insights from all domain agents."""
-        
         if not results:
-            # Return empty insights if all agents failed
             return DomainInsightsSummary(
                 agents_analyzed=[],
                 domain_analyses=[],
@@ -276,23 +430,22 @@ class IntegratedRCATool(BaseTool):
                 suspected_root_causes=[],
                 recommended_checks=[],
                 documents_used=[],
-                overall_confidence=0.5
+                overall_confidence=0.5,
             )
-        
-        agents_analyzed = []
-        domain_analyses = []
-        all_findings = []
-        suspected_causes = []
-        all_checks = []
-        all_docs = []
-        confidences = []
-        
+
+        agents_analyzed: List[str] = []
+        domain_analyses: List[DomainAnalysisResult] = []
+        all_findings: List[str] = []
+        suspected_causes: List[Dict[str, Any]] = []
+        all_checks: List[str] = []
+        all_docs: List[str] = []
+        confidences: List[float] = []
+
         for result in results:
             analysis = result.result
             agents_analyzed.append(analysis["domain"])
             domain_analyses.append(DomainAnalysisResult(**analysis))
-            
-            # Extract critical findings
+
             for finding in analysis["findings"]:
                 if finding["severity"] == "critical":
                     all_findings.append(
@@ -302,28 +455,25 @@ class IntegratedRCATool(BaseTool):
                     all_findings.append(
                         f"[{analysis['domain'].upper()}] {finding['observation']} (WARNING)"
                     )
-            
-            # Extract suspected root causes
+
             suspected_causes.append({
                 "domain": analysis["domain"],
                 "hypothesis": analysis["root_cause_hypothesis"],
-                "confidence": analysis["confidence"]
+                "confidence": analysis["confidence"],
             })
-            
-            # Collect checks and documents
+
             all_checks.extend(analysis.get("recommended_checks", []))
             all_docs.extend(analysis.get("documents_used", []))
             confidences.append(analysis["confidence"])
-        
-        # Calculate overall confidence (weighted average)
+
         overall_confidence = sum(confidences) / len(confidences) if confidences else 0.5
-        
+
         return DomainInsightsSummary(
             agents_analyzed=agents_analyzed,
             domain_analyses=domain_analyses,
-            key_findings=all_findings[:10],  # Top 10
+            key_findings=all_findings[:10],
             suspected_root_causes=suspected_causes,
-            recommended_checks=list(set(all_checks))[:10],  # Unique, top 10
+            recommended_checks=list(set(all_checks))[:10],
             documents_used=list(set(all_docs)),
-            overall_confidence=overall_confidence
+            overall_confidence=overall_confidence,
         )

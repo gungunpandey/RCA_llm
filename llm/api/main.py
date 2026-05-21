@@ -29,8 +29,15 @@ load_dotenv(os.path.join(LLM_DIR, ".env"))
 from tools.five_whys_tool import FiveWhysTool
 from tools.tool_registry import ToolRegistry
 from tools.fishbone_tool import FishboneTool
+from tools.integrated_rca_tool import IntegratedRCATool
 from rag_manager import RAGManager
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
+from models.tool_results import ClarificationAnswer
+from api.session_cache import (
+    SessionCache,
+    SessionNotFoundError,
+    SessionExpiredError,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -42,6 +49,8 @@ logging.basicConfig(
 registry: ToolRegistry = None
 rag: RAGManager = None
 active_llm_model: str = "unknown"
+session_cache: SessionCache = None
+integrated_rca: IntegratedRCATool = None
 
 
 # ── Request / Response schemas ──
@@ -67,11 +76,17 @@ class AnalyzeRequest(BaseModel):
     pdf_text: Optional[str] = None     # extracted text from uploaded PDF document
 
 
+class FinalizeRequest(BaseModel):
+    """Phase 2 request — submits user answers and resumes the cached RCA."""
+    session_id: str = Field(..., min_length=1)
+    clarifications: List[ClarificationAnswer] = Field(default_factory=list)
+
+
 # ── Lifespan: startup / shutdown ──
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global registry, rag, active_llm_model
+    global registry, rag, active_llm_model, session_cache, integrated_rca
 
     logger.info("Starting up — initializing RCA components...")
 
@@ -107,11 +122,14 @@ async def lifespan(app: FastAPI):
     registry.register_tool("electrical_agent", ElectricalAgent(llm_adapter=gemini, rag_manager=rag))
     registry.register_tool("process_agent", ProcessAgent(llm_adapter=gemini, rag_manager=rag))
     
-    # 5. Integrated RCA pipeline (domain agents + 5 whys + fishbone)
-    from tools.integrated_rca_tool import IntegratedRCATool
+    # 5. Integrated RCA pipeline (domain agents + 5 whys + fishbone + chatbot)
     integrated_rca = IntegratedRCATool(llm_adapter=gemini, rag_manager=rag)
     registry.register_tool("integrated_rca", integrated_rca)
-    
+
+    # 6. Session cache for the two-phase /analyze-prepare → /analyze-finalize flow
+    session_cache = SessionCache()
+    logger.info(f"Session cache initialized (TTL: {session_cache.ttl_seconds}s)")
+
     logger.info(f"Tools & agents registered: {registry.list_tools()}")
 
     yield  # app is running
@@ -305,36 +323,37 @@ async def analyze_stream(req: AnalyzeRequest):
     )
 
 
-@app.post("/analyze-integrated-stream")
-async def analyze_integrated_stream(req: AnalyzeRequest):
+@app.post("/analyze-prepare-stream")
+async def analyze_prepare_stream(req: AnalyzeRequest):
     """
-    Run integrated RCA pipeline (domain agents + 5 Whys) with SSE streaming.
-    
-    Pipeline:
-    1. Domain agents analyze in parallel
-    2. Aggregate domain insights
-    3. Enhanced 5 Whys with domain context
-    4. Return comprehensive root cause
-    
+    Phase 1 of the two-phase RCA pipeline.
+
+    Runs historical lookup, domain agents, image analysis, and generates
+    follow-up questions for the mandatory chatbot step. Caches the
+    intermediate state under a session_id; the frontend must then submit
+    the user's answers to /analyze-finalize-stream to complete the RCA.
+
     SSE event types:
-      event: status   -> { "message": "..." }
-      event: result   -> full analysis JSON
-      event: error    -> { "detail": "..." }
+      event: status                -> {"message": "..."}
+      event: history_matches       -> {"history_matches": [...]}
+      event: domain_insights       -> {"domain_insights": {...}}
+      event: image_analysis        -> {"image_analysis": {...}}
+      event: clarifying_questions  -> {"questions": [...]}
+      event: prepare_complete      -> {"session_id", "expires_at"}
+      event: error                 -> {"detail": "..."}
     """
-    if registry is None:
+    if integrated_rca is None or session_cache is None:
         raise HTTPException(status_code=503, detail="Server still initializing")
 
     failure_text = _build_failure_text(req)
     status_queue: asyncio.Queue = asyncio.Queue()
 
-    async def _status_callback(msg: str):
+    async def _status_callback(msg):
         await status_queue.put(msg)
 
-    async def _run_analysis():
-        """Run integrated analysis in background."""
+    async def _run_prepare():
         try:
-            result = await registry.execute_tool(
-                name="integrated_rca",
+            result = await integrated_rca.run_prepare(
                 failure_description=failure_text,
                 equipment_name=req.equipment_name,
                 symptoms=req.symptoms if req.symptoms else ["unspecified"],
@@ -352,20 +371,168 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
         yield padding
         await asyncio.sleep(0)
 
-        # Start analysis as a background task
-        task = asyncio.create_task(_run_analysis())
+        task = asyncio.create_task(_run_prepare())
 
-        # Yield SSE events as they arrive
         while True:
             item = await status_queue.get()
 
-            # Final result
+            # Final prepare result — cache the session and emit prepare_complete
+            if isinstance(item, tuple) and item[0] == "__RESULT__":
+                result = item[1]
+                if not result.success:
+                    yield f"event: error\ndata: {json.dumps({'detail': result.error})}\n\n"
+                    break
+                p = result.result
+                session = session_cache.create(
+                    equipment_name=p["equipment_name"],
+                    failure_text=p["failure_text"],
+                    symptoms=p["symptoms"],
+                    domain_insights=p["domain_insights"],
+                    history_context=p["history_context"],
+                    history_matches=p["history_matches"],
+                    image_analysis=p["image_analysis"],
+                    selected_agents=p["selected_agents"],
+                    questions=p["questions"],
+                )
+                payload = json.dumps({
+                    "session_id": session.session_id,
+                    "expires_at": session_cache.expires_at(session),
+                }, default=str)
+                yield f"event: prepare_complete\ndata: {payload}\n\n"
+                break
+
+            if isinstance(item, tuple) and item[0] == "__ERROR__":
+                yield f"event: error\ndata: {json.dumps({'detail': item[1]})}\n\n"
+                break
+
+            # Intermediate domain events — passthrough to named SSE events
+            if isinstance(item, tuple) and item[0] == "__HISTORY_MATCHES__":
+                payload = json.dumps({"history_matches": item[1]}, default=str)
+                yield f"event: history_matches\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
+            if isinstance(item, tuple) and item[0] == "__DOMAIN_INSIGHTS__":
+                payload = json.dumps({"domain_insights": item[1]}, default=str)
+                yield f"event: domain_insights\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
+            if isinstance(item, tuple) and item[0] == "__IMAGE_ANALYSIS__":
+                payload = json.dumps({"image_analysis": item[1]}, default=str)
+                yield f"event: image_analysis\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
+            if isinstance(item, tuple) and item[0] == "__CLARIFYING_QUESTIONS__":
+                payload = json.dumps({"questions": item[1]}, default=str)
+                yield f"event: clarifying_questions\ndata: {payload}\n\n"
+                await asyncio.sleep(0)
+                continue
+
+            yield f"event: status\ndata: {json.dumps({'message': item})}\n\n"
+            await asyncio.sleep(0)
+
+        await task
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/analyze-finalize-stream")
+async def analyze_finalize_stream(req: FinalizeRequest):
+    """
+    Phase 2 of the two-phase RCA pipeline.
+
+    Loads the cached session created by /analyze-prepare-stream, validates
+    that the user has answered every clarifying question, then runs 5 Whys
+    + Fishbone with the user's answers folded into the failure context.
+
+    SSE event types:
+      event: status  -> {"message": "..."}
+      event: result  -> full analysis JSON (same shape as legacy integrated RCA)
+      event: error   -> {"detail": "..."}
+
+    HTTP errors:
+      404 if session_id is unknown
+      410 if session_id has expired
+      400 if clarifications are missing or incomplete
+    """
+    if integrated_rca is None or session_cache is None:
+        raise HTTPException(status_code=503, detail="Server still initializing")
+
+    try:
+        session = session_cache.get(req.session_id)
+    except SessionExpiredError:
+        raise HTTPException(status_code=410, detail=f"Session expired: {req.session_id}")
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
+
+    # Mandatory chatbot enforcement
+    if session.questions:
+        if not req.clarifications:
+            raise HTTPException(
+                status_code=400,
+                detail="Clarifications are required — this session has unanswered questions",
+            )
+        provided_ids = {c.question_id for c in req.clarifications}
+        expected_ids = {q.id for q in session.questions}
+        missing = expected_ids - provided_ids
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing answers for question ids: {sorted(missing)}",
+            )
+
+    status_queue: asyncio.Queue = asyncio.Queue()
+
+    async def _status_callback(msg):
+        await status_queue.put(msg)
+
+    async def _run_finalize():
+        try:
+            result = await integrated_rca.run_finalize(
+                equipment_name=session.equipment_name,
+                failure_text=session.failure_text,
+                symptoms=session.symptoms,
+                domain_insights=session.domain_insights,
+                history_context=session.history_context,
+                image_analysis=session.image_analysis,
+                selected_agents=session.selected_agents,
+                clarifications=req.clarifications,
+                history_matches=session.history_matches,   # for CAPA — past CAPAs
+                status_callback=_status_callback,
+            )
+            await status_queue.put(("__RESULT__", result))
+        except Exception as e:
+            await status_queue.put(("__ERROR__", str(e)))
+        finally:
+            # Evict whether the run succeeded or failed — session is single-use
+            session_cache.evict(req.session_id)
+
+    async def _event_generator():
+        padding = ":" + " " * 2048 + "\n\n"
+        yield padding
+        await asyncio.sleep(0)
+
+        task = asyncio.create_task(_run_finalize())
+
+        while True:
+            item = await status_queue.get()
+
             if isinstance(item, tuple) and item[0] == "__RESULT__":
                 result = item[1]
                 if result.success:
                     payload = json.dumps({
                         "status": "success",
-                        "equipment_name": req.equipment_name,
+                        "equipment_name": session.equipment_name,
                         "analysis_type": "integrated_rca",
                         "execution_time_seconds": round(result.execution_time_seconds, 2),
                         "tokens_used": result.tokens_used,
@@ -377,38 +544,21 @@ async def analyze_integrated_stream(req: AnalyzeRequest):
                     yield f"event: error\ndata: {json.dumps({'detail': result.error})}\n\n"
                 break
 
-            # Error
             if isinstance(item, tuple) and item[0] == "__ERROR__":
                 yield f"event: error\ndata: {json.dumps({'detail': item[1]})}\n\n"
                 break
 
-            # ── Intermediate: historical matches ready ────────────────────────
-            if isinstance(item, tuple) and item[0] == "__HISTORY_MATCHES__":
-                payload = json.dumps({"history_matches": item[1]}, default=str)
-                yield f"event: history_matches\ndata: {payload}\n\n"
+            # Intermediate: CAPA plan ready (before final 'result' event)
+            if isinstance(item, tuple) and item[0] == "__CAPA__":
+                payload = json.dumps({"capa": item[1]}, default=str)
+                yield f"event: capa\ndata: {payload}\n\n"
                 await asyncio.sleep(0)
                 continue
 
-            # ── Intermediate: domain insights ready ──────────────────────────
-            if isinstance(item, tuple) and item[0] == "__DOMAIN_INSIGHTS__":
-                payload = json.dumps({"domain_insights": item[1]}, default=str)
-                yield f"event: domain_insights\ndata: {payload}\n\n"
-                await asyncio.sleep(0)
-                continue
-
-            # ── Intermediate: image analysis ready ───────────────────────────
-            if isinstance(item, tuple) and item[0] == "__IMAGE_ANALYSIS__":
-                payload = json.dumps({"image_analysis": item[1]}, default=str)
-                yield f"event: image_analysis\ndata: {payload}\n\n"
-                await asyncio.sleep(0)
-                continue
-
-            # Status update string
             yield f"event: status\ndata: {json.dumps({'message': item})}\n\n"
-            await asyncio.sleep(0)  # force flush each event immediately
+            await asyncio.sleep(0)
 
-        await task  # ensure task is fully done
-
+        await task
 
     return StreamingResponse(
         _event_generator(),

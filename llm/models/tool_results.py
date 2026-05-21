@@ -4,7 +4,7 @@ Tool Result Models for RCA System
 Defines data models for tool execution results.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -165,4 +165,95 @@ class FishboneResult(BaseModel):
     )
     documents_used: List[str] = Field(default_factory=list, description="OEM manuals and docs referenced")
     analysis_timestamp: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
+
+
+# ── Clarification Chatbot Models ────────────────────────────────────────────
+
+QuestionSource = Literal[
+    "domain_check",     # derived from a domain agent's recommended_checks
+    "discriminating",   # decides between two competing hypotheses
+    "missing_metric",   # numerical value referenced but absent from input
+    "historical",       # surfaced from a high-similarity past incident
+]
+
+QuestionFormat = Literal["number", "yes_no", "free_text"]
+
+
+class ClarifyingQuestion(BaseModel):
+    """A single follow-up question generated after domain agents run."""
+    id: str = Field(..., description="Question id, e.g. 'q1', 'q2', 'q3'")
+    question: str = Field(..., description="User-facing question text")
+    rationale: str = Field(..., description="One-line 'why we're asking' for UI tooltip")
+    source: QuestionSource = Field(..., description="What seeded this question")
+    expected_format: QuestionFormat = Field(..., description="Frontend input type")
+    units: Optional[str] = Field(None, description="Units for numeric answers (e.g. 'mm/s', 'A', '°C')")
+    related_hypothesis: Optional[str] = Field(None, description="Domain hypothesis this question helps test")
+    related_domain: Optional[str] = Field(None, description="'mechanical' | 'electrical' | 'process'")
+
+
+class ClarificationAnswer(BaseModel):
+    """User-supplied answer to a ClarifyingQuestion."""
+    question_id: str = Field(..., description="Matches ClarifyingQuestion.id")
+    question: str = Field(..., description="Echoed question text for audit trail")
+    answer: str = Field(..., description="Free-form answer; 'I don't know' is allowed")
+
+
+# ── CAPA (Corrective + Preventive Action) Models ────────────────────────────
+
+CAPAType     = Literal["corrective", "preventive"]
+CAPAPriority = Literal["immediate", "short_term", "long_term"]
+
+
+class CAPAAction(BaseModel):
+    """A single CAPA action produced after the root cause has been confirmed."""
+    type: CAPAType = Field(
+        ...,
+        description="'corrective' (fix the immediate problem) or 'preventive' (stop recurrence)",
+    )
+    action: str = Field(
+        ...,
+        description="Specific actionable statement, e.g. 'Replace bearing on Drum 2 and re-balance'",
+    )
+    rationale: str = Field(
+        ...,
+        description="Short justification — why this action addresses the root cause (1-2 sentences)",
+    )
+    responsibility: str = Field(
+        ...,
+        description="Role or department executing the action, e.g. 'Mechanical Maintenance', 'Operations'",
+    )
+    priority: CAPAPriority = Field(..., description="Urgency tier")
+    target_date_hint: Optional[str] = Field(
+        None,
+        description="Human-readable timing, e.g. 'Within 24h', 'Within 1 week', 'Next PM cycle'",
+    )
+    related_category: Optional[str] = Field(
+        None,
+        description="Fishbone category this action addresses: Man | Machine | Material | Method | Measurement | Environment",
+    )
+    references: List[str] = Field(
+        default_factory=list,
+        description="OEM manual sections, past CAPAs, or standards cited as the basis for the action",
+    )
+
+
+class CAPAResult(BaseModel):
+    """Aggregated CAPA plan generated after the Fishbone analysis."""
+    corrective: List[CAPAAction] = Field(
+        default_factory=list,
+        description="Actions that fix the immediate problem (2-3 recommended)",
+    )
+    preventive: List[CAPAAction] = Field(
+        default_factory=list,
+        description="Actions that prevent the same failure from recurring (2-3 recommended)",
+    )
+    summary: str = Field(
+        ...,
+        description="One-sentence synthesis of the overall CAPA strategy",
+    )
+    documents_used: List[str] = Field(
+        default_factory=list,
+        description="OEM manuals + past CAPAs referenced during generation",
+    )
+    analysis_timestamp: datetime = Field(default_factory=datetime.now)
 

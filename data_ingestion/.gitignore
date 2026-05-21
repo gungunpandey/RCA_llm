@@ -18,6 +18,7 @@ pdfs/
 history/PLAN.md
 history/history_data
 history/output
+history/neo4j deployment plan.txt
 
 # IDE
 .vscode/

@@ -111,6 +111,19 @@ class CAPAComment(Base):
     capa = relationship("CAPA", back_populates="comments")
 
 
+class Equipment(Base):
+    __tablename__ = "equipment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    asset_tag = Column(String, unique=True, nullable=False, index=True)
+    category = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    criticality = Column(String, default="Medium")  # Critical | High | Medium | Low
+    asset_health_score = Column(Integer, default=100)  # 0–100
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

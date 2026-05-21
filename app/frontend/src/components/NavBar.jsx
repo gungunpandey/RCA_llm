@@ -84,6 +84,24 @@ const NavBar = ({ activePage }) => {
                     CAPA Board
                 </button>
 
+                {/* Equipment button */}
+                <button
+                    className={`btn ${activePage === 'equipment' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={navBtnStyle}
+                    onClick={() => navigate('/equipment')}
+                >
+                    Equipment
+                </button>
+
+                {/* Analytics button */}
+                <button
+                    className={`btn ${activePage === 'analytics' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={navBtnStyle}
+                    onClick={() => navigate('/analytics')}
+                >
+                    Analytics
+                </button>
+
                 {/* Hello, [Role] dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
                     <button

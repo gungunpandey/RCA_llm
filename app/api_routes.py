@@ -13,11 +13,12 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from dateutil import parser as dateparser
 
-from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment
+from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment
 
 # ── Config ─────────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secret-key-change-in-production")
@@ -662,3 +663,422 @@ async def api_add_comment(
         "time": comment.created_at.strftime("%d %b %Y, %H:%M") if comment.created_at else "",
         "text": comment.comment_text,
     }
+
+
+# ── Equipment Master ───────────────────────────────────────────────────────
+
+@router.get("/equipment")
+async def api_equipment_master_list(
+    search: Optional[str] = None,
+    criticality: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Equipment master list with failure counts joined from breakdown_logs by name."""
+    q = db.query(Equipment)
+    if search:
+        like = f"%{search}%"
+        q = q.filter((Equipment.name.ilike(like)) | (Equipment.asset_tag.ilike(like)))
+    if criticality:
+        q = q.filter(Equipment.criticality == criticality)
+    equipment = q.order_by(Equipment.name.asc()).all()
+
+    # Build per-name failure stats from breakdown_logs (one query, group by machine_name)
+    stats_query = (
+        db.query(
+            BreakdownLog.machine_name,
+            BreakdownLog.id,
+            BreakdownLog.logged_at,
+        )
+        .filter(BreakdownLog.machine_name != None, BreakdownLog.machine_name != "")
+    )
+    if user.division != "Admin":
+        stats_query = stats_query.filter(BreakdownLog.division == user.division)
+
+    counts: dict = {}
+    last_seen: dict = {}
+    for name, _id, logged_at in stats_query.all():
+        counts[name] = counts.get(name, 0) + 1
+        if logged_at and (name not in last_seen or logged_at > last_seen[name]):
+            last_seen[name] = logged_at
+
+    return [
+        {
+            "id": e.id,
+            "name": e.name,
+            "asset_tag": e.asset_tag,
+            "category": e.category,
+            "location": e.location,
+            "criticality": e.criticality or "Medium",
+            "asset_health_score": e.asset_health_score if e.asset_health_score is not None else 100,
+            "failure_count": counts.get(e.name, 0),
+            "last_failure_date": last_seen[e.name].isoformat() if e.name in last_seen else None,
+        }
+        for e in equipment
+    ]
+
+
+@router.get("/equipment/{equipment_id}")
+async def api_equipment_detail(
+    equipment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    eq = db.query(Equipment).filter(Equipment.id == equipment_id).first()
+    if not eq:
+        raise HTTPException(status_code=404, detail="Equipment not found.")
+
+    bd_query = db.query(BreakdownLog).filter(BreakdownLog.machine_name == eq.name)
+    if user.division != "Admin":
+        bd_query = bd_query.filter(BreakdownLog.division == user.division)
+    breakdowns = bd_query.order_by(BreakdownLog.logged_at.desc()).limit(20).all()
+
+    failure_count = bd_query.count()
+    last_failure = breakdowns[0].logged_at if breakdowns else None
+
+    return {
+        "id": eq.id,
+        "name": eq.name,
+        "asset_tag": eq.asset_tag,
+        "category": eq.category,
+        "location": eq.location,
+        "criticality": eq.criticality or "Medium",
+        "asset_health_score": eq.asset_health_score if eq.asset_health_score is not None else 100,
+        "failure_count": failure_count,
+        "last_failure_date": last_failure.isoformat() if last_failure else None,
+        "breakdowns": [
+            {
+                "id": b.id,
+                "reported_at": b.logged_at.isoformat() if b.logged_at else None,
+                "severity_level": b.severity_level,
+                "failure_type": b.failure_type,
+                "status": b.status,
+                "description": b.description,
+            }
+            for b in breakdowns
+        ],
+    }
+
+
+class EquipmentBody(BaseModel):
+    name: str
+    asset_tag: str
+    category: Optional[str] = None
+    location: Optional[str] = None
+    criticality: Optional[str] = "Medium"
+    asset_health_score: Optional[int] = 100
+
+
+@router.post("/equipment")
+async def api_equipment_create(
+    body: EquipmentBody,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not body.name.strip() or not body.asset_tag.strip():
+        raise HTTPException(status_code=400, detail="name and asset_tag are required.")
+    if db.query(Equipment).filter(Equipment.asset_tag == body.asset_tag).first():
+        raise HTTPException(status_code=409, detail="Asset tag already exists.")
+    eq = Equipment(
+        name=body.name.strip(),
+        asset_tag=body.asset_tag.strip(),
+        category=body.category,
+        location=body.location,
+        criticality=body.criticality or "Medium",
+        asset_health_score=body.asset_health_score if body.asset_health_score is not None else 100,
+    )
+    db.add(eq)
+    db.commit()
+    db.refresh(eq)
+    return {
+        "id": eq.id,
+        "name": eq.name,
+        "asset_tag": eq.asset_tag,
+        "category": eq.category,
+        "location": eq.location,
+        "criticality": eq.criticality,
+        "asset_health_score": eq.asset_health_score,
+    }
+
+
+# ── Historical Analytics ───────────────────────────────────────────────────
+
+# Whitelist range tokens to safe SQLite modifiers.
+_RANGE_INTERVALS = {
+    "30d": "-30 days",
+    "3m":  "-3 months",
+    "6m":  "-6 months",
+    "1y":  "-12 months",
+}
+_RANGE_HALVES = {
+    "30d": "-15 days",
+    "3m":  "-45 days",
+    "6m":  "-3 months",
+    "1y":  "-6 months",
+}
+
+# Map a 'Mon YYYY' label (e.g. 'Mar 2026') to (year, month) ints, or None.
+def _parse_month_label(label: Optional[str]) -> Optional[tuple]:
+    if not label:
+        return None
+    try:
+        d = datetime.strptime(label.strip(), "%b %Y")
+        return d.year, d.month
+    except (ValueError, TypeError):
+        return None
+
+
+def _date_filter_clause(range_token: str, month_parsed) -> tuple:
+    """Return (sql_clause, params_dict) to AND into a WHERE on b.logged_at."""
+    if month_parsed:
+        y, m = month_parsed
+        return (
+            "AND strftime('%Y', b.logged_at) = :y AND strftime('%m', b.logged_at) = :m",
+            {"y": f"{y:04d}", "m": f"{m:02d}"},
+        )
+    interval = _RANGE_INTERVALS.get(range_token, "-12 months")
+    return (
+        f"AND b.logged_at >= datetime('now', '{interval}')",
+        {},
+    )
+
+
+def _division_clause(user: User) -> tuple:
+    if user.division == "Admin":
+        return "", {}
+    return ("AND b.division = :division", {"division": user.division})
+
+
+@router.get("/analytics")
+async def api_analytics(
+    range: str = Query("3m"),
+    month: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    range_token = range if range in _RANGE_INTERVALS else "3m"
+    month_parsed = _parse_month_label(month)
+    date_clause, date_params = _date_filter_clause(range_token, month_parsed)
+    div_clause, div_params = _division_clause(user)
+    base_params = {**date_params, **div_params}
+
+    # ── Failure frequency by equipment ──
+    freq_sql = text(f"""
+        SELECT
+            COALESCE(e.name, b.machine_name)        AS equipment_name,
+            COALESCE(e.asset_tag, '')               AS asset_tag,
+            COALESCE(e.category, b.division, 'Unknown') AS category,
+            COUNT(b.id)                             AS failure_count,
+            MAX(b.logged_at)                        AS last_failure
+        FROM breakdown_logs b
+        LEFT JOIN equipment e ON e.name = b.machine_name
+        WHERE b.machine_name IS NOT NULL AND b.machine_name != '' {date_clause} {div_clause}
+        GROUP BY COALESCE(e.name, b.machine_name)
+        ORDER BY failure_count DESC
+        LIMIT 15
+    """)
+    freq = [
+        {
+            "equipment_name": r[0],
+            "asset_tag": r[1] or "—",
+            "category": r[2],
+            "failure_count": int(r[3] or 0),
+            "last_failure": r[4],
+        }
+        for r in db.execute(freq_sql, base_params).fetchall()
+    ]
+
+    # ── Root-cause categories (by failure_type) ──
+    rc_sql = text(f"""
+        SELECT
+            COALESCE(NULLIF(TRIM(b.failure_type), ''), 'Unknown') AS category,
+            COUNT(b.id) AS count
+        FROM breakdown_logs b
+        WHERE 1=1 {date_clause} {div_clause}
+        GROUP BY COALESCE(NULLIF(TRIM(b.failure_type), ''), 'Unknown')
+        ORDER BY count DESC
+    """)
+    root_cause = [
+        {"category": r[0], "count": int(r[1] or 0)}
+        for r in db.execute(rc_sql, base_params).fetchall()
+    ]
+
+    # ── Repeat failures (>= 2 occurrences) ──
+    repeat_sql = text(f"""
+        SELECT
+            COALESCE(e.name, b.machine_name) AS equipment_name,
+            COALESCE(e.asset_tag, '')        AS asset_tag,
+            COUNT(b.id)                      AS failure_count,
+            MAX(b.logged_at)                 AS last_failure,
+            CASE WHEN COUNT(b.id) > 1 THEN
+                ROUND(
+                    (julianday(MAX(b.logged_at)) - julianday(MIN(b.logged_at)))
+                    / NULLIF(COUNT(b.id) - 1, 0), 1)
+            ELSE NULL END                    AS avg_days_between
+        FROM breakdown_logs b
+        LEFT JOIN equipment e ON e.name = b.machine_name
+        WHERE b.machine_name IS NOT NULL AND b.machine_name != '' {date_clause} {div_clause}
+        GROUP BY COALESCE(e.name, b.machine_name)
+        HAVING COUNT(b.id) >= 2
+        ORDER BY failure_count DESC
+        LIMIT 10
+    """)
+    repeat = [
+        {
+            "equipment_name": r[0],
+            "asset_tag": r[1] or "—",
+            "failure_count": int(r[2] or 0),
+            "last_failure": r[3],
+            "avg_days_between": float(r[4]) if r[4] is not None else None,
+        }
+        for r in db.execute(repeat_sql, base_params).fetchall()
+    ]
+
+    # ── Trend (weekly when month chosen, monthly otherwise) ──
+    if month_parsed:
+        y, m = month_parsed
+        trend_sql = text(f"""
+            SELECT
+                'Week ' || min(5, ((CAST(strftime('%d', b.logged_at) AS INTEGER) - 1) / 7) + 1) AS period,
+                COUNT(b.id) AS failures,
+                ROUND(AVG(b.mttr_hours), 1) AS avg_mttr,
+                MIN(b.logged_at) AS first_at
+            FROM breakdown_logs b
+            WHERE strftime('%Y', b.logged_at) = :y AND strftime('%m', b.logged_at) = :m {div_clause}
+            GROUP BY min(5, ((CAST(strftime('%d', b.logged_at) AS INTEGER) - 1) / 7) + 1)
+            ORDER BY first_at
+        """)
+        trend = [
+            {
+                "period": r[0],
+                "failures": int(r[1] or 0),
+                "avg_mttr": float(r[2]) if r[2] is not None else 0,
+            }
+            for r in db.execute(trend_sql, {"y": f"{y:04d}", "m": f"{m:02d}", **div_params}).fetchall()
+        ]
+    else:
+        interval = _RANGE_INTERVALS.get(range_token, "-12 months")
+        trend_sql = text(f"""
+            SELECT
+                strftime('%Y-%m', b.logged_at) AS month_key,
+                COUNT(b.id) AS failures,
+                ROUND(AVG(b.mttr_hours), 1) AS avg_mttr
+            FROM breakdown_logs b
+            WHERE b.logged_at >= datetime('now', '{interval}') {div_clause}
+            GROUP BY month_key
+            ORDER BY month_key ASC
+        """)
+        trend = []
+        for r in db.execute(trend_sql, div_params).fetchall():
+            month_key = r[0]
+            try:
+                period = datetime.strptime(month_key, "%Y-%m").strftime("%b %y")
+            except (ValueError, TypeError):
+                period = month_key
+            trend.append({
+                "period": period,
+                "failures": int(r[1] or 0),
+                "avg_mttr": float(r[2]) if r[2] is not None else 0,
+            })
+
+    # ── Top problematic equipment ──
+    top_sql = text(f"""
+        SELECT
+            COALESCE(e.name, b.machine_name)        AS equipment_name,
+            COALESCE(e.asset_tag, '')               AS asset_tag,
+            COALESCE(e.category, b.division, 'Unknown') AS category,
+            COALESCE(e.criticality, 'Medium')       AS criticality,
+            COUNT(b.id)                             AS failure_count,
+            ROUND(AVG(b.mttr_hours), 1)             AS avg_mttr,
+            MAX(b.logged_at)                        AS last_failure
+        FROM breakdown_logs b
+        LEFT JOIN equipment e ON e.name = b.machine_name
+        WHERE b.machine_name IS NOT NULL AND b.machine_name != '' {date_clause} {div_clause}
+        GROUP BY COALESCE(e.name, b.machine_name)
+        ORDER BY failure_count DESC
+        LIMIT 1
+    """)
+    top_row = db.execute(top_sql, base_params).fetchone()
+    top = None
+    if top_row:
+        top = {
+            "equipment_name": top_row[0],
+            "asset_tag": top_row[1] or "—",
+            "category": top_row[2],
+            "criticality": top_row[3],
+            "failure_count": int(top_row[4] or 0),
+            "avg_mttr": float(top_row[5]) if top_row[5] is not None else 0,
+            "last_failure": top_row[6],
+        }
+
+    # ── Trend direction (recent vs prior half) ──
+    interval = _RANGE_INTERVALS.get(range_token, "-12 months")
+    half = _RANGE_HALVES.get(range_token, "-6 months")
+    dir_sql = text(f"""
+        SELECT
+            COUNT(CASE WHEN b.logged_at >= datetime('now', '{half}') THEN 1 END) AS recent,
+            COUNT(CASE
+                WHEN b.logged_at <  datetime('now', '{half}')
+                 AND b.logged_at >= datetime('now', '{interval}') THEN 1 END) AS previous
+        FROM breakdown_logs b
+        WHERE b.logged_at >= datetime('now', '{interval}') {div_clause}
+    """)
+    dir_row = db.execute(dir_sql, div_params).fetchone()
+    recent = int(dir_row[0] or 0) if dir_row else 0
+    previous = int(dir_row[1] or 0) if dir_row else 0
+    pct = round(((recent - previous) / previous) * 100) if previous > 0 else None
+    direction = {
+        "recent": recent,
+        "previous": previous,
+        "pct": pct,
+        "direction": "neutral" if pct is None else ("up" if pct > 0 else "down"),
+    }
+
+    return {
+        "freq": freq,
+        "rootCause": root_cause,
+        "repeat": repeat,
+        "trend": trend,
+        "top": top,
+        "direction": direction,
+    }
+
+
+@router.get("/analytics/drilldown")
+async def api_analytics_drilldown(
+    tag: Optional[str] = None,
+    range: str = Query("3m"),
+    month: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    range_token = range if range in _RANGE_INTERVALS else "3m"
+    month_parsed = _parse_month_label(month)
+    date_clause, date_params = _date_filter_clause(range_token, month_parsed)
+    div_clause, div_params = _division_clause(user)
+
+    sql = text(f"""
+        SELECT
+            b.id, b.logged_at, b.severity_level, b.failure_type, b.status,
+            b.description, b.mttr_hours,
+            COALESCE(e.name, b.machine_name) AS equipment_name
+        FROM breakdown_logs b
+        LEFT JOIN equipment e ON e.name = b.machine_name
+        WHERE e.asset_tag = :tag {date_clause} {div_clause}
+        ORDER BY b.logged_at DESC
+        LIMIT 20
+    """)
+    rows = db.execute(sql, {"tag": tag or "", **date_params, **div_params}).fetchall()
+    return [
+        {
+            "id": r[0],
+            "reported_at": r[1].isoformat() if hasattr(r[1], "isoformat") else r[1],
+            "severity_level": r[2],
+            "failure_type": r[3],
+            "status": r[4],
+            "description": r[5],
+            "mttr_hours": float(r[6]) if r[6] is not None else None,
+            "equipment_name": r[7],
+        }
+        for r in rows
+    ]

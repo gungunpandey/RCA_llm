@@ -14,7 +14,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from dateutil import parser as dateparser
 
-from database import engine, SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Base
+from database import engine, SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment, Base
 from api_routes import router as api_router
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -114,6 +114,25 @@ async def startup_event():
         ]
         db.add_all(default_users)
         db.commit()
+
+    # Seed equipment from the catalogue if empty.
+    # name → equipment.name (also used as join key against BreakdownLog.machine_name).
+    if not db.query(Equipment).first() and EQUIPMENT_CATALOGUE:
+        seq = 1
+        for division, machines in sorted(EQUIPMENT_CATALOGUE.items()):
+            for machine in sorted(set(machines)):
+                if not machine or not machine.strip():
+                    continue
+                db.add(Equipment(
+                    name=machine.strip(),
+                    asset_tag=f"EQ-{seq:04d}",
+                    category=division,
+                    location=division,
+                    criticality="Medium",
+                    asset_health_score=100,
+                ))
+                seq += 1
+        db.commit()
     db.close()
 
 
@@ -133,6 +152,25 @@ def _serve_spa() -> HTMLResponse:
             content=f.read(),
             headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"},
         )
+
+
+# ── SPA-served routes (Equipment Master + Historical Analytics) ──────────────
+
+if SPA_ENABLED:
+    @app.get("/equipment", response_class=HTMLResponse)
+    async def equipment_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
+    @app.get("/analytics", response_class=HTMLResponse)
+    async def analytics_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
 
