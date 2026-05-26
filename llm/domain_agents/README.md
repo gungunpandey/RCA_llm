@@ -2,6 +2,14 @@
 
 Specialised AI agents that analyse equipment failures from a domain-specific perspective — Mechanical, Electrical, or Process. Each agent queries relevant OEM documentation via RAG, builds a structured prompt, and returns findings with severity ratings and confidence-calibrated hypotheses.
 
+In the current pipeline, domain agents run during **Phase 1** (`/analyze-prepare-stream`). Their aggregated output (`DomainInsightsSummary`) feeds **three** downstream stages, not just the 5 Whys:
+
+- **Chatbot questions** — `ClarificationGenerator` reads `suspected_root_causes` and `recommended_checks` to compose targeted follow-up questions for the user
+- **5 Whys** — domain hypotheses are injected into the Step-1 prompt as foundation
+- **CAPA generation** — domain `recommended_checks` and hypotheses are used as preventive-action seeds
+
+See [llm/README.md](../README.md) for the full two-phase pipeline diagram.
+
 ---
 
 ## 📋 Table of Contents
@@ -34,7 +42,7 @@ Domain agents run **in parallel** during the integrated RCA pipeline, then their
 
 ## How Agents Are Selected
 
-The `IntegratedRCATool` routes to relevant agents based on keyword matching against `failure_description + symptoms`:
+`IntegratedRCATool.run_prepare()` routes to relevant agents based on keyword matching against `failure_description + symptoms`. The selected agents run in **parallel** via `asyncio.gather`:
 
 | Agent | Trigger keywords |
 |-------|-----------------|
@@ -43,6 +51,8 @@ The `IntegratedRCATool` routes to relevant agents based on keyword matching agai
 | `ProcessAgent` | temperature, pressure, flow, combustion, emission, feed, flame, damper, draft... |
 
 Multiple agents can run simultaneously if the failure description spans domains. If no keywords match, `MechanicalAgent` is the default.
+
+Image analysis (when an image is uploaded) also runs in parallel with the domain agents — it doesn't block, and its output is independently injected into the Step-1 5 Whys prompt.
 
 ---
 
@@ -196,10 +206,15 @@ Each agent returns a `DomainAnalysisResult`:
 ```
 
 Results from all agents are merged into `DomainInsightsSummary`:
-- `key_findings` — top findings across all domains (severity-sorted)
+- `agents_analyzed` — list of agent domains that contributed
+- `domain_analyses` — full per-agent results
+- `key_findings` — top findings across all domains (severity-sorted, max 10)
 - `suspected_root_causes` — one hypothesis per domain with confidence
 - `overall_confidence` — weighted average across agents
-- `recommended_checks` — deduplicated union of all agents' checks
+- `recommended_checks` — deduplicated union of all agents' checks (max 10)
+- `documents_used` — deduplicated union of OEM sources
+
+This `DomainInsightsSummary` is the load-bearing artifact that gets carried in the `RCASession` cache between Phase 1 and Phase 2, then fed into the clarification generator (Phase 1), the 5 Whys (Phase 2), Fishbone (Phase 2), and the CAPA tool (Phase 2).
 
 ---
 

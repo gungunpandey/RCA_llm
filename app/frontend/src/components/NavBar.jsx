@@ -14,6 +14,7 @@ const navBtnStyle = {
     alignItems: 'center',
     justifyContent: 'center',
     boxSizing: 'border-box',
+    whiteSpace: 'nowrap',
 };
 
 const NavBar = ({ activePage }) => {
@@ -36,13 +37,11 @@ const NavBar = ({ activePage }) => {
     const handleLogout = () => {
         setDropdownOpen(false);
         logout();
-        // After cookie is cleared, redirect to login
         setTimeout(() => navigate('/login'), 100);
     };
 
     if (!user) return null;
 
-    // Display name: use role if available, fallback to email prefix
     const displayName = user.role || user.email.split('@')[0];
 
     return (
@@ -52,39 +51,11 @@ const NavBar = ({ activePage }) => {
                 <img src={logo} alt="ProdAI" style={{ height: 48, width: 'auto', display: 'block' }} />
             </div>
 
-            {/* Pill container — wraps only the 4 buttons */}
+            {/* Pill container */}
             <div className="db-nav-pill glass-card">
-
-            {/* Right-side nav buttons */}
             <div className="db-nav-right">
-                {/* Dashboard button */}
-                <button
-                    className={`btn ${activePage === 'dashboard' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={navBtnStyle}
-                    onClick={() => navigate('/dashboard')}
-                >
-                    Dashboard
-                </button>
 
-                {/* Log Issue button */}
-                <button
-                    className={`btn ${activePage === 'log-issue' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={navBtnStyle}
-                    onClick={() => navigate('/log-breakdown')}
-                >
-                    Log Issue
-                </button>
-
-                {/* CAPA Board button */}
-                <button
-                    className={`btn ${activePage === 'capa-board' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={navBtnStyle}
-                    onClick={() => navigate('/capa/board')}
-                >
-                    CAPA Board
-                </button>
-
-                {/* Equipment button */}
+                {/* 1. Equipment */}
                 <button
                     className={`btn ${activePage === 'equipment' ? 'btn-primary' : 'btn-ghost'}`}
                     style={navBtnStyle}
@@ -93,7 +64,34 @@ const NavBar = ({ activePage }) => {
                     Equipment
                 </button>
 
-                {/* Analytics button */}
+                {/* 2. Log Issue */}
+                <button
+                    className={`btn ${activePage === 'log-issue' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={navBtnStyle}
+                    onClick={() => navigate('/log-breakdown')}
+                >
+                    Log Issue
+                </button>
+
+                {/* 3. Dashboard */}
+                <button
+                    className={`btn ${activePage === 'dashboard' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={navBtnStyle}
+                    onClick={() => navigate('/dashboard')}
+                >
+                    Dashboard
+                </button>
+
+                {/* 4. CAPA Board (single line) */}
+                <button
+                    className={`btn ${activePage === 'capa-board' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ ...navBtnStyle, minWidth: 120 }}
+                    onClick={() => navigate('/capa/board')}
+                >
+                    CAPA Board
+                </button>
+
+                {/* 5. Analytics */}
                 <button
                     className={`btn ${activePage === 'analytics' ? 'btn-primary' : 'btn-ghost'}`}
                     style={navBtnStyle}
@@ -102,14 +100,14 @@ const NavBar = ({ activePage }) => {
                     Analytics
                 </button>
 
-                {/* Hello, [Role] dropdown */}
+                {/* 6. Hello Admin dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
                     <button
                         className="btn btn-ghost"
                         style={navBtnStyle}
                         onClick={() => setDropdownOpen(prev => !prev)}
                     >
-                        Hello, {displayName} ▾
+                        Hello {displayName} ▾
                     </button>
 
                     {dropdownOpen && (

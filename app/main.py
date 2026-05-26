@@ -154,9 +154,18 @@ def _serve_spa() -> HTMLResponse:
         )
 
 
-# ── SPA-served routes (Equipment Master + Historical Analytics) ──────────────
+# ── SPA-served routes ────────────────────────────────────────────────────────
+# All pages whose UI is rendered by the React SPA. Every entry here just
+# delegates to _serve_spa() — React Router handles the actual page logic.
 
 if SPA_ENABLED:
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def dashboard_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
     @app.get("/equipment", response_class=HTMLResponse)
     async def equipment_page(request: Request, db: Session = Depends(get_db)):
         user = get_current_user_from_cookie(request, db)
@@ -166,6 +175,34 @@ if SPA_ENABLED:
 
     @app.get("/analytics", response_class=HTMLResponse)
     async def analytics_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
+    @app.get("/log-breakdown", response_class=HTMLResponse)
+    async def log_breakdown_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
+    @app.get("/capa/board", response_class=HTMLResponse)
+    async def capa_board_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
+    @app.get("/capa/create", response_class=HTMLResponse)
+    async def capa_create_page(request: Request, db: Session = Depends(get_db)):
+        user = get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return _serve_spa()
+
+    @app.get("/capa/{capa_id}/detail", response_class=HTMLResponse)
+    async def capa_detail_page(capa_id: int, request: Request, db: Session = Depends(get_db)):
         user = get_current_user_from_cookie(request, db)
         if not user:
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -314,214 +351,7 @@ async def admin_users_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(
-    request: Request,
-    machine: Optional[str] = None,
-    division: Optional[str] = None,
-    date_filter: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user = get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
-
-    # Dropdown options
-    all_machines = sorted([
-        m[0] for m in query.with_entities(BreakdownLog.machine_name)
-        .filter(BreakdownLog.machine_name != None, BreakdownLog.machine_name != "")
-        .distinct().all()
-    ])
-    all_divisions = sorted([
-        d[0] for d in query.with_entities(BreakdownLog.division)
-        .filter(BreakdownLog.division != None, BreakdownLog.division != "")
-        .distinct().all()
-    ])
-
-    # Filters
-    if machine and machine != "All":
-        query = query.filter(BreakdownLog.machine_name == machine)
-    if division and division != "All":
-        query = query.filter(BreakdownLog.division == division)
-
-    now = datetime.utcnow()
-    if date_filter == "Last 7 Days":
-        query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=7))
-    elif date_filter == "Last 30 Days":
-        query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=30))
-    elif date_filter == "This Month":
-        query = query.filter(BreakdownLog.logged_at >= datetime(now.year, now.month, 1))
-    elif date_filter == "Last Month":
-        last_end   = datetime(now.year, now.month, 1) - timedelta(days=1)
-        last_start = datetime(last_end.year, last_end.month, 1)
-        query = query.filter(BreakdownLog.logged_at >= last_start,
-                             BreakdownLog.logged_at <= last_end + timedelta(days=1, microseconds=-1))
-
-    logs = query.order_by(BreakdownLog.logged_at.desc()).all()
-
-    total_breakdowns = len(logs)
-    total_downtime   = sum(log.downtime_minutes or 0 for log in logs)
-    avg_downtime     = round(total_downtime / total_breakdowns, 1) if total_breakdowns else 0
-    resolved_count   = len([l for l in logs if l.status in ("Resolved", "Completed")])
-
-    # ── KPIs matching RAG_april ──────────────────────────────────
-    open_breakdowns = len([l for l in logs if l.status in ("Open", "In Progress")])
-
-    # CAPA overdue count
-    capa_overdue = db.query(CAPA).filter(
-        CAPA.status.notin_(["Completed"]),
-        CAPA.due_date != None,
-        CAPA.due_date != "",
-        CAPA.due_date < datetime.utcnow().strftime("%Y-%m-%d"),
-    ).count()
-
-    # Avg MTTR from logs that have mttr_hours set, or compute from downtime
-    mttr_values = []
-    for log in logs:
-        if log.mttr_hours is not None:
-            mttr_values.append(log.mttr_hours)
-        elif log.downtime_minutes and log.downtime_minutes > 0 and log.status in ("Resolved", "Completed"):
-            mttr_values.append(round(log.downtime_minutes / 60, 1))
-    avg_mttr = round(sum(mttr_values) / len(mttr_values), 1) if mttr_values else None
-
-    # ── Top 5 failing equipment ──────────────────────────────────
-    machine_counts = Counter(log.machine_name for log in logs if log.machine_name)
-    top_equipment = []
-    for equip_name, count in machine_counts.most_common(5):
-        # Find division for this equipment
-        sample = next((l for l in logs if l.machine_name == equip_name), None)
-        top_equipment.append({
-            "equipment_name": equip_name,
-            "breakdown_count": count,
-            "category": sample.division if sample else "Unknown",
-        })
-
-    # ── Failures by division (for pie chart) ─────────────────────
-    division_counts = Counter(log.division for log in logs if log.division)
-    failures_by_category = [
-        {"category": div, "count": cnt}
-        for div, cnt in division_counts.most_common(8)
-    ]
-
-    # ── MTTR trend (monthly) ─────────────────────────────────────
-    mttr_trend = []
-    monthly_mttr = defaultdict(list)
-    for log in logs:
-        if log.logged_at:
-            month_key = log.logged_at.strftime("%b %Y")
-            mttr_val = None
-            if log.mttr_hours is not None:
-                mttr_val = log.mttr_hours
-            elif log.downtime_minutes and log.downtime_minutes > 0 and log.status in ("Resolved", "Completed"):
-                mttr_val = round(log.downtime_minutes / 60, 1)
-            if mttr_val is not None:
-                monthly_mttr[month_key].append(mttr_val)
-
-    # Sort by date and take last 12 months
-    now = datetime.utcnow()
-    for i in range(11, -1, -1):
-        d = now - timedelta(days=i * 30)
-        mk = d.strftime("%b %Y")
-        if mk in monthly_mttr:
-            vals = monthly_mttr[mk]
-            mttr_trend.append({"month": mk, "avgMttr": round(sum(vals) / len(vals), 1)})
-
-    # ── RCA Reports (from breakdown logs that have rca_data) ─────
-    rca_reports = []
-    for log in logs:
-        if log.rca_data and log.rca_data not in ("[]", "null", ""):
-            try:
-                parsed = json.loads(log.rca_data)
-                root_cause = ""
-                corrective_action = ""
-                if isinstance(parsed, dict):
-                    root_cause = parsed.get("final_root_cause", "")
-                    # Get first CAPA action if available
-                    capa_list = parsed.get("capa", [])
-                    if capa_list and isinstance(capa_list, list) and len(capa_list) > 0:
-                        corrective_action = capa_list[0].get("action", "")
-                if root_cause:
-                    rca_reports.append({
-                        "id": log.id,
-                        "equipment_name": log.machine_name,
-                        "root_cause": root_cause,
-                        "corrective_action": corrective_action,
-                        "created_at": log.logged_at,
-                        "author": log.author.name if log.author else "Unknown",
-                    })
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        if len(rca_reports) >= 6:
-            break
-
-    machines_chart = {}
-    for log in logs:
-        machines_chart[log.machine_name] = machines_chart.get(log.machine_name, 0) + 1
-
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "logs": logs,
-        "total_breakdowns": total_breakdowns,
-        "total_downtime": total_downtime,
-        "avg_downtime": avg_downtime,
-        "resolved_count": resolved_count,
-        "machines": machines_chart,
-        "all_machines": all_machines,
-        "all_divisions": all_divisions,
-        "selected_machine": machine or "All",
-        "selected_division": division or "All",
-        "selected_date": date_filter or "All Time",
-        "active_page": "dashboard",
-        # New RAG_april data
-        "open_breakdowns": open_breakdowns,
-        "capa_overdue": capa_overdue,
-        "avg_mttr": avg_mttr,
-        "top_equipment": top_equipment,
-        "failures_by_category": failures_by_category,
-        "mttr_trend": mttr_trend,
-        "rca_reports": rca_reports,
-    })
-
-
 # ── Log Breakdown ─────────────────────────────────────────────────────────────
-
-@app.get("/log-breakdown", response_class=HTMLResponse)
-async def log_breakdown_page(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    # Start from the static catalogue so the dropdown is always pre-populated
-    division_machines: dict = {k: list(v) for k, v in EQUIPMENT_CATALOGUE.items()}
-
-    # Merge any additional machine names that users have logged over time
-    rows = db.query(BreakdownLog.division, BreakdownLog.machine_name).filter(
-        BreakdownLog.machine_name != None,
-        BreakdownLog.machine_name != "",
-    ).distinct().all()
-    for div, machine in rows:
-        if div and machine and machine.strip():
-            division_machines.setdefault(div, [])
-            if machine.strip() not in division_machines[div]:
-                division_machines[div].append(machine.strip())
-    for div in division_machines:
-        division_machines[div] = sorted(division_machines[div])
-
-    return templates.TemplateResponse("log_breakdown.html", {
-        "request": request,
-        "user": user,
-        "division_machines_json": json.dumps(division_machines),
-        "active_page": "log-issue",
-    })
-
 
 @app.post("/log-breakdown")
 async def log_breakdown_post(
@@ -724,47 +554,6 @@ async def update_status(
 
 # ── CAPA Board ────────────────────────────────────────────────────────────────
 
-@app.get("/capa/board", response_class=HTMLResponse)
-async def capa_board_page(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    capas = db.query(CAPA).order_by(CAPA.created_at.desc()).all()
-    return templates.TemplateResponse("capa_board.html", {
-        "request": request,
-        "user": user,
-        "capas": capas,
-        "active_page": "capa-board",
-    })
-
-
-@app.get("/capa/create", response_class=HTMLResponse)
-async def capa_create_page(
-    request: Request,
-    edit: Optional[int] = None,
-    breakdown_id: Optional[int] = None,
-    root_cause: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user = get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    capa = None
-    if edit:
-        capa = db.query(CAPA).filter(CAPA.id == edit).first()
-
-    return templates.TemplateResponse("capa_create.html", {
-        "request": request,
-        "user": user,
-        "capa": capa,
-        "breakdown_id": breakdown_id,
-        "root_cause": root_cause or (capa.root_cause if capa else ""),
-        "active_page": "",
-    })
-
-
 @app.post("/capa/create")
 async def capa_create_post(
     request: Request,
@@ -830,34 +619,6 @@ async def capa_update_status(
         db.commit()
 
     return RedirectResponse(url="/capa/board", status_code=status.HTTP_302_FOUND)
-
-
-# ── CAPA Detail ──────────────────────────────────────────────────────────────
-
-@app.get("/capa/{capa_id}/detail", response_class=HTMLResponse)
-async def capa_detail_page(capa_id: int, request: Request, db: Session = Depends(get_db)):
-    user = get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    capa = db.query(CAPA).filter(CAPA.id == capa_id).first()
-    if not capa:
-        return RedirectResponse(url="/capa/board", status_code=status.HTTP_302_FOUND)
-
-    tasks = db.query(CAPATask).filter(CAPATask.capa_id == capa_id).order_by(CAPATask.id).all()
-    comments = db.query(CAPAComment).filter(CAPAComment.capa_id == capa_id).order_by(CAPAComment.created_at).all()
-
-    action_steps = [s for s in (capa.actions or "").split("\n") if s.strip()]
-
-    return templates.TemplateResponse("capa_detail.html", {
-        "request": request,
-        "user": user,
-        "capa": capa,
-        "tasks": tasks,
-        "comments": comments,
-        "action_steps": action_steps,
-        "active_page": "",
-    })
 
 
 @app.post("/capa/{capa_id}/task")

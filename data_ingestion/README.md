@@ -1,6 +1,14 @@
-# Data Ingestion Pipeline
+# Data Ingestion Pipelines
 
-Comprehensive PDF processing pipeline that extracts text, tables, and images from technical manuals and ingests them into Weaviate vector database for RAG (Retrieval Augmented Generation) applications.
+Two independent offline pipelines that prepare the knowledge layer the RCA system runs on:
+
+| Sub-pipeline | Source | Destination | Purpose |
+|---|---|---|---|
+| **PDF processor** (`pdf_processor.py`) | OEM manuals in `pdfs/`, `pdfs_pellet/` | Weaviate Cloud | RAG retrieval for every domain agent + 5 Whys + Fishbone + CAPA step |
+| **History knowledge graph** (`history/build_knowledge_graph.py`) | Past RCA records as JSON (`history/output/extracted_data.json`) | Neo4j | Similarity search for past incidents + grounding CAPA generation |
+| **Equipment master** (`extract_equipment.py`) | Division equipment lists | `equipment_by_division.json` | Seeds the equipment dropdown in the breakdown form |
+
+Both pipelines are idempotent — re-runs `MERGE` into the destination instead of duplicating.
 
 ---
 
@@ -14,6 +22,8 @@ Comprehensive PDF processing pipeline that extracts text, tables, and images fro
 - [OCR Support](#ocr-support)
 - [Cleanup Pipeline](#cleanup-pipeline)
 - [Ingestion to Weaviate](#ingestion-to-weaviate)
+- [History → Neo4j Knowledge Graph](#history--neo4j-knowledge-graph)
+- [Equipment Master Extraction](#equipment-master-extraction)
 - [Configuration](#configuration)
 
 ---
@@ -52,16 +62,30 @@ python pdf_processor.py --target "filename"  # Process specific file
 
 ```
 data_ingestion/
-├── pdf_processor.py      # Main processing script
-├── weaviate_config.json  # Weaviate connection config
-├── .env                  # API credentials (not committed)
-├── pdfs/                 # Input PDF folder 1
-├── pdfs_pellet/          # Input PDF folder 2
-└── data/
-    ├── extracted/        # Raw extracted text + images
-    ├── cleaned/          # Cleaned text files
-    ├── logs/             # Processing logs by stage
-    └── status_*.json     # Processing status tracking
+├── pdf_processor.py             # PDF → Weaviate pipeline
+├── extract_equipment.py         # Equipment master extraction
+├── weaviate_config.json         # Weaviate connection config
+├── equipment_by_division.json   # Generated equipment master (consumed by app/)
+├── .env                         # API credentials (not committed)
+├── pdfs/                        # OEM manuals — input folder 1
+├── pdfs_pellet/                 # OEM manuals — input folder 2
+├── data/                        # PDF pipeline working dir
+│   ├── extracted/               # Raw extracted text + images
+│   ├── cleaned/                 # Cleaned text files
+│   ├── logs/                    # Processing logs by stage
+│   └── status_*.json            # Processing status tracking
+└── history/                     # RCA records → Neo4j pipeline
+    ├── extract_rca_history.py   # PDF/JSON → extracted_data.json
+    ├── build_knowledge_graph.py # extracted_data.json → Neo4j
+    ├── query_history.py         # Standalone CLI for graph queries (debug)
+    ├── check_model.py           # Sentence-transformer sanity check
+    ├── requirements_ingestion.txt
+    ├── PLAN.md                  # Design notes
+    ├── neo4j deployment plan.txt   # EC2 deployment checklist (gitignored)
+    ├── history_data/            # Raw RCA records (PDFs or JSON)
+    └── output/
+        ├── extracted_data.json  # Cleaned input for build_knowledge_graph.py
+        └── extraction_status.txt
 ```
 
 ---
@@ -369,6 +393,114 @@ Every chunk in Weaviate includes:
 - ✅ Skips already-processed files (unless `--force` flag used)
 - 📝 Logs: `"Already extracted – skip: pdfs_pellet/Manual.pdf"`
 - 🔄 Resumes from last successful file on errors
+
+---
+
+## History → Neo4j Knowledge Graph
+
+The `history/` subdirectory is a separate pipeline that ingests **past RCA records** into Neo4j. This is what powers `llm/tools/history_matcher.py` — semantic similarity search for "have we seen this before?" and the CAPA tool's "what was actually applied" grounding.
+
+### Two-stage workflow
+
+```
+history/history_data/         (raw PDFs or JSON of past RCAs)
+       ▼
+history/extract_rca_history.py   (LLM-assisted structured extraction)
+       ▼
+history/output/extracted_data.json   (one record per past incident)
+       ▼
+history/build_knowledge_graph.py   (sentence-transformer embeddings + Neo4j MERGE)
+       ▼
+Neo4j graph                       (Incident, Equipment, Plant, Department, CAPA,
+                                   Person nodes + relationships + 384-d embeddings)
+```
+
+### What gets stored per incident
+
+Each `extracted_data.json` record becomes an `Incident` node with:
+
+- Identity: `source_file` (uniqueness key), `plant`, `department`, `equipment`
+- Timing: `occurrence_from`, `occurrence_to`, `downtime_minutes`
+- Description: `problem_statement`, `root_cause`, `impact_on_production`, `proof_images_description`
+- Embedding: 384-d sentence-transformer vector of `"Equipment: X. Problem: Y. Root Cause: Z"`
+- Lists (stored as JSON strings since Neo4j doesn't support nested objects): `chronology_of_events`, `observations_from_site`, `breakdown_history_6months`
+
+Plus relationships:
+
+- `(Incident)-[:HAS_WHY_STEP]->(WhyStep)` — one per Why
+- `(Incident)-[:HAS_CAPA]->(CAPA)` — corrective + preventive actions
+- `(Incident)-[:INVESTIGATED_BY]->(Person)` — team members
+- `(Incident)-[:AT_PLANT]->(Plant)`, `(Incident)-[:IN_DEPARTMENT]->(Department)`
+- `(Equipment)-[:HAD_INCIDENT]->(Incident)`, `(Equipment)-[:IN_DEPARTMENT]->(Department)`
+
+### Uniqueness constraints
+
+```cypher
+CREATE CONSTRAINT FOR (n:Plant)      REQUIRE n.name IS UNIQUE
+CREATE CONSTRAINT FOR (n:Department) REQUIRE n.name IS UNIQUE
+CREATE CONSTRAINT FOR (n:Equipment)  REQUIRE n.normalized_name IS UNIQUE
+CREATE CONSTRAINT FOR (n:Incident)   REQUIRE n.source_file IS UNIQUE
+CREATE CONSTRAINT FOR (n:Person)     REQUIRE n.name IS UNIQUE
+```
+
+These make the whole ingestion idempotent — re-runs `MERGE` rather than `CREATE`, so no duplicates ever.
+
+### Running the ingestion
+
+```bash
+cd data_ingestion/history
+pip install -r requirements_ingestion.txt
+python build_knowledge_graph.py
+```
+
+Reads `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` from `llm/.env` (defaults: `bolt://localhost:7687`, `neo4j`, `rcapassword`).
+
+### Idempotency / resume
+
+Safe to re-run with a fuller `extracted_data.json`. Existing `Incident` nodes are matched on `source_file` and their properties are updated in place — no duplicates. Note the script **re-embeds every record on every run** (the embedding step is the slow part); for very large datasets, add a pre-flight query that skips existing `source_file` values.
+
+See [history/neo4j deployment plan.txt](history/neo4j%20deployment%20plan.txt) for the EC2 deployment checklist (port lockdown, EBS persistence, memory tuning).
+
+### Useful Cypher queries
+
+```cypher
+// Counts per node label
+MATCH (n) RETURN labels(n)[0] AS label, count(n) AS cnt ORDER BY cnt DESC;
+
+// All incidents on a specific equipment
+MATCH (e:Equipment {normalized_name: "rotary kiln"})-[:HAD_INCIDENT]->(i:Incident)
+RETURN i.problem_statement, i.root_cause, i.occurrence_from;
+
+// CAPAs that were applied for a specific incident
+MATCH (i:Incident {source_file: "CPP1/Incident_2024_03.pdf"})-[:HAS_CAPA]->(c:CAPA)
+RETURN c.action, c.responsibility, c.type, c.capa_index ORDER BY c.capa_index;
+
+// Investigators who worked on a plant's incidents
+MATCH (i:Incident)-[:AT_PLANT]->(:Plant {name: "CPP1"})
+MATCH (i)-[:INVESTIGATED_BY]->(p:Person)
+RETURN p.name, count(i) AS incidents_handled ORDER BY incidents_handled DESC;
+```
+
+`query_history.py` is a CLI wrapper around these for ad-hoc inspection.
+
+---
+
+## Equipment Master Extraction
+
+`extract_equipment.py` reads source equipment lists (per division) and produces `equipment_by_division.json` — consumed by the breakdown form in `app/` to populate the equipment dropdown.
+
+Output shape:
+
+```json
+{
+  "BNFC":     ["Briquetting Press", "Conveyor BC-1", ...],
+  "Pellet 1": ["Disc Pelletizer", "Grate-Kiln-Cooler", ...],
+  "DRI 1":    [...],
+  ...
+}
+```
+
+In Docker the file is bind-mounted read-only into the `app` container (`./data_ingestion:/data_ingestion:ro`) so the dashboard picks up new equipment additions without a rebuild.
 
 ---
 

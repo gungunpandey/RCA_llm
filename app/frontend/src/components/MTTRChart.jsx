@@ -1,52 +1,49 @@
 import React from 'react';
 import {
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Area,
-    AreaChart,
+    XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, Area, AreaChart, ReferenceLine,
 } from 'recharts';
 
+const ACCENT = '#f97316'; // orange — distinct from purple/teal elsewhere
+
 const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-        return (
-            <div className="chart-tooltip">
-                <p style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: '0.78rem', fontWeight: 600 }}>{label}</p>
-                <p style={{ color: '#7c6bff', fontWeight: 700, margin: 0 }}>
-                    MTTR: {payload[0].value} hrs
-                </p>
-            </div>
-        );
-    }
-    return null;
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="chart-tooltip">
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: '0.78rem', fontWeight: 600 }}>{label}</p>
+            <p style={{ color: ACCENT, fontWeight: 700, margin: 0 }}>
+                BD Hours: <strong>{Number(payload[0].value).toFixed(1)} h</strong>
+            </p>
+        </div>
+    );
 };
 
-const MTTRChart = ({ data }) => {
+const BDHoursChart = ({ data }) => {
     if (!data || data.length === 0) {
-        return (
-            <div className="chart-empty">No MTTR data available for the last 12 months.</div>
-        );
+        return <div className="chart-empty">No BD Hours data available.</div>;
     }
 
     const chartData = data.map(d => ({ ...d, avgMttr: Number(d.avgMttr) }));
+    const avg = chartData.reduce((s, d) => s + d.avgMttr, 0) / chartData.length;
 
     return (
         <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <defs>
-                    <linearGradient id="mttrGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor="#7c6bff" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#7c6bff" stopOpacity={0.02} />
+                    <linearGradient id="bdGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={ACCENT} stopOpacity={0.28} />
+                        <stop offset="95%" stopColor={ACCENT} stopOpacity={0.02} />
                     </linearGradient>
                 </defs>
 
-                {/* Subtle horizontal grid lines — readable on light theme */}
-                <CartesianGrid
-                    strokeDasharray="4 4"
-                    stroke="rgba(60,61,63,0.10)"
-                    vertical={false}
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(60,61,63,0.10)" vertical={false} />
+
+                {/* Average reference line */}
+                <ReferenceLine
+                    y={avg}
+                    stroke="rgba(249,115,22,0.45)"
+                    strokeDasharray="6 3"
+                    label={{ value: `Avg ${avg.toFixed(1)}h`, position: 'right', fontSize: 10, fill: ACCENT }}
                 />
 
                 <XAxis
@@ -60,24 +57,25 @@ const MTTRChart = ({ data }) => {
                     axisLine={false}
                     tickLine={false}
                     unit=" h"
-                    width={40}
+                    width={44}
                 />
                 <Tooltip
                     content={<CustomTooltip />}
-                    cursor={{ stroke: 'rgba(124,107,255,0.25)', strokeWidth: 1 }}
+                    cursor={{ stroke: `${ACCENT}40`, strokeWidth: 1 }}
                 />
                 <Area
                     type="monotone"
                     dataKey="avgMttr"
-                    stroke="#7c6bff"
+                    name="BD Hours"
+                    stroke={ACCENT}
                     strokeWidth={2.5}
-                    fill="url(#mttrGradient)"
-                    dot={{ r: 4, fill: '#7c6bff', strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: '#a78bfa' }}
+                    fill="url(#bdGradient)"
+                    dot={{ r: 4, fill: ACCENT, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: '#fb923c' }}
                 />
             </AreaChart>
         </ResponsiveContainer>
     );
 };
 
-export default MTTRChart;
+export default BDHoursChart;

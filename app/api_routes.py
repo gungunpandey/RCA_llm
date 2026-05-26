@@ -214,6 +214,11 @@ async def api_breakdowns(
             "mttr_hours": float(log.mttr_hours) if log.mttr_hours else (
                 round(log.downtime_minutes / 60, 1) if log.downtime_minutes else None
             ),
+            # Drives the "Open RCA" vs "Create RCA" button in BreakdownTable.
+            "has_rca": bool(
+                log.rca_data
+                and str(log.rca_data).strip() not in ("", "[]", "null")
+            ),
         }
         for log in logs
     ]

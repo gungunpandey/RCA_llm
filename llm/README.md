@@ -1,8 +1,8 @@
 # LLM Backend
 
-FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a multi-agent pipeline that combines domain-expert analysis, 5 Whys methodology, and Fishbone (Ishikawa) diagramming — all grounded in OEM manual content via RAG.
+FastAPI server powering the AI RCA pipeline. Orchestrates a multi-agent flow that combines historical incident retrieval (Neo4j), domain-expert agents, a mandatory clarification chatbot, 5 Whys, Fishbone (Ishikawa), and structured CAPA generation — all grounded in OEM manuals via RAG.
 
-> **Integration note:** This backend runs on port **8000**. The web dashboard (`app/`) runs on port **8080**. The browser connects directly to this service for SSE streaming via the `/analyze-integrated-stream` endpoint — no server-side proxy is involved.
+> **Integration note:** This backend runs on port **8000**. The web dashboard (`app/`) runs on port **8080**. The browser connects directly to this service for SSE streaming via two endpoints: `/analyze-prepare-stream` (Phase 1) then `/analyze-finalize-stream` (Phase 2). No server-side proxy is involved.
 
 ---
 
@@ -12,10 +12,12 @@ FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a mul
 - [LLM Provider Configuration](#llm-provider-configuration)
 - [Directory Structure](#directory-structure)
 - [API Endpoints](#api-endpoints)
-- [Pipeline Architecture](#pipeline-architecture)
+- [Two-Phase Pipeline (with Chatbot)](#two-phase-pipeline-with-chatbot)
 - [5 Whys — Early Stop Logic](#5-whys--early-stop-logic)
+- [CAPA Generation](#capa-generation)
 - [Evidence Validation System](#evidence-validation-system)
 - [RAG Manager](#rag-manager)
+- [History Matcher (Neo4j)](#history-matcher-neo4j)
 - [Configuration Reference](#configuration-reference)
 - [Running Tests](#running-tests)
 
@@ -25,9 +27,7 @@ FastAPI server powering the RCA (Root Cause Analysis) system. Orchestrates a mul
 
 ```bash
 cd llm
-pip install fastapi uvicorn python-dotenv openai google-genai weaviate-client pydantic
-
-# Start the API server
+pip install -r requirements.txt
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -37,11 +37,9 @@ Add a `.env` file in the `llm/` directory (see [Configuration Reference](#config
 
 ## LLM Provider Configuration
 
-The backend supports two LLM providers, switched via a single env variable.
+The backend supports two providers, switched via a single env variable.
 
 ### Option A — OpenRouter (GPT-5, default)
-
-Get a key at [openrouter.ai/keys](https://openrouter.ai/keys), add credits, then set:
 
 ```env
 LLM_PROVIDER=openrouter
@@ -49,7 +47,7 @@ OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_MODEL=openai/gpt-5
 ```
 
-Available GPT-5 models on OpenRouter:
+Common GPT-5 models on OpenRouter:
 
 | Model ID | Input | Output | Notes |
 |----------|-------|--------|-------|
@@ -64,7 +62,7 @@ LLM_PROVIDER=gemini
 GOOGLE_API_KEY=your-gemini-api-key
 ```
 
-The active provider is reported on the `/health` endpoint as `llm_model`.
+Active provider is reported on `/health` as `llm_model`.
 
 ---
 
@@ -73,125 +71,197 @@ The active provider is reported on the `/health` endpoint as `llm_model`.
 ```
 llm/
 ├── api/
-│   └── main.py                  # FastAPI app — all endpoints + SSE streaming
+│   ├── main.py                  # FastAPI app — endpoints + SSE streaming
+│   └── session_cache.py         # In-memory SessionCache (15-min TTL) — bridges
+│                                #   /analyze-prepare-stream ↔ /analyze-finalize-stream
 ├── tools/
-│   ├── base_tool.py             # Abstract base for all analysis tools
-│   ├── five_whys_tool.py        # 5 Whys RCA with causal sufficiency early stop
-│   ├── fishbone_tool.py         # Ishikawa diagram analysis
-│   ├── integrated_rca_tool.py   # Full pipeline orchestrator (domain → whys → fishbone)
-│   ├── evidence_validator.py    # Confidence calibration, plant validator, causal evaluator
-│   └── tool_registry.py         # Tool registration and execution
+│   ├── base_tool.py             # Abstract base: timing, ToolResult wrapping
+│   ├── tool_registry.py         # Name-based dispatcher
+│   ├── five_whys_tool.py        # 5 Whys + causal sufficiency early stop
+│   ├── fishbone_tool.py         # Ishikawa diagram (6 categories, JSON mode)
+│   ├── capa_tool.py             # Corrective + Preventive Action generator
+│   ├── clarification_generator.py # Chatbot question producer (deterministic + LLM ranker)
+│   ├── integrated_rca_tool.py   # Two-phase orchestrator (run_prepare + run_finalize)
+│   ├── history_matcher.py       # Neo4j incident similarity search
+│   ├── image_analysis_tool.py   # Vision-model damage assessment
+│   ├── evidence_validator.py    # ConfidenceCalibrator + PlantFailureModeValidator
+│   │                            #   + CausalSufficiencyEvaluator
+│   └── README.md
 ├── domain_agents/
 │   ├── base_agent.py            # Shared agent logic (RAG, prompt, parsing)
-│   ├── mechanical_agent.py      # Mechanical failure analysis
-│   ├── electrical_agent.py      # Electrical/power failure analysis
-│   └── process_agent.py         # Process/operational failure analysis
+│   ├── mechanical_agent.py
+│   ├── electrical_agent.py
+│   ├── process_agent.py
+│   └── README.md
 ├── models/
-│   └── tool_results.py          # Pydantic schemas for all tool outputs
+│   └── tool_results.py          # Pydantic schemas (WhyStep, FiveWhysResult,
+│                                #   FishboneResult, CAPAAction, CAPAResult,
+│                                #   ClarifyingQuestion, ClarificationAnswer, …)
 ├── model_comparison/
-│   ├── openrouter_adapter.py    # OpenRouter / GPT-5 adapter (active default)
-│   ├── gemini_adapter.py        # Google Gemini adapter (fallback)
-│   └── test_scenarios.json      # Test scenarios for standalone tool tests
-├── rag_manager.py               # Weaviate vector search for OEM docs (with gRPC timeout fix)
-├── rca_orchestrator.py          # Legacy orchestrator (pre-integrated pipeline)
-├── test_fishbone.py             # Standalone fishbone test (direct tool call)
-└── test_five_whys.py            # 5 Whys test with scenario JSON files
+│   ├── openrouter_adapter.py
+│   ├── gemini_adapter.py
+│   └── test_scenarios.json
+├── rag_manager.py               # Weaviate vector search w/ gRPC timeout fix
+├── rca_orchestrator.py          # Legacy stub — real orchestration is in IntegratedRCATool
+├── chatbot plan.txt             # Design doc (gitignored locally)
+├── test_fishbone.py             # Standalone fishbone test
+└── test_five_whys.py            # 5 Whys scenario tests
 ```
 
 ---
 
 ## API Endpoints
 
-### `POST /analyze-integrated-stream`
+### `POST /analyze-prepare-stream` (Phase 1)
 
-Main endpoint. Runs the full integrated pipeline and streams real-time progress via SSE.
+Starts an RCA. Runs history lookup, domain agents, image analysis, and clarification question generation. Caches the intermediate state and emits a `session_id` for the frontend to resume with.
 
-**Request:**
+**Request body** (same as `AnalyzeRequest`):
 ```json
 {
   "equipment_name": "Electrostatic Precipitator (ESP)",
-  "failure_description": "TR Set 1 tripped on under-voltage. Hopper High Level Alarm active.",
-  "symptoms": ["TR Set 1 under-voltage trip", "High spark rate", "Hopper high level alarm"],
-  "failure_timestamp": "2026-02-18T08:30:00Z",
-  "operator_observations": "Opacity increased on Stack monitor"
+  "failure_description": "TR Set 1 tripped on under-voltage...",
+  "symptoms": ["TR Set 1 under-voltage trip", "Hopper high level alarm"],
+  "occurrence_from": "2026-02-18T08:30:00",
+  "department": "Pellet 1",
+  "total_downtime": "240 minutes",
+  "operator_observations": "Opacity increased on Stack monitor",
+  "image_path": "/app/static/uploads/esp_1.jpg",
+  "image_desc": "Visible ash deposit on TR set casing"
 }
 ```
 
-**SSE Event Stream:**
+**SSE events** (in order):
 ```
-event: status
-data: {"message": "🔬 Domain experts analyzing failure..."}
-
-event: domain_insights
-data: {"domain_insights": { "key_findings": [...], "overall_confidence": 0.7 }}
-
-event: result
-data: {"status": "success", "result": { "five_whys_analysis": {...}, "fishbone_analysis": {...} }}
+event: status                → {"message": "..."}
+event: history_matches       → {"history_matches": [...]}
+event: domain_insights       → {"domain_insights": {...}}
+event: image_analysis        → {"image_analysis": {...}}     # if applicable
+event: clarifying_questions  → {"questions": [...]}          # 3 questions
+event: prepare_complete      → {"session_id": "...", "expires_at": ...}
+event: error                 → {"detail": "..."}
 ```
 
-### `POST /analyze-stream`
+### `POST /analyze-finalize-stream` (Phase 2)
 
-Lighter endpoint — runs standalone 5 Whys (no domain agents or fishbone).
+Resumes a prepared session with the user's chatbot answers. Validates that every issued question has an answer (server-side enforcement of the mandatory chatbot), then runs 5 Whys → Fishbone → CAPA.
 
-### `GET /health`
-
-Returns server status and active LLM model:
-
+**Request body**:
 ```json
-{ "status": "healthy", "llm_model": "OpenRouter/openai/gpt-5", "tools": [...] }
+{
+  "session_id": "9f8d2c1b0a...",
+  "clarifications": [
+    {"question_id": "q1", "question": "...", "answer": "..."},
+    {"question_id": "q2", "question": "...", "answer": "I don't know"},
+    {"question_id": "q3", "question": "...", "answer": "12.4"}
+  ]
+}
 ```
+
+**Errors**:
+- `400` — clarifications missing or incomplete
+- `404` — session_id not in cache
+- `410` — session expired (>15 min)
+
+**SSE events**:
+```
+event: status   → {"message": "..."}
+event: capa     → {"capa": {...}}     # emitted just before the final 'result'
+event: result   → {"status":"success", "result": {...}}
+event: error    → {"detail": "..."}
+```
+
+### Other endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | Server status + active LLM model + registered tools |
+| `POST` | `/analyze` | Standalone 5 Whys (no chatbot, JSON response) |
+| `POST` | `/analyze-stream` | Standalone 5 Whys SSE (no chatbot) |
+| `POST` | `/analyze-domain` | Domain agents only (JSON) |
+| `POST` | `/analyze-domain-stream` | Domain agents only (SSE) |
+| `POST` | `/analyze-image` | Single image analysis (multipart upload) |
+
+The legacy `POST /analyze-integrated-stream` has been **removed**. Any caller hitting that route now gets a 404; use the two-phase flow.
 
 ---
 
-## Pipeline Architecture
+## Two-Phase Pipeline (with Chatbot)
 
-The integrated pipeline runs in **5 sequential stages:**
+The integrated RCA runs in two phases to support a mandatory user-clarification step:
 
 ```
-Request
-  │
-  ├─ 1. Route → select domain agents based on keywords
-  │
-  ├─ 2. Domain Agents (parallel) → Mechanical + Electrical + Process
-  │        ↓ emits: domain_insights SSE event immediately
-  │
-  ├─ 3. 5 Whys → uses domain insights as context (2–5 why steps, with early stop)
-  │
-  ├─ 4. Fishbone → categorizes causes into 6 Ishikawa categories
-  │
-  └─ 5. Return combined result → result SSE event
+                      Phase 1: /analyze-prepare-stream
+                  ┌──────────────────────────────────────┐
+                  │ 0. History matcher (Neo4j)           │  → emits history_matches
+                  │ 1. Route → which domain agents       │
+                  │ 2. Domain agents (parallel) + Image  │  → emits domain_insights
+                  │ 3. Aggregate to DomainInsightsSummary│
+                  │ 4. ClarificationGenerator            │  → emits clarifying_questions
+                  │ 5. SessionCache.create(...)          │  → emits prepare_complete
+                  └──────────────────────────────────────┘
+                                  ▼
+                  [Frontend chatbot modal — MANDATORY]
+                  User answers all 3 questions
+                                  ▼
+                      Phase 2: /analyze-finalize-stream
+                  ┌──────────────────────────────────────┐
+                  │ Validate clarifications              │
+                  │ SessionCache.get(session_id)         │
+                  │ Append answers to failure_text       │
+                  │ 5 Whys (with early stop)             │
+                  │ Fishbone (Ishikawa, JSON mode)       │
+                  │ CAPA (corrective + preventive)       │  → emits capa
+                  │ Build final result                   │  → emits result
+                  │ SessionCache.evict(session_id)       │
+                  └──────────────────────────────────────┘
 ```
 
-**Agent routing** (keyword-based):
+**Agent routing** (keyword-based, picks which agents run in parallel):
 
 | Agent | Triggered by keywords |
 |-------|-----------------------|
-| `mechanical_agent` | bearing, vibration, shaft, lubrication, gearbox... |
-| `electrical_agent` | motor, voltage, current, interlock, relay, trip... |
-| `process_agent` | temperature, pressure, flow, combustion, feed... |
+| `mechanical_agent` | bearing, vibration, shaft, lubrication, gearbox, coupling, wear, fatigue, … |
+| `electrical_agent` | motor, voltage, current, interlock, relay, trip, VFD, winding, fuse, … |
+| `process_agent`    | temperature, pressure, flow, combustion, feed, flame, damper, draft, … |
+
+Multiple agents run if multiple domains match; `mechanical_agent` is the default if none match.
+
+**Clarification generator** (deterministic builders + optional LLM ranker):
+
+| Builder | What it asks |
+|---|---|
+| `discriminating` | When ≥2 domain agents have hypotheses with confidence ≥0.6, asks the one fact that would decide between them |
+| `missing_metric` | When agents reference a sensor class (vibration, current, temp, …) but the failure text has no value for it, asks for the reading + units |
+| `historical` | When a Neo4j match has ≥0.80 similarity but a divergent root cause, asks if that historical pattern is present here |
+| `domain_check` | Top recommended_check from the highest-confidence agent |
+
+If the deterministic pool is ≤3 candidates, the LLM ranker is **skipped** (saves cost + latency). Otherwise it ranks + rephrases the top 3 in JSON mode.
 
 ---
 
 ## 5 Whys — Early Stop Logic
 
-The 5 Whys analysis implements a **Causal Sufficiency Stop Rule** to prevent over-escalation into speculative governance or design failures.
+The 5 Whys analysis implements a **Causal Sufficiency Stop Rule** to prevent over-escalation into speculative governance / design failures.
 
 ### How it works
 
-1. The loop runs up to 5 iterations (minimum 2 whys are always completed).
-2. **From Why #2 onward**, after each step, the system calls `CausalSufficiencyEvaluator` with the current candidate cause and the full list of observed symptoms.
-3. The evaluator sends a dedicated prompt to the LLM asking:
-
-   > *"Does this cause fully explain ALL of the observed symptoms? If yes for all → cause is SUFFICIENT. If any symptom is unexplained → INSUFFICIENT, continue digging."*
-
-4. If the cause is **sufficient** → the loop breaks, `stopped_early = True` is recorded, and a `stop_reason` string is attached to the result.
-5. If the cause is **insufficient** → the unexplained symptoms are logged and the next Why is generated.
+1. Loop runs up to 5 iterations; minimum 2 are always completed.
+2. From Why #2 onward, after each step `CausalSufficiencyEvaluator` calls the LLM with the current cause + observed symptoms:
+   > *"Does this cause fully explain ALL the observed symptoms?"*
+3. If sufficient → `stopped_early = True`, `stop_reason` recorded, loop breaks.
+4. If insufficient → unexplained symptoms logged, next Why generated.
 
 ### Why this matters
 
-Without this rule, LLMs tend to over-escalate into vague systemic causes (e.g. *"inadequate maintenance policy"*, *"design flaw"*) even when the equipment-level failure already explains every observable symptom. This adds no diagnostic value and can mislead operators.
+Without this rule, LLMs over-escalate into vague systemic causes (*"inadequate maintenance policy"*, *"design flaw"*) even when the equipment-level failure already explains every observable symptom.
 
-The rule anchors the analysis at the **lowest sufficient explanation** — i.e., the first equipment or component failure that fully accounts for all alarms and observations.
+### Causal Boundary Rule
+
+Every why step is prompted with:
+> *"Identify the first equipment whose intended function failed. Do NOT move upstream beyond that unless a measurement or alarm explicitly confirms upstream failure."*
+
+This prevents the analysis bypassing instrument-level failures and jumping to hypothetical upstream process deviations.
 
 ### Output fields
 
@@ -201,54 +271,95 @@ The rule anchors the analysis at the **lowest sufficient explanation** — i.e.,
   "root_cause": "...",
   "root_cause_confidence": 0.82,
   "stopped_early": true,
-  "stop_reason": "Causal sufficiency achieved at Why #3: cause explains all observed symptoms. ..."
+  "stop_reason": "Causal sufficiency achieved at Why #3: ...",
+  "next_investigation_paths": [...],
+  "risk_assessment": "CRITICAL — Imminent risk of ...",
+  "corrective_actions": [...]    // backfilled from CAPATool corrective list
 }
 ```
 
-### Causal Boundary Rule
+---
 
-Each why step is also prompted with an explicit **causal boundary constraint**:
+## CAPA Generation
 
-> *"Identify the first equipment whose intended function failed. Do NOT move upstream beyond that unless a measurement or alarm explicitly confirms upstream failure."*
+`tools/capa_tool.py` runs **after** 5 Whys + Fishbone. Produces a structured Corrective + Preventive Action plan grounded in:
 
-This prevents the analysis from bypassing instrument-level failures (signal quality, transmitter failure) and jumping straight to hypothetical upstream process deviations.
+- Confirmed root cause (from 5 Whys)
+- Full 5 Whys chain
+- Fishbone contributing causes per category
+- Domain expert findings + recommended checks
+- OEM documentation (RAG)
+- **Past CAPAs from similar incidents** (Neo4j matches) — labelled as "what was actually applied"
+- User clarifications from the chatbot
+
+### Output schema
+
+```python
+{
+  "corrective": [
+    {
+      "type": "corrective",
+      "action": "Replace damaged bearing on Drum 2 and re-balance",
+      "rationale": "Direct repair of the failed component...",
+      "responsibility": "Mechanical Maintenance",
+      "priority": "immediate",            # immediate | short_term | long_term
+      "target_date_hint": "Within 24h",
+      "related_category": "Machine",      # Fishbone category
+      "references": ["Rotary Kiln_Hongda_OEM Manual section 4.2"]
+    },
+    # ...
+  ],
+  "preventive": [...],
+  "summary": "One-line synthesis of the CAPA strategy",
+  "documents_used": [...]
+}
+```
+
+### Anti-fluff rules in the prompt
+
+- No vague items like *"monitor regularly"*, *"check periodically"*, *"improve maintenance"*
+- Every action must connect to either the root cause or a Fishbone category (via `related_category`)
+- `responsibility` constrained to 6 values: Mechanical/Electrical Maintenance, Operations, Instrumentation, Process Engineering, Reliability
+- `priority` semantically tied to timing: immediate=24h, short_term=1w, long_term=next PM cycle
+
+### Degraded mode
+
+If `root_cause` is missing/empty (5 Whys failed), CAPA returns a single placeholder action ("Investigation incomplete...") so the final result always carries a CAPA field.
 
 ---
 
 ## Evidence Validation System
 
-`tools/evidence_validator.py` contains three classes that keep the RCA grounded in plant-credible evidence.
+`tools/evidence_validator.py` contains three classes keeping the RCA grounded in plant-credible evidence.
 
 ### `ConfidenceCalibrator`
 
-Caps LLM-generated confidence scores based on the quality of evidence:
+Caps LLM confidence based on evidence quality:
 
 | Evidence Type | Max Confidence | Description |
-|---------------|----------------|-------------|
+|---|---|---|
 | `MEASURED` | 95% | Sensor data, alarm logs, trend data |
 | `DOCUMENTED` | 85% | OEM manual explicitly states causality |
 | `INFERRED` | 70% | Logical deduction, no direct evidence |
 | `NONE` | 50% | Speculative — no supporting evidence |
 
-Evidence type is auto-detected from keyword scanning of the answer text (e.g. presence of "alarm", "sensor", "trend" → `MEASURED`; "likely", "probably" → `INFERRED`).
+Evidence type is auto-detected from keyword scanning of the answer text (e.g. "alarm", "sensor", "trend" → `MEASURED`; "likely", "probably" → `INFERRED`).
 
 ### `PlantFailureModeValidator`
 
-Detects and sanitizes AI/system errors that may leak into plant RCA answers:
-
-- Patterns like `503 UNAVAILABLE`, `404 NOT FOUND`, `CONNECTION TIMEOUT` are flagged as invalid plant failure modes.
-- Invalid answers are sanitized — e.g. `503 UNAVAILABLE` → `Loss of Signal (LOS)`.
-- Plant-credible signal failures: `Bad Quality`, `Comm Fail`, `Signal Unhealthy`, `Input Forced`, `Loss of Signal`.
+Detects and sanitizes AI/system errors leaking into plant RCA answers:
+- Patterns like `503 UNAVAILABLE`, `404 NOT FOUND`, `CONNECTION TIMEOUT` are flagged as invalid plant failure modes
+- Auto-rewrites them to plant-credible signal failures: `Bad Quality`, `Comm Fail`, `Signal Unhealthy`, `Input Forced`, `Loss of Signal`
 
 ### `CausalSufficiencyEvaluator`
 
-Drives the early stop logic (see [5 Whys — Early Stop Logic](#5-whys--early-stop-logic)). On any exception it fails safely — returning `False` to allow analysis to continue rather than block the pipeline.
+Drives the 5 Whys early stop logic. On any exception it returns `False` so the pipeline continues rather than block.
 
 ---
 
 ## RAG Manager
 
-`rag_manager.py` connects to Weaviate Cloud and retrieves relevant OEM manual chunks for each query.
+`rag_manager.py` connects to Weaviate Cloud and retrieves OEM manual chunks for each query.
 
 **Key method:**
 ```python
@@ -260,63 +371,85 @@ await rag.retrieve_equipment_context(
 # Returns: List[Document(content, source, score, metadata)]
 ```
 
-**Search strategy:** BM25 keyword search against the `Rca` collection in Weaviate. Query is built by combining equipment name + symptoms into a single search string.
+**Search strategy:** BM25 keyword search against the `Rca` collection. Query is built by combining equipment name + symptoms into a single search string.
 
 ### gRPC Timeout Handling
 
-Weaviate queries use gRPC, which can hang for up to 60 seconds when the connection is stale. The RAG manager implements a two-layer defence:
+Weaviate queries use gRPC, which can hang up to 60s on a stale connection. The RAG manager has a two-layer defence:
 
-1. **Client-level timeout:** The Weaviate client is configured with `query=8s` — so the gRPC layer itself raises `DEADLINE_EXCEEDED` quickly rather than hanging.
-2. **`asyncio.wait_for` guard (10s):** The BM25 call runs in a thread executor wrapped by `asyncio.wait_for` as an outer safety net in case the gRPC timeout doesn't fire.
-3. **Auto-reconnect on failure:** If either timeout fires on the first attempt, the client is closed, a fresh connection is established, and the query is retried once.
-4. **Graceful degradation:** If the retry also fails, `retrieve_equipment_context` returns `[]` and the pipeline continues without RAG context — analysis is not blocked.
+1. **Client-level timeout:** `query=8s` — gRPC raises `DEADLINE_EXCEEDED` quickly
+2. **`asyncio.wait_for` guard (10s):** outer safety net
+3. **Auto-reconnect on failure:** close client, reconnect, retry once
+4. **Graceful degradation:** if retry also fails, returns `[]` — pipeline continues without RAG context
 
 ```python
 rag = RAGManager()
-rag.connect()    # Call at startup
-rag.disconnect() # Call at shutdown
+rag.connect()    # call at startup
+rag.disconnect() # call at shutdown
 ```
 
-**Connection timeout config:**
+---
+
+## History Matcher (Neo4j)
+
+`tools/history_matcher.py` runs at the very start of the integrated pipeline. Queries Neo4j for past incidents whose embedding is semantically similar to the current failure.
+
 ```python
-Timeout(init=10, query=8, insert=120)
+matches, prompt_text = await history_matcher.find_and_format(
+    equipment_name="ESP",
+    problem_description="TR Set 1 tripped on under-voltage..."
+)
+# Returns:
+#   matches      — list of up to top_k (default 3) dicts: equipment, plant, downtime,
+#                  problem_statement, root_cause, capa, team_members, similarity_score
+#   prompt_text  — pre-formatted "HISTORICAL REFERENCE" block, injected into 5 Whys
 ```
+
+- Embedding model: `sentence-transformers/all-MiniLM-L6-v2` (loaded once on first call, cached in HuggingFace cache volume in Docker)
+- Default top_k=3, min similarity=0.65 (cosine)
+- **Fully graceful**: if Neo4j is unreachable, returns `([], "")` and the rest of the pipeline runs as if no history existed. RCA never crashes due to history matcher.
+
+The `capa` field on each match is what gets injected into the CAPA generator — past CAPAs that were actually applied to similar failures.
 
 ---
 
 ## Configuration Reference
 
 | Variable | Purpose | Required |
-|----------|---------|----------|
+|---|---|---|
 | `LLM_PROVIDER` | `openrouter` (default) or `gemini` | Yes |
-| `OPENROUTER_API_KEY` | OpenRouter API key | When `LLM_PROVIDER=openrouter` |
-| `OPENROUTER_MODEL` | Model ID, e.g. `openai/gpt-5` | No (defaults to `openai/gpt-5`) |
-| `GOOGLE_API_KEY` | Gemini API key | When `LLM_PROVIDER=gemini` |
+| `OPENROUTER_API_KEY` | OpenRouter key | When `LLM_PROVIDER=openrouter` |
+| `OPENROUTER_MODEL` | Model id, e.g. `openai/gpt-5` | No (defaults to `openai/gpt-5`) |
+| `GOOGLE_API_KEY` | Gemini key | When `LLM_PROVIDER=gemini` |
 | `WEAVIATE_URL` | Weaviate Cloud cluster URL | Yes |
-| `WEAVIATE_API_KEY` | Weaviate API key | Yes |
-| `HUGGINGFACE_API_KEY` | HuggingFace key for embeddings | Optional |
+| `WEAVIATE_API_KEY` | Weaviate key | Yes |
+| `NEO4J_URI` | Bolt URI (default `bolt://localhost:7687`) | No |
+| `NEO4J_USER` | Neo4j user (default `neo4j`) | No |
+| `NEO4J_PASSWORD` | Neo4j password (default `rcapassword`) | No |
+| `HUGGINGFACE_API_KEY` | HF key for embeddings | Optional |
 
-Weaviate collection and embedding settings are in `data_ingestion/weaviate_config.json`. `.env` values override the JSON config.
+Weaviate collection / embedding settings live in `data_ingestion/weaviate_config.json`. `.env` values override the JSON config.
 
-**Minimal `.env` for OpenRouter:**
+**Minimal `.env`:**
 ```env
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_MODEL=openai/gpt-5
 WEAVIATE_URL=https://your-cluster.weaviate.cloud
 WEAVIATE_API_KEY=your-weaviate-key
+NEO4J_URI=bolt://localhost:7687
+NEO4J_PASSWORD=rcapassword
 ```
 
 ---
 
 ## Running Tests
 
-### Fishbone tool in isolation (fast, ~30s)
+### Fishbone tool in isolation (~30s)
 ```bash
 cd llm
 python test_fishbone.py
 ```
-Uses hardcoded inputs — no domain agents needed. Prints full Ishikawa breakdown.
 
 ### 5 Whys with scenario files (~2 min per scenario)
 ```bash
@@ -324,5 +457,15 @@ python test_five_whys.py
 # Results saved to: test_results/five_whys_test_<timestamp>.json
 ```
 
-### Full integrated pipeline via API
-Start the server, then submit a request to `/analyze-integrated-stream` (use the frontend or curl).
+### Full integrated pipeline
+Start the server, then drive the two-phase flow from the frontend (or curl):
+```bash
+# Phase 1
+curl -N -X POST http://localhost:8000/analyze-prepare-stream \
+  -H "Content-Type: application/json" -d @request.json
+# Extract session_id from the prepare_complete event, then:
+# Phase 2
+curl -N -X POST http://localhost:8000/analyze-finalize-stream \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "...", "clarifications": [...]}'
+```

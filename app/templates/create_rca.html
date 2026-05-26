@@ -935,6 +935,51 @@
         box-shadow: 0 4px 12px var(--accent-glow);
         transform: translateY(-1px);
     }
+
+    /* ── User Inputs / Clarifications (end of report, screen-only) ── */
+    .user-inputs-section {
+        margin-bottom: 1.5rem;
+        border-left: 3px solid var(--accent);
+    }
+    .user-inputs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+    }
+    .user-input-row {
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+    }
+    .user-input-q {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
+        line-height: 1.4;
+    }
+    .user-input-q::before {
+        content: 'Q:';
+        color: var(--accent);
+        font-weight: 700;
+        margin-right: 0.4rem;
+    }
+    .user-input-a {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.45;
+    }
+    .user-input-a::before {
+        content: 'A:';
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-right: 0.4rem;
+    }
+    .user-input-a-dontknow {
+        font-style: italic;
+        color: #94a3b8;
+    }
 </style>
 {% endblock %}
 
@@ -1136,6 +1181,17 @@
             <div id="img-analysis-body" style="margin-top: 1rem;">
                 <div id="img-analysis-content"></div>
             </div>
+        </div>
+
+        <!-- User Inputs / Chatbot Clarifications (screen-only — excluded from CSV/PDF) -->
+        <div id="user-inputs-section" class="glass-panel user-inputs-section" style="display: none;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.3rem;">
+                User Inputs
+            </h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.9rem;">
+                Follow-up questions answered by the engineer during analysis — used to refine the root cause.
+            </p>
+            <div id="user-inputs-list" class="user-inputs-list"></div>
         </div>
 
         <!-- Export Buttons -->
@@ -1866,10 +1922,43 @@
             renderImageAnalysis(imgData);
         }
 
+        // Render chatbot clarifications at the end of the report (screen-only)
+        renderUserInputs(result.user_clarifications || []);
+
         // Show report; hide input form and analysis progress
         document.getElementById('report-section').style.display = 'block';
         document.getElementById('ai-input-section').style.display = 'none';
         document.getElementById('status-section').style.display = 'none';
+    }
+
+    /**
+     * Render the chatbot Q&A at the end of the report.
+     * This section is intentionally NOT included in exportCSV() or exportPDF() —
+     * it shows on-screen only as the engineer's input record.
+     */
+    function renderUserInputs(clarifications) {
+        const section = document.getElementById('user-inputs-section');
+        if (!section) return;
+
+        if (!Array.isArray(clarifications) || clarifications.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        const list = document.getElementById('user-inputs-list');
+        list.innerHTML = clarifications.map(c => {
+            const q = escHtml((c.question || '').trim());
+            const aRaw = (c.answer || '').trim();
+            const isDontKnow = /^i\s*don.?t\s*know$/i.test(aRaw) || aRaw === '';
+            const aClass = isDontKnow ? 'user-input-a user-input-a-dontknow' : 'user-input-a';
+            const a = escHtml(aRaw || "I don't know");
+            return '<div class="user-input-row">' +
+                       '<div class="user-input-q">' + q + '</div>' +
+                       '<div class="' + aClass + '">' + a + '</div>' +
+                   '</div>';
+        }).join('');
+
+        section.style.display = 'block';
     }
 
     // ── AI-Suggested CAPA Cards (read-only display above editable table) ─────
@@ -2311,9 +2400,15 @@
                 final_confidence:  currentResult.final_confidence  || 0,
                 team_list:         document.getElementById('team-list-input').value,
                 capa:              getCapaData(),
+                // AI-suggested CAPA plan (cards above the editable table) so they
+                // re-render on reload, not just the user-edited rows.
+                capa_actions:      currentResult.capa_actions || _pendingCapaResult || null,
                 image_analysis:    _imageAnalysisResult || currentResult.image_analysis || null,
                 fishbone_analysis: currentResult.fishbone_analysis || null,
-                history_matches:   _pendingHistoryMatches || currentResult.history_matches || null
+                history_matches:   _pendingHistoryMatches || currentResult.history_matches || null,
+                // Chatbot Q&A — rendered as the "User Inputs" section at the
+                // end of the report on reload. CSV/PDF export ignores this.
+                user_clarifications: currentResult.user_clarifications || []
             };
         } else if (currentTab === 'manual') {
             payload = {

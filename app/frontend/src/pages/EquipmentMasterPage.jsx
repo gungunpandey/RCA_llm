@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import NavBar from '../components/NavBar';
 import { fetchEquipmentList, fetchEquipmentDetail, createEquipment } from '../api/equipment';
 
-const CRITICALITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+const CRITICALITY_OPTIONS = ['High', 'Medium', 'Low'];
+const SORT_OPTIONS = [
+    { label: 'Plant → Equipment', value: 'plant_asc' },
+    { label: 'Equipment A–Z',     value: 'name_asc'  },
+    { label: 'Most Failures',     value: 'fail_desc' },
+    { label: 'Least Failures',    value: 'fail_asc'  },
+    { label: 'Latest Failure',    value: 'date_desc' },
+];
 
 const criticalityColor = (c) => {
-    if (c === 'Critical') return { color: '#ff5e5e', bg: 'rgba(255,94,94,0.12)' };
-    if (c === 'High')     return { color: '#fb923c', bg: 'rgba(251,146,60,0.12)' };
-    if (c === 'Medium')   return { color: '#ffd93d', bg: 'rgba(255,217,61,0.12)' };
-    return { color: '#4ade80', bg: 'rgba(74,222,128,0.12)' };
-};
-
-const healthColor = (score) => {
-    if (score >= 80) return '#4ade80';
-    if (score >= 50) return '#ffd93d';
-    return '#ff5e5e';
+    if (c === 'Critical') return { color: '#000000', bg: 'rgba(255,94,94,0.12)' };
+    if (c === 'High')     return { color: '#000000', bg: 'rgba(251,146,60,0.12)' };
+    if (c === 'Medium')   return { color: '#000000', bg: 'rgba(255,217,61,0.12)' };
+    return { color: '#000000', bg: 'rgba(74,222,128,0.12)' };
 };
 
 const CriticalityBadge = ({ value }) => {
@@ -31,22 +32,21 @@ const CriticalityBadge = ({ value }) => {
     );
 };
 
-const HealthDot = ({ score }) => {
-    const color = healthColor(score);
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, color }}>{score != null ? score : '—'}</span>
-        </div>
-    );
-};
-
 const formatDate = (d) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const EMPTY_FORM = { name: '', asset_tag: '', category: '', location: '', criticality: 'Medium', asset_health_score: 100 };
+const EMPTY_FORM = { name: '', asset_tag: '', category: '', criticality: 'Medium' };
+
+const SortIcon = ({ field, sortKey, sortDir }) => {
+    const active = sortKey === field;
+    return (
+        <span style={{ marginLeft: 4, fontSize: '0.65rem', opacity: active ? 1 : 0.3, color: active ? '#33B1B0' : 'inherit' }}>
+            {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+    );
+};
 
 const EquipmentMasterPage = () => {
     const { user } = useAuth();
@@ -54,6 +54,8 @@ const EquipmentMasterPage = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [critFilter, setCritFilter] = useState('');
+    const [plantFilter, setPlantFilter] = useState('');
+    const [sortMode, setSortMode] = useState('plant_asc');
     const [selected, setSelected] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [showAdd, setShowAdd] = useState(false);
@@ -81,6 +83,44 @@ const EquipmentMasterPage = () => {
         return () => clearTimeout(t);
     }, [loadList]);
 
+    /* Derived plant list for filter dropdown */
+    const plants = useMemo(() => {
+        const s = new Set(equipment.map(e => e.category).filter(Boolean));
+        return [...s].sort();
+    }, [equipment]);
+
+    /* Frontend sort + plant-filter */
+    const displayEquipment = useMemo(() => {
+        let list = [...equipment];
+        if (plantFilter) list = list.filter(e => e.category === plantFilter);
+        switch (sortMode) {
+            case 'plant_asc':
+                list.sort((a, b) => {
+                    const pa = (a.category || '').localeCompare(b.category || '');
+                    return pa !== 0 ? pa : (a.name || '').localeCompare(b.name || '');
+                });
+                break;
+            case 'name_asc':
+                list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                break;
+            case 'fail_desc':
+                list.sort((a, b) => (b.failure_count || 0) - (a.failure_count || 0));
+                break;
+            case 'fail_asc':
+                list.sort((a, b) => (a.failure_count || 0) - (b.failure_count || 0));
+                break;
+            case 'date_desc':
+                list.sort((a, b) => {
+                    if (!a.last_failure_date) return 1;
+                    if (!b.last_failure_date) return -1;
+                    return new Date(b.last_failure_date) - new Date(a.last_failure_date);
+                });
+                break;
+            default: break;
+        }
+        return list;
+    }, [equipment, plantFilter, sortMode]);
+
     const openDetail = async (eq) => {
         setSelected({ ...eq, breakdowns: null });
         setDetailLoading(true);
@@ -105,8 +145,6 @@ const EquipmentMasterPage = () => {
         const errs = {};
         if (!form.name.trim()) errs.name = 'Name is required.';
         if (!form.asset_tag.trim()) errs.asset_tag = 'Asset tag is required.';
-        const hs = Number(form.asset_health_score);
-        if (isNaN(hs) || hs < 0 || hs > 100) errs.asset_health_score = 'Must be 0–100.';
         return errs;
     };
 
@@ -117,7 +155,7 @@ const EquipmentMasterPage = () => {
         if (Object.keys(errs).length) { setFormErrors(errs); return; }
         setSaving(true);
         try {
-            await createEquipment({ ...form, asset_health_score: Number(form.asset_health_score) });
+            await createEquipment({ ...form });
             setShowAdd(false);
             setForm(EMPTY_FORM);
             setSuccessMsg('Equipment added successfully!');
@@ -144,7 +182,7 @@ const EquipmentMasterPage = () => {
                 <div className="bl-hero-icon">🏭</div>
                 <div style={{ flex: 1 }}>
                     <h1 className="bl-hero-title">Equipment Master</h1>
-                    <p className="bl-hero-sub">Track all assets, criticality, health scores, and breakdown history.</p>
+                    <p className="bl-hero-sub">Track all assets, criticality, and breakdown history.</p>
                 </div>
                 <button
                     className="btn btn-primary"
@@ -166,10 +204,10 @@ const EquipmentMasterPage = () => {
                 </div>
             )}
 
-            {/* ── Filters ── */}
+            {/* ── Filters & Sort ── */}
             <div className="fade-in" style={{
-                display: 'flex', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 1,
-                maxWidth: 1280, width: '100%', margin: '0 auto',
+                display: 'flex', gap: 10, flexWrap: 'wrap', position: 'relative', zIndex: 1,
+                maxWidth: 1280, width: '100%', margin: '0 auto', alignItems: 'center',
             }}>
                 <input
                     type="text"
@@ -177,17 +215,43 @@ const EquipmentMasterPage = () => {
                     placeholder="🔍  Search by name or asset tag…"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    style={{ maxWidth: 320 }}
+                    style={{ maxWidth: 300 }}
                 />
+                {/* Plant filter */}
+                <select
+                    className="form-input bl-select"
+                    value={plantFilter}
+                    onChange={e => setPlantFilter(e.target.value)}
+                    style={{ maxWidth: 180 }}
+                >
+                    <option value="">All Plants</option>
+                    {plants.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                {/* Criticality filter */}
                 <select
                     className="form-input bl-select"
                     value={critFilter}
                     onChange={e => setCritFilter(e.target.value)}
-                    style={{ maxWidth: 200 }}
+                    style={{ maxWidth: 180 }}
                 >
                     <option value="">All Criticalities</option>
                     {CRITICALITY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+                {/* Sort */}
+                <select
+                    className="form-input bl-select"
+                    value={sortMode}
+                    onChange={e => setSortMode(e.target.value)}
+                    style={{ maxWidth: 200 }}
+                >
+                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {/* Record count */}
+                {!loading && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: 4, whiteSpace: 'nowrap' }}>
+                        {displayEquipment.length} equipment
+                    </span>
+                )}
             </div>
 
             {/* ── Table ── */}
@@ -198,27 +262,35 @@ const EquipmentMasterPage = () => {
                             <span className="spinner" style={{ borderTopColor: '#33B1B0', borderColor: 'rgba(51,177,176,0.2)', display: 'inline-block' }} />
                             <p style={{ marginTop: 12, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Loading equipment…</p>
                         </div>
-                    ) : equipment.length === 0 ? (
+                    ) : displayEquipment.length === 0 ? (
                         <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
                             No equipment found.
                         </div>
                     ) : (
                         <div className="bd-table-wrapper">
-                            <table className="bd-table">
+                            <table className="bd-table" style={{ minWidth: 720 }}>
                                 <thead>
                                     <tr>
-                                        <th>Asset Tag</th>
-                                        <th>Equipment Name</th>
-                                        <th>Category</th>
-                                        <th>Location</th>
+                                        <th style={{ cursor: 'pointer' }} onClick={() => setSortMode('name_asc')}>
+                                            Asset Tag
+                                        </th>
+                                        <th style={{ cursor: 'pointer' }} onClick={() => setSortMode('name_asc')}>
+                                            Equipment Name <SortIcon field="name_asc" sortKey={sortMode} sortDir="asc" />
+                                        </th>
+                                        <th style={{ cursor: 'pointer' }} onClick={() => setSortMode('plant_asc')}>
+                                            Plant <SortIcon field="plant_asc" sortKey={sortMode} sortDir="asc" />
+                                        </th>
                                         <th>Criticality</th>
-                                        <th>Health Score</th>
-                                        <th>Failures</th>
-                                        <th>Last Failure</th>
+                                        <th style={{ cursor: 'pointer' }} onClick={() => setSortMode(s => s === 'fail_desc' ? 'fail_asc' : 'fail_desc')}>
+                                            Failures (till date) <SortIcon field={sortMode === 'fail_asc' ? 'fail_asc' : 'fail_desc'} sortKey={sortMode} sortDir={sortMode === 'fail_asc' ? 'asc' : 'desc'} />
+                                        </th>
+                                        <th style={{ cursor: 'pointer' }} onClick={() => setSortMode('date_desc')}>
+                                            Last Failure <SortIcon field="date_desc" sortKey={sortMode} sortDir="desc" />
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {equipment.map(eq => (
+                                    {displayEquipment.map(eq => (
                                         <tr
                                             key={eq.id}
                                             className="bd-row"
@@ -228,17 +300,17 @@ const EquipmentMasterPage = () => {
                                             <td><span className="tag">{eq.asset_tag}</span></td>
                                             <td style={{ fontWeight: 600 }}>{eq.name}</td>
                                             <td>
-                                                {eq.category ? <span className="category-tag">{eq.category}</span> : <span style={{ color: 'rgba(60,61,63,0.35)', fontSize: '0.8rem' }}>—</span>}
+                                                {eq.category
+                                                    ? <span className="category-tag">{eq.category}</span>
+                                                    : <span style={{ color: 'rgba(60,61,63,0.35)', fontSize: '0.8rem' }}>—</span>}
                                             </td>
-                                            <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{eq.location || '—'}</td>
                                             <td><CriticalityBadge value={eq.criticality || 'Medium'} /></td>
-                                            <td><HealthDot score={eq.asset_health_score} /></td>
                                             <td>
                                                 <span style={{
                                                     fontWeight: 700,
                                                     color: eq.failure_count > 5 ? '#ff5e5e' : eq.failure_count > 2 ? '#fb923c' : 'var(--text-primary)',
                                                 }}>
-                                                    {eq.failure_count}
+                                                    {eq.failure_count ?? 0}
                                                 </span>
                                             </td>
                                             <td style={{ fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
@@ -285,14 +357,11 @@ const EquipmentMasterPage = () => {
                             >✕</button>
                         </div>
 
-                        {/* Details grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', marginBottom: 20 }}>
                             {[
-                                { label: 'Category', value: selected.category || '—' },
-                                { label: 'Location', value: selected.location || '—' },
+                                { label: 'Plant', value: selected.category || '—' },
                                 { label: 'Criticality', value: <CriticalityBadge value={selected.criticality || 'Medium'} /> },
-                                { label: 'Health Score', value: <HealthDot score={selected.asset_health_score} /> },
-                                { label: 'Total Failures', value: <span style={{ fontWeight: 700 }}>{selected.failure_count}</span> },
+                                { label: 'Failures (till date)', value: <span style={{ fontWeight: 700 }}>{selected.failure_count ?? 0}</span> },
                                 { label: 'Last Failure', value: formatDate(selected.last_failure_date) },
                             ].map(({ label, value }) => (
                                 <div key={label}>
@@ -302,7 +371,6 @@ const EquipmentMasterPage = () => {
                             ))}
                         </div>
 
-                        {/* Breakdown history */}
                         <p className="section-title" style={{ marginBottom: 12 }}>Breakdown History</p>
                         {detailLoading ? (
                             <div className="skeleton" style={{ height: 60, borderRadius: 8 }} />
@@ -333,79 +401,80 @@ const EquipmentMasterPage = () => {
                 </>
             )}
 
+            {/* ── Add Equipment Modal ── */}
             {showAdd && (
                 <div
                     style={{
-                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.20)',
-                        zIndex: 200, backdropFilter: 'blur(3px)',
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.55)',
+                        zIndex: 200, backdropFilter: 'blur(6px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '16px',
                     }}
                     onClick={(e) => { if (e.target === e.currentTarget) setShowAdd(false); }}
                 >
                     <div
-                        className="glass-card fade-in"
+                        className="fade-in"
                         style={{
                             width: '100%', maxWidth: 480, zIndex: 201,
-                            padding: '28px 28px 24px',
+                            padding: '32px 32px 28px',
                             maxHeight: 'calc(100vh - 32px)',
                             overflowY: 'auto',
+                            background: '#ffffff',
+                            borderRadius: 16,
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.30)',
+                            border: '1px solid rgba(51,177,176,0.20)',
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Add New Equipment</h2>
-                            <button onClick={() => setShowAdd(false)} className="btn btn-ghost" style={{ padding: '6px 12px', minWidth: 0, borderRadius: 8 }}>✕</button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <div>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1a1a1a', margin: 0 }}>Add New Equipment</h2>
+                                <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '4px 0 0' }}>Fill in the details below to register a new asset.</p>
+                            </div>
+                            <button onClick={() => setShowAdd(false)} style={{
+                                background: 'rgba(60,61,63,0.08)', border: 'none', borderRadius: 8,
+                                width: 32, height: 32, cursor: 'pointer', fontSize: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3C3D3F',
+                            }}>✕</button>
                         </div>
                         {saveError && (
-                            <div className="alert-error" style={{ marginBottom: 14 }}>⚠️ {saveError}</div>
+                            <div className="alert-error" style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8 }}>⚠️ {saveError}</div>
                         )}
                         <form onSubmit={handleAddSubmit} noValidate>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 {[
                                     { field: 'name', label: 'Equipment Name *', type: 'text', placeholder: 'e.g. CNC Lathe Machine' },
                                     { field: 'asset_tag', label: 'Asset Tag *', type: 'text', placeholder: 'e.g. EQ-1021' },
-                                    { field: 'category', label: 'Category', type: 'text', placeholder: 'e.g. Mechanical' },
-                                    { field: 'location', label: 'Location', type: 'text', placeholder: 'e.g. Plant A – Bay 3' },
+                                    { field: 'category', label: 'Plant', type: 'text', placeholder: 'e.g. Plant A' },
                                 ].map(({ field, label, type, placeholder }) => (
                                     <div key={field} className="form-group">
-                                        <label className="form-label">{label}</label>
+                                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.82rem', color: '#374151', marginBottom: 6, display: 'block' }}>{label}</label>
                                         <input
                                             type={type}
                                             className={`form-input ${formErrors[field] ? 'input-error' : ''}`}
                                             placeholder={placeholder}
                                             value={form[field]}
                                             onChange={e => handleFormChange(field, e.target.value)}
+                                            style={{ background: '#f9fafb', border: '1.5px solid rgba(60,61,63,0.18)' }}
                                         />
                                         {formErrors[field] && <p className="field-error">{formErrors[field]}</p>}
                                     </div>
                                 ))}
 
                                 <div className="form-group">
-                                    <label className="form-label">Criticality</label>
+                                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.82rem', color: '#374151', marginBottom: 6, display: 'block' }}>Criticality</label>
                                     <select
                                         className="form-input bl-select"
                                         value={form.criticality}
                                         onChange={e => handleFormChange('criticality', e.target.value)}
+                                        style={{ background: '#f9fafb', border: '1.5px solid rgba(60,61,63,0.18)' }}
                                     >
                                         {CRITICALITY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
-
-                                <div className="form-group">
-                                    <label className="form-label">Asset Health Score (0–100)</label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        className={`form-input ${formErrors.asset_health_score ? 'input-error' : ''}`}
-                                        value={form.asset_health_score}
-                                        onChange={e => handleFormChange('asset_health_score', e.target.value)}
-                                    />
-                                    {formErrors.asset_health_score && <p className="field-error">{formErrors.asset_health_score}</p>}
-                                </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
+                            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
                                     {saving ? <><span className="spinner" /> Saving…</> : '+ Add Equipment'}
                                 </button>

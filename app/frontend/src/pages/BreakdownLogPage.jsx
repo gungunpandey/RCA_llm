@@ -268,8 +268,8 @@ const BreakdownLogPage = () => {
 
                 {/* ── Row 1: Division | Equipment ───────────── */}
                 <div className="bl-row-2col">
-                    {/* Division */}
-                    <FormSection step="1" title="Division">
+                    {/* Plant */}
+                    <FormSection step="1" title="Plant">
                         <select
                             id="division"
                             className="form-input bl-select"
@@ -277,7 +277,7 @@ const BreakdownLogPage = () => {
                             onFocus={() => setActiveStep(1)}
                             onChange={e => { setActiveStep(1); handleChange('division', e.target.value); }}
                         >
-                            <option value="">— Select division —</option>
+                            <option value="">— Select plant —</option>
                             {divisions.map(d => (
                                 <option key={d} value={d}>{d}</option>
                             ))}

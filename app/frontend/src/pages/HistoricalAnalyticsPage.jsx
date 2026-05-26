@@ -197,7 +197,7 @@ const HistoricalAnalyticsPage = () => {
                                     </div>
                                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                                         {[
-                                            { label:'Category', value: top.category },
+                                            { label:'Plant', value: top.category },
                                             { label:'Criticality', value: top.criticality },
                                             { label:'Avg MTTR', value: fmtMttr(top.avg_mttr) },
                                         ].map(({ label, value }) => (
