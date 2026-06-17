@@ -34,3 +34,14 @@ export const createEquipment = (data) =>
         method: 'POST',
         body: JSON.stringify(data),
     });
+
+export const addEquipmentComponent = (equipmentId, name) =>
+    authFetch(`/api/equipment/${equipmentId}/components`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+    });
+
+export const deleteEquipmentComponent = (componentId) =>
+    authFetch(`/api/equipment/components/${componentId}`, {
+        method: 'DELETE',
+    });

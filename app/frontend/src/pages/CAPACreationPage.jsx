@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 
-const OWNERS = ['Alice Johnson', 'Bob Martinez', 'Carol Lee', 'David Singh', 'Emma Watson'];
 
 const DEFAULT_STEPS = [
     'Recalibrate machine per OEM specification',
@@ -18,6 +17,43 @@ const CAPACreationPage = () => {
     const [actionType, setActionType] = useState('corrective');
     const [steps, setSteps] = useState(DEFAULT_STEPS);
     const [owner, setOwner] = useState('');
+    const [owners, setOwners] = useState([
+        'Mr. S.K. Muduli', 'Mr. Nitish kumar', 'MR. SOURAV MOHANTY',
+        'MR. GANESH MOHANTY', 'Mr. Bijayasen Pradhan', 'Mr. Bhajahari Das',
+        'MR. KAUSHAL SINGH', 'MR. B. S. CHANDEL', 'Mr. Bijay Pradhan',
+        'Mr. Uday Singh', 'Mr. Sunil Das', 'Mr. Sidharta Mahapatra',
+        'Raghu Viswanadhu'
+    ]);
+
+    // Fetch existing CAPA owners to dynamically populate autocomplete datalist
+    useEffect(() => {
+        fetch('/api/capa', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    const uniqueOwners = new Set([
+                        'Mr. S.K. Muduli', 'Mr. Nitish kumar', 'MR. SOURAV MOHANTY',
+                        'MR. GANESH MOHANTY', 'Mr. Bijayasen Pradhan', 'Mr. Bhajahari Das',
+                        'MR. KAUSHAL SINGH', 'MR. B. S. CHANDEL', 'Mr. Bijay Pradhan',
+                        'Mr. Uday Singh', 'Mr. Sunil Das', 'Mr. Sidharta Mahapatra',
+                        'Raghu Viswanadhu'
+                    ]);
+                    data.forEach(c => {
+                        if (c.owner && c.owner.trim()) {
+                            const parts = c.owner.replace(/\r/g, '').split(/[\n+&,]/);
+                            parts.forEach(part => {
+                                const trimmed = part.trim();
+                                if (trimmed && trimmed.length > 2 && !trimmed.startsWith('CA:') && !trimmed.startsWith('PA:')) {
+                                    uniqueOwners.add(trimmed);
+                                }
+                            });
+                        }
+                    });
+                    setOwners([...uniqueOwners].sort());
+                }
+            })
+            .catch(() => {});
+    }, []);
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('');
     const [riskImpact, setRiskImpact] = useState('');
@@ -231,14 +267,17 @@ const CAPACreationPage = () => {
                     <div className="bl-section-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label">Assign Owner</label>
-                            <select
-                                className="form-input bl-select"
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Select or type owner name..."
                                 value={owner}
                                 onChange={e => setOwner(e.target.value)}
-                            >
-                                <option value="">— Select Owner —</option>
-                                {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
+                                list="owners-list"
+                            />
+                            <datalist id="owners-list">
+                                {owners.map(o => <option key={o} value={o} />)}
+                            </datalist>
                         </div>
 
                         <div className="form-group">

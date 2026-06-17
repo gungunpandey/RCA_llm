@@ -8,8 +8,6 @@ TODAY.setHours(0, 0, 0, 0);
 const PRIORITY_COLOR = { High: '#e03c3c', Medium: '#f0a500', Low: '#33B1B0' };
 
 const COLUMNS = ['Open', 'In Progress', 'Pending Validation', 'Completed'];
-const OWNERS = ['Alice Johnson', 'Bob Martinez', 'Carol Lee', 'David Singh', 'Emma Watson'];
-const EQUIPMENT = ['CNC Machine', 'Conveyor', 'Boiler', 'Press', 'Pump', 'Motor', 'Compressor'];
 const authOpts = () => ({ credentials: 'include' });
 const normalise = (c) => ({ ...c, dueDate: c.due_date ?? c.dueDate });
 
@@ -152,11 +150,44 @@ const CAPATrackingBoard = () => {
             });
         } catch (_) {}
     };
+    const ownersList = useMemo(() => {
+        const uniqueOwners = new Set();
+        capas.forEach(c => {
+            if (c.owner && c.owner.trim()) {
+                const parts = c.owner.replace(/\r/g, '').split(/[\n+&,]/);
+                parts.forEach(part => {
+                    const trimmed = part.trim();
+                    if (trimmed && trimmed.length > 2 && !trimmed.startsWith('CA:') && !trimmed.startsWith('PA:')) {
+                        uniqueOwners.add(trimmed);
+                    }
+                });
+            }
+        });
+        return [...uniqueOwners].sort();
+    }, [capas]);
+
+    const equipmentList = useMemo(() => {
+        const uniqueEquip = new Set();
+        capas.forEach(c => {
+            if (c.title) {
+                const commonTypes = ['Pump', 'Boiler', 'Compressor', 'Motor', 'Conveyor', 'Screen', 'Gearbox', 'Crusher', 'Elevator', 'Fan', 'Pulley', 'Valve', 'Tube'];
+                commonTypes.forEach(type => {
+                    if (c.title.toLowerCase().includes(type.toLowerCase())) {
+                        uniqueEquip.add(type);
+                    }
+                });
+            }
+        });
+        if (uniqueEquip.size === 0) {
+            return ['CNC Machine', 'Conveyor', 'Boiler', 'Press', 'Pump', 'Motor', 'Compressor'];
+        }
+        return [...uniqueEquip].sort();
+    }, [capas]);
 
     const filtered = useMemo(() => capas.filter(c => {
         if (filterStatus && c.status !== filterStatus) return false;
-        if (filterOwner  && c.owner  !== filterOwner)  return false;
-        if (filterEquip  && !c.title?.toLowerCase().includes(filterEquip.toLowerCase())) return false;
+        if (filterOwner && (!c.owner || !c.owner.toLowerCase().includes(filterOwner.toLowerCase()))) return false;
+        if (filterEquip && !c.title?.toLowerCase().includes(filterEquip.toLowerCase())) return false;
         if (search && !c.title?.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
     }), [capas, search, filterStatus, filterOwner, filterEquip]);
@@ -233,9 +264,9 @@ const CAPATrackingBoard = () => {
                         onChange={e => setSearch(e.target.value)}
                     />
                     {[
-                        { label: 'All Statuses',   opts: COLUMNS,    val: filterStatus, set: setFilterStatus },
-                        { label: 'All Owners',     opts: OWNERS,     val: filterOwner,  set: setFilterOwner  },
-                        { label: 'All Equipment',  opts: EQUIPMENT,  val: filterEquip,  set: setFilterEquip  },
+                        { label: 'All Statuses',   opts: COLUMNS,       val: filterStatus, set: setFilterStatus },
+                        { label: 'All Owners',     opts: ownersList,    val: filterOwner,  set: setFilterOwner  },
+                        { label: 'All Equipment',  opts: equipmentList, val: filterEquip,  set: setFilterEquip  },
                     ].map(f => (
                         <select
                             key={f.label}

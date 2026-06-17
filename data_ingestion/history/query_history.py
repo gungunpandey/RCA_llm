@@ -119,7 +119,7 @@ def find_similar_incidents(
     model = _get_model()
     query_vec = model.encode(query_text, normalize_embeddings=True).astype(np.float32)
 
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD), connection_timeout=3.0)
     try:
         with driver.session() as session:
             # Fetch all incidents with their embeddings, CAPA, and team in one query

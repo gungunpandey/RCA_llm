@@ -33,6 +33,7 @@ from tools.integrated_rca_tool import IntegratedRCATool
 from rag_manager import RAGManager
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 from models.tool_results import ClarificationAnswer
+from tools import history_matcher
 from api.session_cache import (
     SessionCache,
     SessionNotFoundError,
@@ -51,6 +52,7 @@ rag: RAGManager = None
 active_llm_model: str = "unknown"
 session_cache: SessionCache = None
 integrated_rca: IntegratedRCATool = None
+llm_adapter = None
 
 
 # ── Request / Response schemas ──
@@ -82,11 +84,20 @@ class FinalizeRequest(BaseModel):
     clarifications: List[ClarificationAnswer] = Field(default_factory=list)
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
 # ── Lifespan: startup / shutdown ──
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global registry, rag, active_llm_model, session_cache, integrated_rca
+    global registry, rag, active_llm_model, session_cache, integrated_rca, llm_adapter
 
     logger.info("Starting up — initializing RCA components...")
 
@@ -107,8 +118,12 @@ async def lifespan(app: FastAPI):
 
     # 2. RAG (Weaviate)
     rag = RAGManager()
-    rag.connect()
-    logger.info("RAG manager connected")
+    try:
+        rag.connect()
+        logger.info("RAG manager connected")
+    except Exception as err:
+        logger.warning(f"RAG manager failed to connect on startup: {err}. Continuing in offline mode.")
+
 
     # 3. Tools
     five_whys = FiveWhysTool(llm_adapter=gemini, rag_manager=rag)
@@ -131,6 +146,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Session cache initialized (TTL: {session_cache.ttl_seconds}s)")
 
     logger.info(f"Tools & agents registered: {registry.list_tools()}")
+    llm_adapter = gemini
 
     yield  # app is running
 
@@ -794,6 +810,140 @@ async def analyze_image_endpoint(
             os.unlink(tmp.name)
         except OSError:
             pass
+
+
+# ── Dashboard Insights endpoint ──────────────────────────────────────────────
+
+class DashboardDataRequest(BaseModel):
+    open_breakdowns: int
+    capa_overdue: int
+    avg_bd_hours: float
+    total_failures: int
+    top_equipment: List[Dict[str, Any]]
+    failures_by_asset: List[Dict[str, Any]]
+
+@app.post("/dashboard-insights")
+async def generate_dashboard_insights(req: DashboardDataRequest):
+    if llm_adapter is None:
+        raise HTTPException(status_code=503, detail="LLM adapter not initialized")
+    
+    # Construct a prompt for the LLM
+    prompt = f"""You are an expert maintenance analyzer. Given the following plant breakdown statistics:
+- Open Breakdowns: {req.open_breakdowns}
+- CAPA Overdue: {req.capa_overdue}
+- Average Breakdown Hours (MTTR): {req.avg_bd_hours} hours
+- Total Recent Failures: {req.total_failures}
+- Top 5 Failing Equipment: {json.dumps(req.top_equipment)}
+- Failures by Plant: {json.dumps(req.failures_by_asset)}
+
+Provide 3 to 5 highly actionable, short, bulleted maintenance insights and recommendations. 
+For each recommendation, assign a specific type from:
+  - "danger" (for critical overdue tasks or very high failures)
+  - "warning" (for escalating indicators)
+  - "success" (for good performance metrics)
+  - "info" (for general status)
+
+You MUST select an appropriate icon for each (e.g. 🏭, 🔧, 🔴, ⏱️, ⚠️, ✅, 📍).
+Format your response as a JSON object containing a list under the key "insights":
+{{
+  "insights": [
+    {{"icon": "...", "text": "...", "type": "..."}}
+  ]
+}}
+Your response must be VALID JSON ONLY. Do not include markdown formatting or backticks (no ```json).
+"""
+    try:
+        content = await llm_adapter.generate(prompt, json_mode=True)
+        # Parse it with safety fallbacks
+        parsed = json.loads(content)
+        insights = []
+        if isinstance(parsed, dict):
+            if "insights" in parsed:
+                insights = parsed["insights"]
+            elif "recommendations" in parsed:
+                insights = parsed["recommendations"]
+            elif "icon" in parsed and "text" in parsed and "type" in parsed:
+                insights = [parsed]
+            else:
+                # Use the first list type value we find
+                for val in parsed.values():
+                    if isinstance(val, list):
+                        insights = val
+                        break
+        elif isinstance(parsed, list):
+            insights = parsed
+            
+        return {"status": "success", "insights": insights}
+    except Exception as e:
+        logger.error(f"Dashboard insights generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/chat")
+async def chat_endpoint(req: ChatRequest):
+    if llm_adapter is None:
+        raise HTTPException(status_code=503, detail="Server still initializing")
+    
+    if not req.messages:
+        raise HTTPException(status_code=400, detail="Messages list cannot be empty")
+        
+    latest_message = req.messages[-1].content
+    
+    # 1. Retrieve manuals context (RAG)
+    rag_text = ""
+    if rag is not None:
+        try:
+            rag_docs = await rag.retrieve_equipment_context(latest_message, [], top_k=4)
+            rag_text = rag.format_context_for_llm(rag_docs)
+        except Exception as e:
+            logger.warning(f"RAG retrieval failed in chat: {e}")
+            rag_text = "No manual documents retrieved due to an error."
+            
+    # 2. Retrieve historical incidents context (Neo4j)
+    history_text = ""
+    try:
+        _, history_text = await history_matcher.find_and_format("", latest_message, top_k=2)
+    except Exception as e:
+        logger.warning(f"History lookup failed in chat: {e}")
+        history_text = "No historical incident records retrieved due to an error."
+        
+    # Combine context
+    grounding_context = f"--- OEM MANUAL EXCERPTS ---\n{rag_text}\n\n{history_text}"
+    
+    # Format history
+    history_lines = []
+    for msg in req.messages[:-1]:
+        role_label = "User" if msg.role == "user" else "Assistant"
+        history_lines.append(f"{role_label}: {msg.content}")
+    conversation_history = "\n".join(history_lines) if history_lines else "(No previous conversation)"
+    
+    # Build prompt
+    prompt = f"""You are ProdAI, a helpful conversational AI assistant for industrial plant maintenance and root cause analysis (RCA).
+You help engineers diagnose equipment failures, search OEM manual documentation, understand historical breakdowns, and suggest corrective and preventive actions (CAPA).
+
+Use the following context to ground your answer. The context contains matching excerpts from OEM equipment manuals and details of similar past incidents:
+
+{grounding_context}
+
+If the context does not contain the answer, use your general industrial engineering knowledge, but make sure to distinguish between information retrieved from verified plant records/manuals and general recommendations. Be concise, professional, and practical.
+
+CONVERSATION HISTORY:
+{conversation_history}
+
+User: {latest_message}
+Assistant:"""
+
+    try:
+        content = await llm_adapter.generate(prompt)
+        return {
+            "status": "success",
+            "reply": content,
+            "has_rag_context": bool(rag_text and "No manual documents" not in rag_text),
+            "has_history_context": bool(history_text and "No historical incident" not in history_text)
+        }
+    except Exception as e:
+        logger.error(f"Chat generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Run ──

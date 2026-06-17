@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchBreakdownEquipment, submitBreakdown } from '../api/breakdown';
 import FileUpload from '../components/FileUpload';
@@ -70,6 +70,7 @@ const TOTAL_STEPS = 11;
 const BreakdownLogPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     /* Equipment dropdown data */
     const [equipment, setEquipment] = useState([]);
@@ -81,9 +82,10 @@ const BreakdownLogPage = () => {
     const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
         .toISOString().slice(0, 16);
 
-    const [form, setForm] = useState({
-        division: '',
+    const [form, setForm] = useState(() => ({
+        division: (user && user.role !== 'Admin') ? user.role : '',
         equipment_id: '',
+        component_name: '', // ← added component_name
         issue_start_at: localNow,
         issue_end_at: localNow,
         feed_loss_applicable: false,
@@ -92,7 +94,26 @@ const BreakdownLogPage = () => {
         doc_description: '',
         severity_level: '',
         failure_type: new Set(),   // ← now a Set for multi-select
-    });
+    }));
+
+    // Sync division filter if user loads asynchronously
+    useEffect(() => {
+        if (user && user.role !== 'Admin') {
+            setForm(f => ({ ...f, division: user.role }));
+        }
+    }, [user]);
+
+    // Pre-fill form from router state (e.g. from PFD quick links)
+    useEffect(() => {
+        if (location.state?.equipmentId) {
+            setForm(f => ({
+                ...f,
+                division: location.state.division || f.division,
+                equipment_id: String(location.state.equipmentId),
+                component_name: location.state.componentName || f.component_name
+            }));
+        }
+    }, [location.state]);
     const [files, setFiles] = useState([]);
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
@@ -123,7 +144,13 @@ const BreakdownLogPage = () => {
         setForm(f => {
             const updated = { ...f, [field]: value };
             // Reset equipment when division changes
-            if (field === 'division') updated.equipment_id = '';
+            if (field === 'division') {
+                updated.equipment_id = '';
+                updated.component_name = '';
+            }
+            if (field === 'equipment_id') {
+                updated.component_name = '';
+            }
             return updated;
         });
         if (errors[field]) setErrors(e => ({ ...e, [field]: '' }));
@@ -199,6 +226,7 @@ const BreakdownLogPage = () => {
             const fd = new FormData();
             fd.append('equipment_id', form.equipment_id);
             fd.append('machine_name', selectedEquip ? selectedEquip.name : '');
+            fd.append('component_name', form.component_name || '');
             fd.append('reported_at', form.issue_start_at);
             fd.append('description', form.description);
             fd.append('severity_level', form.severity_level);
@@ -270,18 +298,36 @@ const BreakdownLogPage = () => {
                 <div className="bl-row-2col">
                     {/* Plant */}
                     <FormSection step="1" title="Plant">
-                        <select
-                            id="division"
-                            className="form-input bl-select"
-                            value={form.division}
-                            onFocus={() => setActiveStep(1)}
-                            onChange={e => { setActiveStep(1); handleChange('division', e.target.value); }}
-                        >
-                            <option value="">— Select plant —</option>
-                            {divisions.map(d => (
-                                <option key={d} value={d}>{d}</option>
-                            ))}
-                        </select>
+                        {user.role === 'Admin' ? (
+                            <select
+                                id="division"
+                                className="form-input bl-select"
+                                value={form.division}
+                                onFocus={() => setActiveStep(1)}
+                                onChange={e => { setActiveStep(1); handleChange('division', e.target.value); }}
+                            >
+                                <option value="">— Select plant —</option>
+                                {divisions.map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div style={{
+                                padding: '12px 16px',
+                                background: 'rgba(51, 177, 176, 0.08)',
+                                border: '1.5px solid rgba(51, 177, 176, 0.25)',
+                                borderRadius: 8,
+                                fontSize: '0.88rem',
+                                fontWeight: 700,
+                                color: '#33B1B0',
+                                height: 46,
+                                boxSizing: 'border-box',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                🏭 {user.role}
+                            </div>
+                        )}
                     </FormSection>
 
                     {/* Equipment */}
@@ -289,20 +335,47 @@ const BreakdownLogPage = () => {
                         {eqLoading ? (
                             <div className="skeleton" style={{ height: 46, borderRadius: 8 }} />
                         ) : (
-                            <select
-                                id="equipment_id"
-                                className={`form-input bl-select ${errors.equipment_id ? 'input-error' : ''}`}
-                                value={form.equipment_id}
-                                onFocus={() => setActiveStep(2)}
-                                onChange={e => { setActiveStep(2); handleChange('equipment_id', e.target.value); }}
-                            >
-                                <option value="">— Select equipment —</option>
-                                {filteredEquipment.map(eq => (
-                                    <option key={eq.id} value={eq.id}>
-                                        [{eq.asset_tag}] {eq.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <>
+                                <select
+                                    id="equipment_id"
+                                    className={`form-input bl-select ${errors.equipment_id ? 'input-error' : ''}`}
+                                    value={form.equipment_id}
+                                    onFocus={() => setActiveStep(2)}
+                                    onChange={e => { setActiveStep(2); handleChange('equipment_id', e.target.value); }}
+                                >
+                                    <option value="">— Select equipment —</option>
+                                    {filteredEquipment.map(eq => (
+                                        <option key={eq.id} value={eq.id}>
+                                            [{eq.asset_tag}] {eq.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {(() => {
+                                    const selectedEquip = equipment.find(eq => String(eq.id) === String(form.equipment_id));
+                                    const hasComponents = selectedEquip && selectedEquip.components && selectedEquip.components.length > 0;
+                                    if (!hasComponents) return null;
+                                    return (
+                                        <div style={{ marginTop: '12px' }} className="fade-in">
+                                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+                                                Select Failed Component (Sub-Equipment)
+                                            </label>
+                                            <select
+                                                id="component_name"
+                                                className="form-input bl-select"
+                                                value={form.component_name}
+                                                onChange={e => handleChange('component_name', e.target.value)}
+                                                style={{ background: 'rgba(255, 255, 255, 0.7)' }}
+                                            >
+                                                <option value="">— Select component (optional) —</option>
+                                                {selectedEquip.components.map(comp => (
+                                                    <option key={comp} value={comp}>{comp}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    );
+                                })()}
+                            </>
                         )}
                         {errors.equipment_id && <p className="field-error">{errors.equipment_id}</p>}
                     </FormSection>
@@ -473,7 +546,7 @@ const BreakdownLogPage = () => {
                         {submitting ? (
                             <><span className="spinner" /> Submitting…</>
                         ) : (
-                            <><span>🤖</span> RCA AI Assist</>
+                            <><span>🤖</span> RCA ProdAI Assist</>
                         )}
                     </button>
                     <button

@@ -63,6 +63,7 @@ class BreakdownLog(Base):
     rca_data = Column(Text, nullable=True)
 
     extended_info = Column(String, nullable=True)  # used for CSV-import RCA details
+    component_name = Column(String, nullable=True, index=True)
 
     author_id = Column(Integer, ForeignKey("users.id"))
     author = relationship("User", back_populates="breakdown_logs")
@@ -122,6 +123,19 @@ class Equipment(Base):
     criticality = Column(String, default="Medium")  # Critical | High | Medium | Low
     asset_health_score = Column(Integer, default=100)  # 0–100
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    components = relationship("EquipmentComponent", back_populates="equipment", cascade="all, delete-orphan")
+
+
+class EquipmentComponent(Base):
+    __tablename__ = "equipment_components"
+
+    id = Column(Integer, primary_key=True, index=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    equipment = relationship("Equipment", back_populates="components")
 
 
 def init_db():

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import useDashboard from '../hooks/useDashboard';
 import KPICard from '../components/KPICard';
@@ -18,8 +19,8 @@ const Skeleton = () => (
 );
 
 // ── Section header ─────────────────────────────────────────────
-const SectionTitle = ({ children }) => (
-    <h2 className="section-title">{children}</h2>
+const SectionTitle = ({ children, style }) => (
+    <h2 className="section-title" style={style}>{children}</h2>
 );
 
 // ── Expanded AI Insights builder ───────────────────────────────
@@ -100,10 +101,33 @@ const INSIGHT_STYLES = {
 // ── Dashboard Page ─────────────────────────────────────────────
 const DashboardPage = () => {
     const { user } = useAuth();
-    const { data, loading, error } = useDashboard();
+    const navigate = useNavigate();
+    
+    // Top-level filters
+    const [filters, setFilters] = useState(() => ({
+        plant: (user && user.role !== 'Admin') ? user.role : '',
+        equipType: '',
+        dateRange: ''
+    }));
+    const { data, loading, error } = useDashboard(filters);
 
-    // Top-level filters (cosmetic)
-    const [filters, setFilters] = useState({ plant: '', equipType: '', dateRange: '' });
+    // Sync plant filter if user loads asynchronously
+    useEffect(() => {
+        if (user && user.role !== 'Admin') {
+            setFilters(f => ({ ...f, plant: user.role }));
+        }
+    }, [user]);
+
+    // AI Insights state
+    const [insights, setInsights] = useState([]);
+    const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsError, setInsightsError] = useState(null);
+
+    useEffect(() => {
+        if (!loading && data) {
+            setInsights(buildInsights(data));
+        }
+    }, [data, loading]);
 
     // ── BD Hours time-range filter ─────────────────────────────
     const [bdRange, setBdRange] = useState('12');
@@ -113,11 +137,44 @@ const DashboardPage = () => {
 
     useEffect(() => {
         if (['3', '6', '12'].includes(bdRange)) { setWeeklyData(null); return; }
-        fetch(`/api/dashboard/mttr-weekly?month=${encodeURIComponent(bdRange)}`, { credentials: 'include' })
+        const params = new URLSearchParams({ month: bdRange });
+        if (filters.plant) params.append('plant', filters.plant);
+        if (filters.equipType) params.append('equip_type', filters.equipType);
+        fetch(`/api/dashboard/mttr-weekly?${params.toString()}`, { credentials: 'include' })
             .then(r => r.json())
             .then(rows => setWeeklyData(Array.isArray(rows) ? rows : null))
             .catch(() => setWeeklyData([]));
-    }, [bdRange]);
+    }, [bdRange, filters.plant, filters.equipType]);
+
+    const refreshAIInsights = async () => {
+        setInsightsLoading(true);
+        setInsightsError(null);
+        try {
+            const params = new URLSearchParams();
+            if (filters.plant) params.append('plant', filters.plant);
+            if (filters.equipType) params.append('equip_type', filters.equipType);
+            if (filters.dateRange) params.append('date_range', filters.dateRange);
+            
+            const resp = await fetch(`/api/dashboard-insights?${params.toString()}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (!resp.ok) {
+                throw new Error(`Failed to generate ProdAI insights: ${resp.statusText}`);
+            }
+            const result = await resp.json();
+            if (result.status === 'success' && Array.isArray(result.insights)) {
+                setInsights(result.insights);
+            } else {
+                throw new Error("Invalid insights response format");
+            }
+        } catch (err) {
+            console.error(err);
+            setInsightsError(err.message || "Failed to load dynamic ProdAI insights");
+        } finally {
+            setInsightsLoading(false);
+        }
+    };
 
     const filteredBdData = (() => {
         if (bdRange === '3')  return allMttrData.slice(-3);
@@ -133,11 +190,18 @@ const DashboardPage = () => {
         return `BD Hours Trend — ${bdRange}`;
     })();
 
+    const equipmentFailuresData = useMemo(() => {
+        if (!data?.topEquipment) return [];
+        return data.topEquipment.map(item => ({
+            category: item.equipment_name,
+            count: item.breakdown_count
+        }));
+    }, [data?.topEquipment]);
+
     if (!user) return null;
 
     const mttrLatest   = allMttrData.slice(-1)[0]?.avgMttr ?? null;
     const totalFailures = data?.breakdowns?.length ?? null;
-    const insights     = !loading && data ? buildInsights(data) : [];
 
     return (
         <div className="db-page">
@@ -164,13 +228,40 @@ const DashboardPage = () => {
                 {/* ── Filter Bar ── */}
                 <section className="db-filter-bar glass-card">
                     <span className="db-filter-label">🔽 Filters</span>
-                    <select className="db-filter-select" value={filters.plant}
-                        onChange={e => setFilters(f => ({ ...f, plant: e.target.value }))}>
-                        <option value="">All Plants</option>
-                        <option value="BNFC">BNFC</option>
-                        <option value="CPP1">CPP1</option>
-                        <option value="CPP2">CPP2</option>
-                    </select>
+                    {user.role === 'Admin' ? (
+                        <select className="db-filter-select" value={filters.plant}
+                            onChange={e => setFilters(f => ({ ...f, plant: e.target.value }))}>
+                            <option value="">All Plants</option>
+                            <option value="BNFC">BNFC</option>
+                            <option value="Pellet 1">Pellet 1</option>
+                            <option value="Pellet 2">Pellet 2</option>
+                            <option value="SMS 1">SMS 1</option>
+                            <option value="SMS 2">SMS 2</option>
+                            <option value="DRI 1">DRI 1</option>
+                            <option value="DRI 2">DRI 2</option>
+                            <option value="CPP">CPP</option>
+                            <option value="CPP 2">CPP 2</option>
+                            <option value="PGP">PGP</option>
+                            <option value="Fire Service">Fire Service</option>
+                        </select>
+                    ) : (
+                        <div style={{
+                            padding: '6px 14px',
+                            background: 'rgba(51, 177, 176, 0.08)',
+                            border: '1.5px solid rgba(51, 177, 176, 0.25)',
+                            borderRadius: 10,
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            color: '#33B1B0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            height: 38,
+                            boxSizing: 'border-box'
+                        }}>
+                            🏭 {user.role}
+                        </div>
+                    )}
                     <select className="db-filter-select" value={filters.equipType}
                         onChange={e => setFilters(f => ({ ...f, equipType: e.target.value }))}>
                         <option value="">All Equipment Types</option>
@@ -188,6 +279,40 @@ const DashboardPage = () => {
                         <option value="90d">Last 90 Days</option>
                         <option value="1y">Last 12 Months</option>
                     </select>
+                    {filters.plant === 'BNFC' && (
+                        <button
+                            type="button"
+                            className="btn"
+                            style={{
+                                marginLeft: 'auto',
+                                padding: '6px 14px',
+                                fontSize: '0.82rem',
+                                background: 'rgba(51, 177, 176, 0.15)',
+                                color: '#33B1B0',
+                                border: '1px solid rgba(51, 177, 176, 0.35)',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                height: 36,
+                                alignSelf: 'center',
+                                transition: 'all 0.2s ease-in-out'
+                            }}
+                            onClick={() => navigate('/beneficiation-pfd')}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = '#33B1B0';
+                                e.currentTarget.style.color = '#0B0F19';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = 'rgba(51, 177, 176, 0.15)';
+                                e.currentTarget.style.color = '#33B1B0';
+                            }}
+                        >
+                            🖥️ View Mimic PFD
+                        </button>
+                    )}
                 </section>
 
                 {/* ── KPI Row ── */}
@@ -195,6 +320,12 @@ const DashboardPage = () => {
                     <SectionTitle>Key Performance Indicators</SectionTitle>
                     {loading ? <Skeleton /> : (
                         <div className="kpi-row kpi-row-4">
+                            <KPICard
+                                icon="📊" label="All Breakdowns"
+                                value={data?.summary?.totalBreakdowns ?? '—'}
+                                sub="During the time period"
+                                accentColor="#33B1B0" trendLabel="total logged" trendUp={false}
+                            />
                             <KPICard
                                 icon="🔧" label="Open Breakdowns"
                                 value={data?.summary?.openBreakdowns ?? '—'}
@@ -208,52 +339,94 @@ const DashboardPage = () => {
                                 accentColor="#ffd93d" trendLabel="need attention" trendUp={false}
                             />
                             <KPICard
-                                icon="⏱️" label="Avg BD Hours"
-                                value={mttrLatest != null ? `${mttrLatest}h` : '—'}
-                                sub="Mean Breakdown Duration"
-                                accentColor="#f97316" trendLabel="this month"
-                                trendUp={mttrLatest != null && Number(mttrLatest) < 5}
-                            />
-                            <KPICard
-                                icon="📊" label="Total Failures"
-                                value={totalFailures ?? '—'}
-                                sub="Recent breakdowns logged"
-                                accentColor="#33B1B0" trendLabel="recent records" trendUp={false}
+                                icon="⏱️" label="Avg. BD Hours"
+                                value={data?.summary?.avgBdHoursClosed != null ? `${data.summary.avgBdHoursClosed}h` : '—'}
+                                sub="For closed breakdowns"
+                                accentColor="#f97316" trendLabel="closed BDs average"
+                                trendUp={data?.summary?.avgBdHoursClosed != null && Number(data.summary.avgBdHoursClosed) < 5}
                             />
                         </div>
                     )}
                 </section>
 
                 {/* ── Expanded AI Insights ── */}
-                {insights.length > 0 && (
+                {(insights.length > 0 || insightsLoading || insightsError) && (
                     <section className="glass-card db-panel fade-in" style={{ padding: '20px 24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                            <span style={{ fontSize: '1.1rem' }}>🤖</span>
-                            <SectionTitle>AI Insights</SectionTitle>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: '1.1rem', display: 'inline-flex', alignItems: 'center' }}>🤖</span>
+                                <SectionTitle style={{ margin: 0 }}>ProdAI Insights</SectionTitle>
+                            </div>
+                            <button 
+                                onClick={refreshAIInsights} 
+                                disabled={insightsLoading}
+                                className="btn btn-ghost"
+                                style={{ 
+                                    padding: '6px 12px', 
+                                    fontSize: '0.8rem', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 6,
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    transition: 'var(--transition)'
+                                }}
+                            >
+                                {insightsLoading ? (
+                                    <>
+                                        <span className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#33B1B0', borderLeftColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>🔄 Refresh with ProdAI</>
+                                )}
+                            </button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {insights.map((ins, i) => {
-                                const s = INSIGHT_STYLES[ins.type] || INSIGHT_STYLES.info;
-                                return (
-                                    <div key={i} style={{
-                                        display: 'flex', alignItems: 'flex-start', gap: 12,
-                                        padding: '10px 14px', borderRadius: 10,
-                                        background: s.bg, border: `1px solid ${s.border}`,
-                                        animation: `fadeInUp 0.4s ease ${i * 0.08}s both`,
-                                    }}>
-                                        <span style={{
-                                            width: 8, height: 8, borderRadius: '50%',
-                                            background: s.dot, flexShrink: 0, marginTop: 5,
-                                        }} />
-                                        <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)', lineHeight: 1.5 }}
-                                            dangerouslySetInnerHTML={{ __html: `${ins.icon} ${ins.text}` }}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        
+                        {insightsError && (
+                            <div className="alert-error" style={{ marginBottom: 10, padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem' }}>
+                                ⚠️ {insightsError}
+                            </div>
+                        )}
+
+                        {insightsLoading ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="skeleton" style={{ height: 44, borderRadius: '8px' }} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {insights.map((ins, i) => {
+                                    const s = INSIGHT_STYLES[ins.type] || INSIGHT_STYLES.info;
+                                    return (
+                                        <div key={i} style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: 12,
+                                            padding: '10px 14px', borderRadius: 10,
+                                            background: s.bg, border: `1px solid ${s.border}`,
+                                            animation: `fadeInUp 0.4s ease ${i * 0.08}s both`,
+                                        }}>
+                                            <span style={{
+                                                width: 8, height: 8, borderRadius: '50%',
+                                                background: s.dot, flexShrink: 0, marginTop: 5,
+                                            }} />
+                                            <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)', lineHeight: 1.5 }}
+                                                dangerouslySetInnerHTML={{ __html: `${ins.icon} ${ins.text}` }}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </section>
                 )}
+
+                {/* ── Recent Breakdowns Table (top 5, expandable) ── */}
+                <section className="glass-card db-panel">
+                    <SectionTitle>Recent Breakdowns</SectionTitle>
+                    {loading ? <Skeleton /> : <BreakdownTable data={data?.breakdowns} />}
+                </section>
 
                 {/* ── Middle row: Top Equipment + Pie Chart ── */}
                 <div className="db-mid-row">
@@ -263,15 +436,17 @@ const DashboardPage = () => {
                     </section>
 
                     <section className="glass-card db-panel" style={{ position: 'relative' }}>
-                        <SectionTitle>Failures by Plant</SectionTitle>
-                        {loading ? <Skeleton /> : <FailuresPieChart data={data?.failuresByAsset} />}
+                        <SectionTitle>{user.role === 'Admin' ? 'Failures by Plant' : 'Failures by Equipment'}</SectionTitle>
+                        {loading ? <Skeleton /> : (
+                            <FailuresPieChart data={user.role === 'Admin' ? data?.failuresByAsset : equipmentFailuresData} />
+                        )}
                     </section>
                 </div>
 
                 {/* ── BD Hours Trend Chart ── */}
                 <section className="glass-card db-panel">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                        <SectionTitle>{bdTitle}</SectionTitle>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                        <SectionTitle style={{ margin: 0 }}>{bdTitle}</SectionTitle>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <select
                                 className="db-filter-select"
@@ -298,12 +473,6 @@ const DashboardPage = () => {
                         </div>
                     </div>
                     {loading ? <Skeleton /> : <BDHoursChart data={filteredBdData} />}
-                </section>
-
-                {/* ── Recent Breakdowns Table (top 5, expandable) ── */}
-                <section className="glass-card db-panel">
-                    <SectionTitle>Recent Breakdowns</SectionTitle>
-                    {loading ? <Skeleton /> : <BreakdownTable data={data?.breakdowns} />}
                 </section>
 
                 {/* RCA Reports section REMOVED */}

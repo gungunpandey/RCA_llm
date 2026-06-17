@@ -11,20 +11,21 @@ import {
  * Fires all 5 dashboard API requests in parallel.
  * Returns { data, loading, error }.
  */
-const useDashboard = () => {
+const useDashboard = (filters) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
+        setLoading(true);
 
         Promise.all([
-            fetchSummary(),
-            fetchTopEquipment(),
-            fetchBreakdowns(),
-            fetchFailuresByAsset(),
-            fetchRCAReports(),
+            fetchSummary(filters),
+            fetchTopEquipment(filters),
+            fetchBreakdowns(filters),
+            fetchFailuresByAsset(filters),
+            fetchRCAReports(filters),
         ])
             .then(([summary, topEquipment, breakdowns, failuresByAsset, rcaReports]) => {
                 if (!cancelled) {
@@ -40,7 +41,7 @@ const useDashboard = () => {
             });
 
         return () => { cancelled = true; };
-    }, []);
+    }, [filters?.plant, filters?.equipType, filters?.dateRange]);
 
     return { data, loading, error };
 };

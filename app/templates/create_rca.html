@@ -1006,7 +1006,7 @@
     </div>
     <div style="display: flex; align-items: center; gap: 1rem;">
         <div class="tab-bar">
-            <button class="tab-btn" id="tab-ai"     onclick="switchTab('ai')">AI Analysis</button>
+            <button class="tab-btn" id="tab-ai"     onclick="switchTab('ai')">ProdAI Analysis</button>
             <button class="tab-btn" id="tab-manual" onclick="switchTab('manual')">Manual Tree</button>
         </div>
         <button type="button" class="btn btn-primary" onclick="saveRCA()" id="save-btn">
@@ -1020,7 +1020,7 @@
 
     <!-- Input section (hidden once result is shown) -->
     <div id="ai-input-section" class="glass-panel" style="margin-bottom: 1.5rem;">
-        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">AI Assist — Operator Input</h3>
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">ProdAI Assist — Operator Input</h3>
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: flex-start;">
             <div class="form-group" style="margin: 0;">
                 <label for="operator-obs">Operator Observations (optional)</label>
@@ -1036,7 +1036,7 @@
                 <button type="button" class="btn btn-primary" id="run-ai-btn" onclick="runAnalysis()">
                     <span id="run-btn-content" style="display: flex; align-items: center; gap: 0.5rem;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Run AI Analysis
+                        Run ProdAI Analysis
                     </span>
                 </button>
             </div>
@@ -1069,7 +1069,7 @@
         </div>
         <div id="history-body" style="margin-top: 1rem;">
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
-                Similar past incidents from verified plant records. These have been injected into the AI analysis as reference — validate against current symptoms before applying.
+                Similar past incidents from verified plant records. These have been injected into the ProdAI analysis as reference — validate against current symptoms before applying.
             </p>
             <div id="history-content"></div>
         </div>
@@ -1111,7 +1111,7 @@
         <!-- AI-Suggested CAPA Plan (read-only, rich cards) -->
         <div id="capa-ai-section" class="glass-panel capa-ai-section" style="display: none;">
             <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.6rem;">
-                AI-Suggested CAPA Plan
+                ProdAI-Suggested CAPA Plan
             </h3>
             <div id="capa-ai-summary" class="capa-ai-summary"></div>
             <div class="capa-ai-grid">
@@ -1217,13 +1217,13 @@
             <p class="text-muted" style="font-size: 0.88rem;">Drag nodes to rearrange. Click &ldquo;Next Why&rdquo; to dig deeper.</p>
         </div>
         <button type="button" id="btn-reset-from-ai" onclick="populateTreeFromAI()" style="display:none; padding:0.4rem 0.9rem; font-size:0.82rem; border-radius:8px; border:1px solid rgba(59,163,165,0.4); background:rgba(59,163,165,0.07); color:var(--accent); font-weight:600; cursor:pointer;">
-            ↺ Reset from AI Report
+            ↺ Reset from ProdAI Report
         </button>
     </div>
     <!-- Notice: shown when tree was auto-built from AI -->
     <div id="ai-tree-notice" style="display:none; align-items:center; gap:0.6rem; background:rgba(59,163,165,0.07); border:1px solid rgba(59,163,165,0.25); border-radius:10px; padding:0.65rem 1rem; margin-bottom:1.2rem; font-size:0.85rem; color:var(--accent);">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Tree auto-generated from AI Analysis — edit any node freely or drag to rearrange.
+        Tree auto-generated from ProdAI Analysis — edit any node freely or drag to rearrange.
     </div>
     <div class="rca-container">
         <div class="tree" id="tree-container"></div>
@@ -1242,7 +1242,7 @@
             <div class="chatbot-icon">💬</div>
             <div>
                 <h3 class="chatbot-title">A few more details</h3>
-                <p class="chatbot-subtitle">The AI has flagged some gaps. Please answer to refine the analysis.</p>
+                <p class="chatbot-subtitle">ProdAI has flagged some gaps. Please answer to refine the analysis.</p>
             </div>
         </div>
         <div id="chatbot-questions-list" class="chatbot-questions"></div>
@@ -2417,7 +2417,7 @@
                 nodes:     treeData.map(n => ({ id: n.id, parentId: n.parentId, text: n.text || '' }))
             };
         } else {
-            alert('Nothing to save yet. Run the AI Analysis or build the manual tree first.');
+            alert('Nothing to save yet. Run the ProdAI Analysis or build the manual tree first.');
             return;
         }
         document.getElementById('rca_data').value = JSON.stringify(payload);
@@ -2426,7 +2426,7 @@
 
     // ── Export: CSV ──────────────────────────────────────────────────────────
     function exportCSV() {
-        if (!currentResult) { alert('No AI result to export.'); return; }
+        if (!currentResult) { alert('No ProdAI result to export.'); return; }
         const fw    = currentResult.five_whys_analysis || {};
         const steps = fw.why_steps || [];
         const eq    = document.getElementById('hid-equipment').value;
@@ -2458,7 +2458,7 @@
 
     // ── Export: PDF ──────────────────────────────────────────────────────────
     async function exportPDF() {
-        if (!currentResult) { alert('No AI result to export.'); return; }
+        if (!currentResult) { alert('No ProdAI result to export.'); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
         const W = 210, MARGIN = 14, CONTENT = W - MARGIN * 2;
@@ -2708,7 +2708,7 @@
                         doc.text(label, MARGIN, y);
                         y += 6;
                         
-                        const obs = ia.combined_observation || ia.ai_description || 'No detailed AI analysis available.';
+                        const obs = ia.combined_observation || ia.ai_description || 'No detailed ProdAI analysis available.';
                         doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
                         const obsLines = doc.splitTextToSize(obs, CONTENT);
                         doc.text(obsLines, MARGIN, y);
@@ -2795,7 +2795,7 @@
             switchTab('ai');
         } else if (AUTO_AI) {
             switchTab('ai');
-            // Don't auto-trigger the fetch — user sees the form and presses "Run AI Analysis"
+            // Don't auto-trigger the fetch — user sees the form and presses "Run ProdAI Analysis"
         } else if (SAVED_TYPE === 'manual_tree') {
             switchTab('manual');
         } else {
