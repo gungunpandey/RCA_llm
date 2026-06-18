@@ -9,7 +9,10 @@ import CAPATrackingBoard from './pages/CAPATrackingBoard';
 import CAPADetailPage from './pages/CAPADetailPage';
 import EquipmentMasterPage from './pages/EquipmentMasterPage';
 import HistoricalAnalyticsPage from './pages/HistoricalAnalyticsPage';
+import BeneficiationPFDPage from './pages/BeneficiationPFDPage';
+import ChatPage from './pages/ChatPage';
 import ProtectedRoute from './components/ProtectedRoute';
+
 
 function App() {
     return (
@@ -30,7 +33,10 @@ function App() {
                     <Route
                         path="/log-breakdown"
                         element={
-                            <ProtectedRoute allowedRoles={['Admin', 'Maintenance Engineer']}>
+                            <ProtectedRoute allowedRoles={[
+                                'Admin', 'Maintenance Engineer', 'BNFC', 'Pellet 1', 'Pellet 2', 
+                                'SMS 1', 'SMS 2', 'DRI 1', 'DRI 2', 'CPP', 'CPP 2', 'PGP', 'FIRE SERVICE'
+                            ]}>
                                 <BreakdownLogPage />
                             </ProtectedRoute>
                         }
@@ -73,10 +79,33 @@ function App() {
                     />
 
                     <Route
-                        path="/analytics"
+                        path="/prodai"
                         element={
                             <ProtectedRoute>
                                 <HistoricalAnalyticsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/analytics"
+                        element={<Navigate to="/prodai" replace />}
+                    />
+
+                    <Route
+                        path="/beneficiation-pfd"
+                        element={
+                            <ProtectedRoute>
+                                <BeneficiationPFDPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/chat"
+                        element={
+                            <ProtectedRoute>
+                                <ChatPage />
                             </ProtectedRoute>
                         }
                     />

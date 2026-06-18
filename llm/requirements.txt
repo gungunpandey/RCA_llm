@@ -29,3 +29,4 @@ websockets
 # Knowledge graph — historical incident similarity search
 neo4j>=5.14
 sentence-transformers>=3.0
+

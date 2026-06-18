@@ -1,17 +1,17 @@
 # ── ProdAI Web App — Python Dependencies ────────────────────────────────────
 
 # API framework
-fastapi==0.111.0
-uvicorn>=0.29.0
+fastapi==0.103.1
+hypercorn==0.16.0
 
 # Templates & forms
-jinja2
+jinja2==2.11.3
 python-multipart
 
 # Auth
 # passlib 1.7.4 is incompatible with bcrypt 4.x — pin to 3.x
-passlib[bcrypt]
-bcrypt<4.0.0
+passlib
+# bcrypt removed - using sha256_crypt
 pyjwt
 
 # Database
@@ -19,3 +19,4 @@ sqlalchemy
 
 # Date parsing
 python-dateutil
+MarkupSafe==2.0.1

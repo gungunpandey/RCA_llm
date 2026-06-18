@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -18,9 +19,17 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from dateutil import parser as dateparser
 
-from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment
+from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment, EquipmentComponent
+from utils import normalize_full_owner_string, clean_equipment_name
 
 # ── Config ─────────────────────────────────────────────────────────────────
+ALLOWED_PLANT_HEAD_ROLES = {
+    'BNFC', 'Pellet 1', 'Pellet 2', 'SMS 1', 'SMS 2',
+    'DRI 1', 'DRI 2', 'CPP', 'CPP 2', 'PGP', 'FIRE SERVICE'
+}
+
+def is_plant_head_or_admin(user: User):
+    return user.division == "Admin" or user.division in ALLOWED_PLANT_HEAD_ROLES
 SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
@@ -34,7 +43,7 @@ try:
 except FileNotFoundError:
     EQUIPMENT_CATALOGUE = {}
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "sha256_crypt"], deprecated="auto")
 
 router = APIRouter(prefix="/api")
 
@@ -122,19 +131,87 @@ async def api_logout():
 
 # ── Dashboard ──────────────────────────────────────────────────────────────
 
+def get_filtered_breakdown_logs(
+    db: Session,
+    user: User,
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
+    month: Optional[str] = None,
+):
+    query = db.query(BreakdownLog)
+    
+    # Division access control: if user is not Admin, restrict to their division
+    if user.division != "Admin":
+        query = query.filter(BreakdownLog.division == user.division)
+    elif plant:
+        # Admin can filter by plant/division
+        query = query.filter(BreakdownLog.division == plant)
+
+    # Filter by equipment type (checks machine_name case-insensitively)
+    if equip_type:
+        query = query.filter(BreakdownLog.machine_name.ilike(f"%{equip_type}%"))
+
+    # Filter by specific month (e.g. 'Mar 2026')
+    if month:
+        month_parsed = _parse_month_label(month)
+        if month_parsed:
+            from sqlalchemy import func
+            y, m = month_parsed
+            query = query.filter(
+                func.strftime("%Y", BreakdownLog.logged_at) == f"{y:04d}",
+                func.strftime("%m", BreakdownLog.logged_at) == f"{m:02d}",
+            )
+    # Filter by date range (only if month filter is not active)
+    elif date_range:
+        now = datetime.utcnow()
+        if date_range == "7d":
+            query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=7))
+        elif date_range in ("30d", "30D"):
+            query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=30))
+        elif date_range in ("90d", "90D", "3m", "3M"):
+            query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=90))
+        elif date_range in ("180d", "180D", "6m", "6M"):
+            query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=180))
+        elif date_range in ("1y", "1Y", "365d"):
+            query = query.filter(BreakdownLog.logged_at >= now - timedelta(days=365))
+
+    return query
+
+
 @router.get("/dashboard/summary")
 async def api_dashboard_summary(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
-    logs = query.all()
+    logs = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range).all()
 
     open_count = len([l for l in logs if l.status in ("Open", "In Progress")])
 
-    capa_overdue = db.query(CAPA).filter(
+    capa_query = db.query(CAPA).join(BreakdownLog, CAPA.breakdown_log_id == BreakdownLog.id)
+    if user.division != "Admin":
+        capa_query = capa_query.filter(BreakdownLog.division == user.division)
+    elif plant:
+        capa_query = capa_query.filter(BreakdownLog.division == plant)
+        
+    if equip_type:
+        capa_query = capa_query.filter(BreakdownLog.machine_name.ilike(f"%{equip_type}%"))
+        
+    if date_range:
+        now = datetime.utcnow()
+        if date_range == "7d":
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=7))
+        elif date_range == "30d":
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=30))
+        elif date_range == "90d":
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=90))
+        elif date_range == "1y":
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=365))
+
+    capa_overdue = capa_query.filter(
         CAPA.status.notin_(["Completed"]),
         CAPA.due_date != None,
         CAPA.due_date != "",
@@ -163,22 +240,143 @@ async def api_dashboard_summary(
             vals = monthly_mttr[mk]
             mttr_trend.append({"month": mk, "avgMttr": round(sum(vals) / len(vals), 1)})
 
+    # Calculate average BD hours for closed breakdowns (status in Resolved or Completed)
+    closed_logs = [l for l in logs if l.status in ("Resolved", "Completed")]
+    closed_mttr_vals = []
+    for log in closed_logs:
+        mttr_val = None
+        if log.mttr_hours is not None:
+            mttr_val = float(log.mttr_hours)
+        elif log.downtime_minutes and log.downtime_minutes > 0:
+            mttr_val = round(log.downtime_minutes / 60, 1)
+        if mttr_val is not None:
+            closed_mttr_vals.append(mttr_val)
+            
+    avg_bd_hours_closed = round(sum(closed_mttr_vals) / len(closed_mttr_vals), 1) if closed_mttr_vals else 0.0
+
     return {
         "openBreakdowns": open_count,
         "capaOverdue": capa_overdue,
         "mttrTrend": mttr_trend,
+        "totalBreakdowns": len(logs),
+        "avgBdHoursClosed": avg_bd_hours_closed,
     }
+
+
+@router.post("/dashboard-insights")
+async def api_dashboard_insights(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
+    month: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # 1. Fetch filtered logs
+    logs = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range, month).all()
+    
+    # 2. Open breakdowns
+    open_count = len([l for l in logs if l.status in ("Open", "In Progress")])
+    
+    # 3. CAPA overdue
+    capa_query = db.query(CAPA).join(BreakdownLog, CAPA.breakdown_log_id == BreakdownLog.id)
+    if user.division != "Admin":
+        capa_query = capa_query.filter(BreakdownLog.division == user.division)
+    elif plant:
+        capa_query = capa_query.filter(BreakdownLog.division == plant)
+    if equip_type:
+        capa_query = capa_query.filter(BreakdownLog.machine_name.ilike(f"%{equip_type}%"))
+        
+    if month:
+        month_parsed = _parse_month_label(month)
+        if month_parsed:
+            from sqlalchemy import func
+            y, m = month_parsed
+            capa_query = capa_query.filter(
+                func.strftime("%Y", BreakdownLog.logged_at) == f"{y:04d}",
+                func.strftime("%m", BreakdownLog.logged_at) == f"{m:02d}",
+            )
+    elif date_range:
+        now = datetime.utcnow()
+        if date_range == "7d":
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=7))
+        elif date_range in ("30d", "30D"):
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=30))
+        elif date_range in ("90d", "90D", "3m", "3M"):
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=90))
+        elif date_range in ("180d", "180D", "6m", "6M"):
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=180))
+        elif date_range in ("1y", "1Y", "365d"):
+            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=365))
+
+    capa_overdue = capa_query.filter(
+        CAPA.status.notin_(["Completed"]),
+        CAPA.due_date != None,
+        CAPA.due_date != "",
+        CAPA.due_date < datetime.utcnow().strftime("%Y-%m-%d"),
+    ).count()
+    
+    # 4. Avg BD Hours
+    mttr_vals = []
+    for log in logs:
+        mttr_val = None
+        if log.mttr_hours is not None:
+            mttr_val = float(log.mttr_hours)
+        elif log.downtime_minutes and log.downtime_minutes > 0:
+            mttr_val = round(log.downtime_minutes / 60, 1)
+        if mttr_val is not None:
+            mttr_vals.append(mttr_val)
+    avg_bd_hours = round(sum(mttr_vals) / len(mttr_vals), 1) if mttr_vals else 0.0
+
+    # 5. Top Equipment
+    machine_counts = Counter(log.machine_name for log in logs if log.machine_name)
+    top_equipment = []
+    for equip_name, count in machine_counts.most_common(5):
+        sample = next((l for l in logs if l.machine_name == equip_name), None)
+        top_equipment.append({
+            "equipment_name": equip_name,
+            "asset_tag": equip_name[:6].upper().replace(" ", ""),
+            "category": sample.division if sample else "Unknown",
+            "breakdown_count": count,
+        })
+
+    # 6. Failures by Plant
+    division_counts = Counter(log.division for log in logs if log.division)
+    failures_by_asset = [
+        {"category": div, "count": cnt}
+        for div, cnt in division_counts.most_common(8)
+    ]
+
+    # Prepare payload for LLM Backend
+    llm_payload = {
+        "open_breakdowns": open_count,
+        "capa_overdue": capa_overdue,
+        "avg_bd_hours": avg_bd_hours,
+        "total_failures": len(logs),
+        "top_equipment": top_equipment,
+        "failures_by_asset": failures_by_asset
+    }
+
+    # Call LLM backend
+    llm_api_url = os.getenv("LLM_API_URL", "http://localhost:8000")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(f"{llm_api_url}/dashboard-insights", json=llm_payload)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch insights from LLM backend: {e}")
 
 
 @router.get("/dashboard/top-equipment")
 async def api_top_equipment(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
-    logs = query.all()
+    logs = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range).all()
 
     machine_counts = Counter(log.machine_name for log in logs if log.machine_name)
     result = []
@@ -195,18 +393,20 @@ async def api_top_equipment(
 
 @router.get("/dashboard/breakdowns")
 async def api_breakdowns(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
+    query = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range)
     logs = query.order_by(BreakdownLog.logged_at.desc()).limit(20).all()
 
     return [
         {
             "id": log.id,
             "equipment_name": log.machine_name,
+            "component_name": log.component_name,
             "asset_tag": log.division[:4].upper() if log.division else "N/A",
             "description": log.description,
             "status": log.status,
@@ -226,13 +426,13 @@ async def api_breakdowns(
 
 @router.get("/dashboard/failures-by-asset")
 async def api_failures_by_asset(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
-    logs = query.all()
+    logs = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range).all()
 
     division_counts = Counter(log.division for log in logs if log.division)
     return [
@@ -243,17 +443,18 @@ async def api_failures_by_asset(
 
 @router.get("/dashboard/rca-reports")
 async def api_rca_reports(
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
+    date_range: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(BreakdownLog).filter(
+    query = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range).filter(
         BreakdownLog.rca_data != None,
         BreakdownLog.rca_data != "",
         BreakdownLog.rca_data != "[]",
         BreakdownLog.rca_data != "null",
     )
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
     logs = query.order_by(BreakdownLog.logged_at.desc()).limit(10).all()
 
     results = []
@@ -284,13 +485,13 @@ async def api_rca_reports(
 @router.get("/dashboard/mttr-weekly")
 async def api_mttr_weekly(
     month: str = Query(...),
+    plant: Optional[str] = None,
+    equip_type: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return weekly MTTR for a specific month (e.g. 'Mar 2026')."""
-    query = db.query(BreakdownLog)
-    if user.division != "Admin":
-        query = query.filter(BreakdownLog.division == user.division)
+    query = get_filtered_breakdown_logs(db, user, plant=plant, equip_type=equip_type)
     logs = query.all()
 
     weekly = defaultdict(list)
@@ -316,6 +517,7 @@ async def api_mttr_weekly(
     ]
 
 
+
 # ── Breakdowns (logging) ──────────────────────────────────────────────────
 
 @router.get("/breakdowns/equipment")
@@ -324,8 +526,23 @@ async def api_equipment_list(
     db: Session = Depends(get_db),
 ):
     """Return equipment list grouped by division for the breakdown log form."""
-    division_machines = {k: list(v) for k, v in EQUIPMENT_CATALOGUE.items()}
+    all_eq = db.query(Equipment).all()
+    
+    equipment = []
+    added_names = set()
+    for eq in all_eq:
+        eq_name_lower = eq.name.strip().lower()
+        equipment.append({
+            "id": eq.id,
+            "name": eq.name,
+            "asset_tag": eq.asset_tag,
+            "location": eq.location or eq.category or "Unknown",
+            "category": eq.category or eq.location or "Unknown",
+            "components": [c.name for c in eq.components]
+        })
+        added_names.add(eq_name_lower)
 
+    division_machines = {k: list(v) for k, v in EQUIPMENT_CATALOGUE.items()}
     rows = db.query(BreakdownLog.division, BreakdownLog.machine_name).filter(
         BreakdownLog.machine_name != None,
         BreakdownLog.machine_name != "",
@@ -336,19 +553,22 @@ async def api_equipment_list(
             if machine.strip() not in division_machines[div]:
                 division_machines[div].append(machine.strip())
 
-    # Flatten to list format expected by React
-    equipment = []
-    eq_id = 1
+    fake_id = 10000
     for div, machines in sorted(division_machines.items()):
         for m in sorted(machines):
-            equipment.append({
-                "id": eq_id,
-                "name": m,
-                "asset_tag": f"EQ-{eq_id:03d}",
-                "location": div,
-                "category": div,
-            })
-            eq_id += 1
+            m_lower = m.strip().lower()
+            if m_lower not in added_names:
+                equipment.append({
+                    "id": fake_id,
+                    "name": m.strip(),
+                    "asset_tag": f"EQ-{fake_id}",
+                    "location": div,
+                    "category": div,
+                    "components": []
+                })
+                added_names.add(m_lower)
+                fake_id += 1
+
     return equipment
 
 
@@ -367,6 +587,7 @@ async def api_submit_breakdown(
         description = form.get("description", "")
         division = form.get("division", "Unknown")
         machine_name = form.get("machine_name", "") or ""
+        component_name = form.get("component_name")
         reported_at = form.get("reported_at")
         severity_level = form.get("severity_level")
         failure_type = form.get("failure_type")
@@ -401,6 +622,7 @@ async def api_submit_breakdown(
 
         new_log = BreakdownLog(
             machine_name=machine_name,
+            component_name=component_name if component_name else None,
             division=division,
             description=description,
             downtime_minutes=downtime,
@@ -437,7 +659,7 @@ async def api_capa_list(
             "id": c.id,
             "title": (c.actions or "Untitled CAPA").split("\n")[0][:80],
             "status": c.status,
-            "owner": c.owner or "Unassigned",
+            "owner": normalize_full_owner_string(c.owner or "Unassigned"),
             "dueDate": c.due_date,
             "due_date": c.due_date,
             "priority": c.priority or "Medium",
@@ -465,7 +687,7 @@ async def api_capa_get(
             "id": capa.id,
             "action_type": capa.action_type,
             "actions": capa.actions,
-            "owner": capa.owner,
+            "owner": normalize_full_owner_string(capa.owner or ""),
             "due_date": capa.due_date,
             "priority": capa.priority,
             "impact_level": capa.impact_level,
@@ -497,7 +719,7 @@ async def api_capa_create(
         breakdown_log_id=body.breakdown_id,
         action_type=body.action_type,
         actions=body.actions,
-        owner=body.owner,
+        owner=normalize_full_owner_string(body.owner),
         due_date=body.due_date,
         priority=body.priority,
         impact_level=body.impact_level,
@@ -522,7 +744,7 @@ async def api_capa_update(
         raise HTTPException(status_code=404, detail="CAPA not found")
     capa.action_type = body.action_type
     capa.actions = body.actions
-    capa.owner = body.owner
+    capa.owner = normalize_full_owner_string(body.owner)
     capa.due_date = body.due_date
     capa.priority = body.priority
     capa.impact_level = body.impact_level
@@ -571,7 +793,7 @@ async def api_capa_detail(
             "id": capa.id,
             "title": (capa.actions or "Untitled").split("\n")[0][:80],
             "status": capa.status,
-            "owner": capa.owner or "Unassigned",
+            "owner": normalize_full_owner_string(capa.owner or "Unassigned"),
             "dueDate": capa.due_date,
             "priority": capa.priority or "Medium",
             "rootCause": capa.root_cause or "",
@@ -688,7 +910,7 @@ async def api_equipment_master_list(
         q = q.filter(Equipment.criticality == criticality)
     equipment = q.order_by(Equipment.name.asc()).all()
 
-    # Build per-name failure stats from breakdown_logs (one query, group by machine_name)
+    # Build per-name failure stats from breakdown_logs (one query)
     stats_query = (
         db.query(
             BreakdownLog.machine_name,
@@ -700,12 +922,37 @@ async def api_equipment_master_list(
     if user.division != "Admin":
         stats_query = stats_query.filter(BreakdownLog.division == user.division)
 
-    counts: dict = {}
-    last_seen: dict = {}
-    for name, _id, logged_at in stats_query.all():
-        counts[name] = counts.get(name, 0) + 1
-        if logged_at and (name not in last_seen or logged_at > last_seen[name]):
-            last_seen[name] = logged_at
+    logs = stats_query.all()
+
+    # Pre-calculate matching and aggregate stats per equipment ID
+    equipment_stats = {}  # e.id -> {"count": 0, "last_seen": None}
+    
+    # Sort equipment by length of cleaned name descending for substring match prioritization
+    sorted_eq = sorted(equipment, key=lambda x: len(clean_equipment_name(x.name)), reverse=True)
+
+    for name, _id, logged_at in logs:
+        matched_eq = None
+        c_machine = clean_equipment_name(name)
+        if c_machine:
+            # Phase 1: Try exact match of cleaned names
+            for eq in sorted_eq:
+                if clean_equipment_name(eq.name) == c_machine:
+                    matched_eq = eq
+                    break
+            # Phase 2: Try substring match where equipment name is subset of machine name
+            if not matched_eq:
+                for eq in sorted_eq:
+                    c_eq = clean_equipment_name(eq.name)
+                    if c_eq in c_machine:
+                        matched_eq = eq
+                        break
+        
+        if matched_eq:
+            estat = equipment_stats.setdefault(matched_eq.id, {"count": 0, "last_seen": None})
+            estat["count"] += 1
+            if logged_at:
+                if not estat["last_seen"] or logged_at > estat["last_seen"]:
+                    estat["last_seen"] = logged_at
 
     return [
         {
@@ -716,8 +963,8 @@ async def api_equipment_master_list(
             "location": e.location,
             "criticality": e.criticality or "Medium",
             "asset_health_score": e.asset_health_score if e.asset_health_score is not None else 100,
-            "failure_count": counts.get(e.name, 0),
-            "last_failure_date": last_seen[e.name].isoformat() if e.name in last_seen else None,
+            "failure_count": equipment_stats.get(e.id, {}).get("count", 0),
+            "last_failure_date": equipment_stats.get(e.id, {}).get("last_seen").isoformat() if equipment_stats.get(e.id, {}).get("last_seen") else None,
         }
         for e in equipment
     ]
@@ -733,13 +980,44 @@ async def api_equipment_detail(
     if not eq:
         raise HTTPException(status_code=404, detail="Equipment not found.")
 
-    bd_query = db.query(BreakdownLog).filter(BreakdownLog.machine_name == eq.name)
+    # Fetch all breakdown logs for user division
+    bd_query = db.query(BreakdownLog)
     if user.division != "Admin":
         bd_query = bd_query.filter(BreakdownLog.division == user.division)
-    breakdowns = bd_query.order_by(BreakdownLog.logged_at.desc()).limit(20).all()
+    
+    all_logs = bd_query.order_by(BreakdownLog.logged_at.desc()).all()
+    
+    # We need to find other equipment names in the database to prioritize matching
+    # and avoid matching "Cyclone Cluster" logs to "Cyclone" equipment.
+    all_equips = db.query(Equipment).all()
+    
+    matched_breakdowns = []
+    for log in all_logs:
+        # Find which equipment this log matches
+        matched_eq = None
+        c_machine = clean_equipment_name(log.machine_name)
+        if c_machine:
+            # Phase 1: Try exact match of cleaned names
+            for other_eq in all_equips:
+                if clean_equipment_name(other_eq.name) == c_machine:
+                    matched_eq = other_eq
+                    break
+            # Phase 2: Try substring match where equipment name is subset of machine name
+            if not matched_eq:
+                sorted_equips = sorted(all_equips, key=lambda x: len(clean_equipment_name(x.name)), reverse=True)
+                for other_eq in sorted_equips:
+                    c_eq = clean_equipment_name(other_eq.name)
+                    if c_eq in c_machine:
+                        matched_eq = other_eq
+                        break
+        
+        # If it matches our target equipment, include it
+        if matched_eq and matched_eq.id == eq.id:
+            matched_breakdowns.append(log)
 
-    failure_count = bd_query.count()
-    last_failure = breakdowns[0].logged_at if breakdowns else None
+    failure_count = len(matched_breakdowns)
+    last_failure = matched_breakdowns[0].logged_at if matched_breakdowns else None
+    breakdowns = matched_breakdowns[:20]
 
     return {
         "id": eq.id,
@@ -759,9 +1037,13 @@ async def api_equipment_detail(
                 "failure_type": b.failure_type,
                 "status": b.status,
                 "description": b.description,
+                "component_name": b.component_name,
             }
             for b in breakdowns
         ],
+        "components": [
+            {"id": c.id, "name": c.name} for c in eq.components
+        ]
     }
 
 
@@ -806,6 +1088,61 @@ async def api_equipment_create(
     }
 
 
+class ComponentCreateBody(BaseModel):
+    name: str
+
+
+@router.post("/equipment/{equipment_id}/components")
+async def api_equipment_add_component(
+    equipment_id: int,
+    body: ComponentCreateBody,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not is_plant_head_or_admin(user):
+        raise HTTPException(status_code=403, detail="Not authorized to edit equipment master.")
+    
+    eq = db.query(Equipment).filter(Equipment.id == equipment_id).first()
+    if not eq:
+        raise HTTPException(status_code=404, detail="Equipment not found.")
+    
+    name_stripped = body.name.strip()
+    if not name_stripped:
+        raise HTTPException(status_code=400, detail="Component name cannot be empty.")
+    
+    # Check if already exists
+    exists = db.query(EquipmentComponent).filter(
+        EquipmentComponent.equipment_id == equipment_id,
+        EquipmentComponent.name == name_stripped
+    ).first()
+    if exists:
+        raise HTTPException(status_code=409, detail="Component already exists for this equipment.")
+    
+    comp = EquipmentComponent(equipment_id=equipment_id, name=name_stripped)
+    db.add(comp)
+    db.commit()
+    db.refresh(comp)
+    return {"id": comp.id, "name": comp.name}
+
+
+@router.delete("/equipment/components/{component_id}")
+async def api_equipment_delete_component(
+    component_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not is_plant_head_or_admin(user):
+        raise HTTPException(status_code=403, detail="Not authorized to edit equipment master.")
+    
+    comp = db.query(EquipmentComponent).filter(EquipmentComponent.id == component_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="Component not found.")
+    
+    db.delete(comp)
+    db.commit()
+    return {"message": "Component deleted successfully"}
+
+
 # ── Historical Analytics ───────────────────────────────────────────────────
 
 # Whitelist range tokens to safe SQLite modifiers.
@@ -848,23 +1185,26 @@ def _date_filter_clause(range_token: str, month_parsed) -> tuple:
     )
 
 
-def _division_clause(user: User) -> tuple:
-    if user.division == "Admin":
-        return "", {}
-    return ("AND b.division = :division", {"division": user.division})
+def _division_clause(user: User, plant: Optional[str] = None) -> tuple:
+    if user.division != "Admin":
+        return ("AND b.division = :division", {"division": user.division})
+    elif plant:
+        return ("AND b.division = :division", {"division": plant})
+    return "", {}
 
 
 @router.get("/analytics")
 async def api_analytics(
     range: str = Query("3m"),
     month: Optional[str] = None,
+    plant: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     range_token = range if range in _RANGE_INTERVALS else "3m"
     month_parsed = _parse_month_label(month)
     date_clause, date_params = _date_filter_clause(range_token, month_parsed)
-    div_clause, div_params = _division_clause(user)
+    div_clause, div_params = _division_clause(user, plant)
     base_params = {**date_params, **div_params}
 
     # ── Failure frequency by equipment ──
@@ -1054,13 +1394,14 @@ async def api_analytics_drilldown(
     tag: Optional[str] = None,
     range: str = Query("3m"),
     month: Optional[str] = None,
+    plant: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     range_token = range if range in _RANGE_INTERVALS else "3m"
     month_parsed = _parse_month_label(month)
     date_clause, date_params = _date_filter_clause(range_token, month_parsed)
-    div_clause, div_params = _division_clause(user)
+    div_clause, div_params = _division_clause(user, plant)
 
     sql = text(f"""
         SELECT
@@ -1087,3 +1428,27 @@ async def api_analytics_drilldown(
         }
         for r in rows
     ]
+
+
+class ChatMessageBody(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequestBody(BaseModel):
+    messages: list[ChatMessageBody]
+
+
+@router.post("/chat")
+async def api_chat(body: ChatRequestBody, user: User = Depends(get_current_user)):
+    """Proxy conversation chat request to LLM backend."""
+    llm_api_url = os.getenv("LLM_API_URL", "http://localhost:8000")
+    try:
+        payload = {"messages": [msg.model_dump() for msg in body.messages]}
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(f"{llm_api_url}/chat", json=payload)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to communicate with LLM backend: {e}")
+

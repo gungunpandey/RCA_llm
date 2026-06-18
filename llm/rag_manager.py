@@ -182,6 +182,7 @@ class RAGManager:
                 
         except Exception as e:
             logger.error(f"Failed to connect to Weaviate: {e}")
+            self.client = None
             raise
     
     def disconnect(self):

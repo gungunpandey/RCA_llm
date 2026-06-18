@@ -1,0 +1,737 @@
+#,Date of incident,Area,Department,Equipment,Description of Breakdown/Case,Effected time (Minute),Impact on production,Action taken, RCA Status,Date of RCA,Link,Root Cause,CAPA,Responsible,Due date,Status of CAPA,Actual date,Remark,Remark of RCA team,RCA team required,Date of intimation
+1,22-Oct-24,Pellet-2,Mechanical,Kiln Fixed Beam,Water leakage from fixed beam,"1,200",Stop,Leakage found & welding done,Done,23-Oct-24,Refer attachment,"Welding Strength Got Detoriated Due To Heat And Sudden Shock Was Given To Fixede Beam, Due To This Welding Cracked",CA- Leakage found & welding done,Mr. Nitesh Kumar,23-Oct-24,Done,23-Oct-24,,,,
+,,,,,,,,,,,,,"PA- Properly v developed by grinding & multilayer welding done,cross checked with dept.",,,Done,,,,,
+2,31-Oct-24,Pellet-2,Mechanical,NPC-2,Bearing damage,85,Speed loss,Bearing replacement,Done,11-Jan-24, ,Dust Was Getting Inside The Block And Further Damaged The Bearing Cage,CA- Bearing Changed,Mr. Nitesh Kumar,11-Jan-24,Done,11-Jan-24,,,,
+,,,,,,,,,,,,,PA- Now plumber block cover has been provided to avoid the dust contamination,,,Done,,,,,
+3,11-Dec-24,Pellet-2,Mechanical,B.D. -2 ,Secondary scrapper Bearing damage,120,Speed loss,Motor removed & bearing replacement done,Done,13-Nov-24,Refer attachment,"The Oil Pump Line Got Jam And Lubrication Of Bearing Got Stopped And Lead To Baering Failure,Since The Oil Line Was Painted",CA- Motor removed & bearing replacement done,Mr. Nitesh Kumar,13-Nov-24,Done,13-Nov-24,,,,
+,,,,,,,,,,,,,PA- Oil pump pipe paint has been removed so that anyone can check circulation of oil,,,Done,,,,,
+4,29-Jan-25,Pellet-2,E & I,C-12,Motor winding coil burn,240,No,Motor Replaced & Another Spare Motor Having Same Specs Installed.,Done,31-Jan-25,Refer attachment,"Due to Excessive Load, Low Maintenance, High Dust,Accumulation & Aging of Bearing.",CA- Motor Replaced & Another Spare Motor Having Same Specs Installed.,Mr. Bhajahari Das,31-Jan-25,Done,31-Jan-25,,ok,,
+,,,,,,,,,,,,,"PA- Proper Motor Maintenance Will be Done During Every Opportunity Shutdown as High Priority.
+Standard Canopy Indent Done for Motor.
+Regular Cleaning Schedule was Determined for Motor Cleaning.
+Mechanical Team Informed About Gear Box Problem & Belt Running Abnormality.",,,Done,,,,,
+5,9-Feb-25,Pellet-1,E & I,VCB,Delay in Power Changeover of 11KV HT Feeder from SMFA to EIPL.,220,Stop,Phase Sequence connection done properly & panel charged & load given.,Done,28-Mar-25,Refer attachment,"As the panel is completely new, So during commissioning time, It Might be Done mistakenly (Human Error)","During Commissioning time of the HT incomer VCB, Due to human error the potential transformer (PT) connection was reversed.
+Due to reverse connection, After giving load connection the Phase Sequence changes accordingly.
+Outgoing transformer VCB breaker – 1 &2 (3.6 MVA & 4.0 MVA) taken interlock with PT supply.",Mr. Bhajahari Das,28-Mar-25,Done,31-Mar-25,,,,
+6,1-Jun-25,Pellet-1,Mechanical,PC-3, Coupling bolt alignment & pin bush coupling Bolt fitting work ,77,No,pc-3 conveyor belt gearbox motor coupling alignment work done,Done,,Reference Link,DUE PROLONGED USE THE THE COUPLING GOT MIS ALIGNED,1.Alignment work done on the PC-3 conveyor belt gearbox motor coupling.,,1-Jun-25,Done,1-Jun-25,,,,
+,,,,,,,,,,,,,2.Regular inspection and maintenance of conveyor belt gearbox motor couplings.,,,,,,,,
+7,1-Jun-25,Pellet-1,Mechanical,Root blower,"Root blower damaged V- Belt,root blower 2A all damage v -belt( SPC-3350 ) replacement work done ",57,No,kiln rootblower-2a 5nos damage v- belt (spc-3350) replacement work done,Done,,Reference Link,"Kiln Rootblower-2A's 5 V-belts (SPC-3350) were found loose due to wear and tear due to prolonged use & aging, resulting in damage.","1. Damaged V-belts (SPC-3350) of Kiln Rootblower-2A replaced.
+",,1-Jun-25,Done,1-Jun-25,,,,
+,,,,,,,,,,,,,2.  Regular inspection and maintenance of V-belts.,,,Done,,,,,
+8,1-Jun-25,Pellet-1,Mechanical,Roller Screen ,"U/S roller screen, motor gearbox replacement ",37,No,,Not required,,,,,,,,,,,,
+9,1-Jun-25,Pellet-1,Mechanical,Product Screen,product screen gear box crack,N/A,No,1.new base replacement done in shutdown.,Done,1-Jul-25,Refer attachment,product screen gearbox base cracked due to prolonged use/ aging.,1.scheduled replacement plan for gearbox base need to be implemented,Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,3-Jul-25,,,,
+,,,,,,,,,,,,,2. new screen to be procured to replace in long shutdown.,,,Done,,,,,
+1,2-Jun-25,BNFC,Mechanical,FEED PUMP-3,Suction line flange leakage and gland tightened work,50,Stop,Gland bolt tightened and suction line flange bolt tightened after changing gasket,Done,15-Jul-25,Refer attachment,1nos of bolt wasn't tightened enough.,Gasket was changed and bolts  were properly tightened & before closing up the work bolts are getting checked properly.,Mr Debashis Jena,8-Jun-25,Done,5-Jun-25,,,,
+2,3-Jun-25,Pellet-1,Mechanical,TG HR fan-2,HR fan 2 hot Air leakage arrested through glasswool.,62,No,,Not required,,,,,,,,,,,,
+3,3-Jun-25,BNFC,Mechanical,NFC-1B,Belt joint damage due to chute material jam,46,Stop,Belt patched,Done,15-Jul-25,Refer attachment,Due to chute jam.,Chute jam was cleared & before running the conveyor in reverse/forward we are checking the chute and scrappers as it should be cleaned so there will be no damage s to the conveyor belt.,Mr Debashis Jena,8-Jun-25,Done,5-Jun-25,,,,
+4,4-Jun-25,BNFC,Mechanical,DD SCREEN-2, upper deck 2nos of mesh damage,35,Stop,damaged mesh were changed,Done,15-Jul-25,Refer attachment,over size material came through grizzly to dd screen & damaged grizzly .,2nos of mesh had been changed &grizzly repaired and checking of grizzly before charging the material.,Mr Debashis Jena,10-Jun-25,Done,6-Jun-25,,,,
+5,4-Jun-25,Pellet-1,Mechanical,PC-1,De-watering pump line jamm,66,No,,Not required,,,,,,,,,,,,
+6,5-Jun-25,Pellet-1,Mechanical,U/S roller screen,Skirt rubber replaced,38,No,,Not required,,,,,,,,,,,,
+7,5-Jun-25,Pellet-1,Mechanical,FC-3,Guide roller bearing damage,33,No,,Not required,,,,,,,,,,,,
+8,6-Jun-25,BNFC,Mechanical,Filter Press-3,Leakage from gasket of NRV,60,Stop,New gasket of NRV had been installed,Done,15-Jul-25,Refer attachment,Bolt wasn't tightened enough .,NRV gasket was changed & bolts were getting checked before giving closure to work,Mr Debashis Jena,12-Jun-25,Done,8-Jun-25,,,,
+9,7-Jun-25,Pellet-1,Mechanical,BC-2B,Motor abnormal vibration was observed.,15,No,,Not required,,,,,,,,,,,,
+10,7-Jun-25,Pellet-1,Mechanical,Undersize roller screen,41no roller gearbox motor replacement work done ,85,No,Damaged gearbox motor of the 41st Under size rollerscreen roller replaced.,Done,,Reference Link,41st no Roller Screen roller gearbox motor bearing  jammed due to material overload.,1. Damaged gearbox motor of the 41st Under size rollerscreen roller replaced.,,7-Jun-25,Done,7-Jun-25,,,,
+,,,,,,,,,,,,,2. Implement regular monitoring of feed rates and material flow to prevent overloading.,,,Done,,,,,
+11,8-Jun-25,Pellet-1,Mechanical,PCI,rack welding work done ,118,No,,Not required,,,,,,,,,,,,
+12,10-Jun-25,Pellet-1,Mechanical,Undersize roller screen,12 no roller gearbox motor replacement work done ,73,No,Damaged gearbox motor of the 12th Under size rollerscreen roller replaced.,Done,,Refence Link,12th no Roller Screen roller gearbox motor bearing  jammed due to material overload.,1. Damaged gearbox motor of the 12th Under size rollerscreen roller replaced.,,10-Jun-25,Done,10-Jun-25,,,,
+,,,,,,,,,,,,,2. Implement regular monitoring of feed rates and material flow to prevent overloading.,,,Done,,,,,
+13,10-Jun-25,Pellet-1,Mechanical,Cooler,cooler trolley rail alignment and trolley discharge chute punture welding work done.,125,No,,Not required,,,,,,,,,,,,
+14,10-Jun-25,Pellet-1,Mechanical,Proportionate,lime vessel seal work u/p ( B ),40,No,,Not required,,,,,,,,,,,,
+15,10-Jun-25,Pellet-2,Mechanical,Proportionate,lime conveying damage Gaskit replacement work done ( c ),127,No,,Not done,,,,,,,,,,,,
+16,10-Jun-25,BNFC,Process,Ball Mill,Secondary sump box jammed and flow not taken,180,Speed loss,"After the feed is stopped, the water circuit is also stopped. Once the sump box is emptied, flow is taken. Subsequently, the water circuit is restarted, followed by the resumption of feed.",Done,15-Jul-25,Refer attachment,low grinding and box dicsharge line puncher .,1-Preventive maintenance of pipeline has taken.,Mr Manish kumar singh .,18-Jun-25,Done,13-Jun-25,,,,
+,,,,,,,,,,,,,2-Circuit feed stopped.,,,Done,,,,,
+,,,,,,,,,,,,,3-Secondary  feed pump checking done.,,,Done,,,,,
+,,,,,,,,,,,,,4-Proper grinding of feed material checked,,,Done,,,,,
+17,11-Jun-25,Pellet-1,Mechanical,LIW,Iron dust pipe line leakage from flange arrested,31,No,,Not required,,,,,,,,,Daily checking & work,,,
+18,12-Jun-25,BNFC,Process,Stack sizer -2,Stack sizer over size line jam,80,No,Circuit feedind stop as well as circuit stop.,Done,12-Jun-25,Refer attachment,coarser size particle and flushing line jam.,"Clean and inspect over size line regularly .
+Improve grinding efficiency to eliminate coarser particles .
+Increase flushing water  percentage .
+Train operator to indentify  early symptoms of grinding .
+",Mr Manish Kumar Singh ,17-Jun-25,Done,15-Jun-25,,,,
+19,12-Jun-25,PGP,Mechanical,PGP-9,Bellcone housing work,180,No,,Not done,,,,,,,,,,,,
+20,13-Jun-25,PGP,Mechanical,Booster Fan,PGP BOOSTER FAN PIPE LINE WELDING WORK ,250,No,,Not required,,,,,,,,,,,,
+21,14-Jun-25,Pellet-1,Mechanical,MTC-1,MTC -1 VESSEL WELDING WORK DONE ,212,No,MTC -1 VESSEL WELDING WORK DONE ,Done,,Reference Link, Thinning of the vessel wall due to wear and tear from prolonged use. ,1. welding work done to repair the puncture in the MTC-1 vessel.,,14-Jun-25,Done,14-Jun-25,,,,
+,,,,,,,,,,,,,2.  Implement a regular inspection and maintenance schedule for the MTC-1 vessel.,,,Done,,,,,
+22,15-Jun-25,BNFC,Mechanical,ZBC-1,2nos.of carrying idler frame and 1nos. of carrying adjusting frame broken,55,Stop,2nos of carrying idler frame and 1nos.of carrying adjusting frame changed with new one,Done,15-Jul-25,Refer attachment,High and heavy impact load caused the frames to broke,carrying idlers frame and adjusting frames were changed  & spending more time on checking,Mr Debashis Jena,22-Jun-25,Done,19-Jun-25,,,,
+23,15-Jun-25,BNFC,Mechanical,ZBC-2,1nos of impact carrying idler frame was broken.,27,Stop,Frame was replaced.,Done,15-Jul-25,Refer attachment,High and heavy impact load caused the frames to broke,The frame was changed & more time is given for checking & with respect of more people and semi skilled.,Mr Debashis Jena,22-Jun-25,Done,18-Jun-25,,,,
+24,16-Jun-25,BNFC,Mechanical,Filter Press-4,Non Drive side shifter chain broken,50,Stop,Shifter chain of nondrive side rejoint,Done,15-Jul-25,Refer attachment,Chain tension was loose.,Shifter chain of non drive side rejoint & proper tightening of sprocket jackbolt & proper chain tension is given now and getting checked thoroughly.,Mr Debashis Jena,22-Jun-25,Done,20-Jun-25,,,,
+25,16-Jun-25,BNFC,Process,PBM feed spout,PBM feed spout jam,180,Stop,Primary ball mill feed spout Jam.,Done,16-Jun-25,Refer attachment,Close circuit and raw material carrying +8 mm size particle .,"Clean and inspect feed spout regularly .
+Improve screen efficiency to eliminate over size particles .
+Increase flushing water  percentage .
+Train operator to indentify  early symptoms spout jam .",Mr Manish Kumar Singh ,19-Jun-25,Done,18-Jun-25,,,,
+26,16-Jun-25,Pellet-1,Mechanical,O/S roller screen,17no roller coupling key fitting work done ,59,No,17th no Oversize roller screen roller coupling key replacement work done,Done,,Refence Link,17th no Oversize roller screen roller coupling key worned out due to prolonged use,1. The worn-out coupling key of the 17th Oversize roller screen  replaced,,16-Jun-25,Done,16-Jun-25,,,,
+,,,,,,,,,,,,,2.Ensure timely replacement of worn-out parts.,,,Done,,,,,
+27,16-Jun-25,Pellet-1,Mechanical,balling Disc-2,gear box packing and input coupling teflon bush replacement work done ,182,Speed loss,,Not required,,,,,,,,,This work has been done during Preventive Maintenane of Balling Disc-2 on 16 June- 2025,,,
+28,17-Jun-25,Pellet-1,Mechanical,HR FAN-2,below air leakage arrest work done ,44,No,Below air leakage arrested,Done,,Reference Link,HR Fan-2 bellow liner leakage occurred due to wear and tear from prolonged use.,1. Bellow leakage arrest work done to rectify the issue.,,17-Jun-25,Done,17-Jun-25,,,,
+,,,,,,,,,,,,,2. Ensure timely replacement of worn-out parts.,,,Done,,,,,
+,,,,,,,,,,,,,3. Regular inspection and maintenance of HR Fan bellows.,,,Done,,,,,
+29,18-Jun-25,BNFC,Mechanical,DD SCREEN-1,2nos of dummy plates opened from its center and 6nos of mesh damaged,255,Stop,2nos of dummy plates and 6nos of mesh were changed and grizzly repaired,Done,15-Jul-25,Refer attachment,grizzly was damage,2nos of dummy plates and 6nos of mesh were changed and grizzly repaired & checking of grizzly before charging the material.,Mr Debashis Jena,25-Jun-25,Done,21-Jun-25,,,,
+30,19-Jun-25,Pellet-1,Mechanical,PCI,"PCI stopped on 19-06-2025 from 11:50pm to 13:50 pm due to TG stipper plate lifted up, high spillage observed & TG was running on low feed",120,Speed loss,"1. The TG stipper plate bent due to poor material quality from vendor AJ Cast Alloy Pvt. ltd. Although the vendor was informed and the plate was slated for return, its installation was unavoidable during the emergency due to the unavailability of spares
+2. Calling to vendor to show the problem.",Done,7-May-25,Refer attachment,The stipper plate bent due to poor material quality,"To prevent future issues, we will no longer procure stipper plates from Aj Cast Alloy Pvt. Ltd., opting instead for vendors that provide higher quality materials.",Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,,,,,
+31,19-Jun-25,Pellet-1,Mechanical,BALLING DISC-1,"Balling Disc-1 stopped on 19-06-2025 from 11:50pm to 12:15 pm due to TG stipper plate lifted up, high spillage observed & TG was running on low feed",25,Speed loss,"1. The TG stipper plate bent due to poor material quality from vendor AJ Cast Alloy Pvt. ltd. Although the vendor was informed and the plate was slated for return, its installation was unavoidable during the emergency due to the unavailability of spares
+2. Calling to vendor to show the problem.",Done,7-May-25,Refer attachment,The stipper plate bent due to poor material quality,"To prevent future issues, we will no longer procure stipper plates from Aj Cast Alloy Pvt. Ltd., opting instead for vendors that provide higher quality materials.",Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,,,,,
+32,19-Jun-25,Pellet-1,Mechanical,BALLING DISC-3,"Balling Disc-3 stopped on 19-06-2025 from 11:50pm to 01:25pm  due to TG stipper plate lifted up, high spillage observed & TG was running on low feed",95,Speed loss,"1. The TG stipper plate bent due to poor material quality from vendor AJ Cast Alloy Pvt. ltd. Although the vendor was informed and the plate was slated for return, its installation was unavoidable during the emergency due to the unavailability of spares
+2. Calling to vendor to show the problem.",Done,7-May-25,Refer attachment,The stipper plate bent due to poor material quality,"To prevent future issues, we will no longer procure stipper plates from Aj Cast Alloy Pvt. Ltd., opting instead for vendors that provide higher quality materials.",Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,,,,,
+33,19-Jun-25,Pellet-1,Mechanical,BALLING DISC-4," Balling Disc-4 Stopped on 19-06-2025 from 11:50pm to 15:35pm  due to TG stipper plate lifted up, high spillage observed & TG was running on low feed",225,Speed loss,"1. The TG stipper plate bent due to poor material quality from vendor AJ Cast Alloy Pvt. ltd. Although the vendor was informed and the plate was slated for return, its installation was unavoidable during the emergency due to the unavailability of spares
+2. Calling to vendor to show the problem.",Done,7-May-25,Refer attachment,The stipper plate bent due to poor material quality,"To prevent future issues, we will no longer procure stipper plates from Aj Cast Alloy Pvt. Ltd., opting instead for vendors that provide higher quality materials.",Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,,,,,
+34,19-Jun-25,Pellet-1,Mechanical,ESP -2,pipe line leakage found ,37,No,,Not required,,,,,,,,,,,,
+35,19-Jun-25,Pellet-2,Mechanical,Propertioante Ground Hopper,FC-5A  conveyor belt off track adjustment work done ,71,No,,Not required,,,,,,,,,,,,
+36,20-Jun-25,BNFC,Process,Clarifier tank level low ,Clarifier tank level not bulid up .,288,No,Take water from raw water tank .,Done,20-Jun-25,Refer attachment,Insufficient inflow as compare to out flow .,"Add raw water and SRTP water line clear .
+Daily check inflow and out flow  .
+Improve upstream supply monitoring .",Mr Manish Kumar Singh ,23-Jun-25,Done,22-Jun-25,,,,
+37,20-Jun-25,Pellet-1,Mechanical,Cooler ,"Discharge hopper punture , welding work",61,No,,Not required,,,,,,,,,,,,
+38,20-Jun-25,Pellet-1,Mechanical,PC-1,"Belt off tracked, adjustment work was done",44,No,,Not required,,,,,,,,,,,,
+39,20-Jun-25,Pellet-1,Mechanical,BC-2B,Gearbox coupling replacemnet work done,129,No,BC-2B Gearbox input coupling replacemnet work done.,Done,,Reference Link.,"Wear and tear of the BC-2B  input coupling pin hole due to prolonged use,",1..BC-2B Gearbox input coupling replacemnet work done,,20-Jun-25,Done,20-Jun-25,,,,
+,,,,,,,,,,,,,2. Implement regular inspection and maintenance of gearbox couplings.,,,Done,,,,,
+40,20-Jun-25,Pellet-2,Mechanical,FC-6, tail pulley left side bearing change work done.,126,No,,Not required,,,,,,,,,,,,
+41,21-Jun-25,Pellet-1,Mechanical,ESP-2,ESP -2 conving system vessel gaskit fitting work done.,70,No,,Not required,,,,,,,,,,,,
+42,21-Jun-25,Pellet-1,Mechanical,ESP,checking dume seal and gaskit fitting work done ,102,No,,Not required,,,,,,,,,,,,
+43,22-Jun-25,Pellet-1,Mechanical,PC-4,belt off tracked adjustment work done,44,No,,Not required,,,,,,,,,,,,
+44,23-Jun-25,Pellet-1,Mechanical,PC-2,skirt rubber adjusting work done ,75,No,,Not required,,,,,,,,,,,,
+45,23-Jun-25,BNFC,Mechanical,TH-2,"TH-2,discharge bombay door lower side skirt rubber belt damage",75,Stop,damaged skirt rubber belt were removed,Done,15-Jul-25,Refer attachment,skirt rubber length was more then it should be.,"skirt rubber was changed and of perfect size  & before installation of skirt rubber,measurements are taken properly.",Mr Debashis Jena,30-Jun-25,Done,27-Jun-25,,,,
+46,24-Jun-25,Pellet-1,Mechanical,TG,TG Stipper plate bent,N/A,No,"1. The TG stipper plate bent due to poor material quality from vendor AJ Cast Alloy Pvt. ltd. Although the vendor was informed and the plate was slated for return, its installation was unavoidable during the emergency due to the unavailability of spares
+2. Calling to vendor to show the problem.",Done,1-Jul-25,Refer attachment,The stipper plate bent due to poor material quality,"To prevent future issues, we will no longer procure stipper plates from Aj Cast Alloy Pvt. Ltd., opting instead for vendors that provide higher quality materials.",Mr.S.K.Muduli,"SHUTDOWN
+(03-JULY-2025)",Done,3-Jul-25,,,,
+47,24-Jun-25,Pellet-1,Mechanical,PC-1,conveyor belt off track adjustment work done ,45,No,,Not required,,,,,,,,,,,,
+48,24-Jun-25,Pellet-1,Mechanical,Undersize roller screen,motor gear box replacement work ,37,No,,Not required,,,,,,,,,,,,
+49,25-Jun-25,Pellet-1,Mechanical,PC-1 ,PC-1 conveyor belt tornout,315,Stop,New conv belt replacement work done.,Done,28-Jun-25,Refer attachment,"The root cause  for belt torn out is  the poor belt quality, degradation caused by conveying red-hot material, joint failure accelerated by belt wear from rubbing due to tail pulley jamming caused by material buildup.","1. upgradation  required to a higher-quality, heat-resistant belt (mega therm or uhr) with a temperature resistance capacity up to 400°c.","Mr.S.K.Muduli
+&
+Mr. Raghu V.
+",26-Jun-25,Done,26-Jun-25,,,,
+,,,,,,,,,,,,,2. regular cleaning of the tail pulley  need to be done to prevent material buildup,,,Done,,,,,
+,,,,,,,,,,,,,3. material spillage to be arrested from the sector gate to prevent accumulation,,,Done,,,,,
+,,,,,,,,,,,,,4. material temperature need to be maintained below 150°c.,,,Done,,,,,
+50,25-Jun-25,BNFC,Process,New thickener,Thickener high torque,480,No,Thickener Stopeed,Done,7-Apr-25,Refer attachment,pellet side not provided information at right time so that rake taken in manual mode to save the thickener,1-plant stopped 2-thickener rake lifting  and underflow pump take recarculation.,,4-Jul-25,Done,1-Jul-25,,,,
+51,25-Jun-25,Pellet-1,Process,Kiln ,Kiln discharge was jammed due to accretion pieces.,31,Stop,,Done,,5 Why Analysis of Kiln Discharge Jam,,,,,Done,,,,,
+52,25-Jun-25,Pellet-1,Mechanical,MTC-2,"2 places leakage identified, dome valve seal fault with pipe line jam.",324,No,"1. Pipeline puncture patching work done.
+2. Dome valve seal, insert ring & o ring replaced with new one.
+3. Faulty SOV Replaced with new one.
+4. Pipeline jam cleared.",Done,28-Jun-25,Refer attachment,"1. Prolonged use and wear and tear of pipeline, resulting in reduced thickness and leakage.
+2. Improper dome valve closure and aging of the dome seal.
+3. SOV malfunctioned.",1. Implement a replacement plan for worn-out pipeline.,"Mr.S.K.Muduli
+&
+Mr. Bhajahari Das",28-Jun-25,Done,28-Jun-25,,,,
+,,,,,,,,,,,,,2. implement maintenance schedule for Dome seal & SOVs.,,,Done,,,,,
+53,26-Jun-25,Pellet-2,Mechanical,TG,Main drive Secondary gearbox Pitting former on bearing (23128 ca/w33),4,No,Damaged bearing removed and Replaced with new one,Done,27-Jun-25,Refer attachment,We should have change the bearing in evevry 3 year,Damaged bearing removed and Replaced with new one,Nitish kumar,27-Jun-25,Done,27-Jun-25,,,,
+54,26-Jun-25,PGP,Mechanical,Ash silo,Ash silo hopper sector gate broken,149,No,New Sector gate replacement done,Done,27-Jun-25,Refer attachment,Ash silo hopper sector gate broken due to prolonged use/ aging.,scheduled replacement plan for sector gate need to be implemented,Mr.S.K.Muduli,26-Jun-25,Done,,,,,
+55,26-Jun-25,Pellet-2,Mechanical,C-15,Belt patching,67,No,plant shutdown,Not required,,,,,,,,,,,,
+56,27-Jun-25,Pellet-1,Mechanical,BC-3 Conv gear coupling,bc-3 conveyor gearbox gear-coupling damaged,32,Stop,stand by gearbox used,Done,28-Jun-25,Refer attachment,"bc-3 conveyor gearbox gear coupling teeth damaged 
+aging problem.",scheduled replacement plan for coupling need to be implemented,Mr.S.K.Muduli,27-Jun-25,Done,27-Jun-25,,,,
+57,28-Jun-25,Pellet-1,Mechanical,ESP ,conveying stopped due to leakage arresting work,65,No,,Done,,Refer attachment,,,,,,,,,,
+58,30-Jun-25,Pellet-2,E & I,Annular cooler,Overload trip due to heat expansion ,80,Stop,castable chipped at that place,Done,,Refer attachment,Castable was not uniform at a place,castable chipped at that place,Mr. Bhajahari Das,7-Feb-25,Done,,,,,
+59,30-Jun-25,Pellet-2,Process,Fk pump,Line jammed,100,Speed loss,,Done,,Refer attachment,"1. Primary Cause: The broken lever of the counterweight resulted in a blockage in the discharge zone of the FK Pump.
+2.Secondary Cause: Excessive moisture in the coal caused material to become sticky, leading to frequent jamming of the screw feeder and pipeline choke.","1.Replacement of Broken Counterweight Lever:Replace the damaged lever with a new one of the same specification. Ensure proper alignment, welding (if required), and balancing during installation Pre-Drying of Material.",,,,,,,,
+,,,,,,,,,,,,,"2.Clearing of Jammed Material:Thoroughly clean the FK pump discharge zone and surrounding areas to remove all moist/sticky buildup.Ensure material handling routes (conveyors, hoppers, silos) are protected from rain exposure.",,,,,,,,
+,,,,,,,,,,,,,"3.Monitoring and Logging- Begin a daily inspection log during rainy season to record any unusual noises, lever movements, or material buildup
+",,,,,,,,
+60,1-Jul-25,Pellet-2,Mechanical,ID fan-1,"temperature rise of both side plummer block, bearing sleeves tightening done on DE & NDE side",57,No,1.) check nut tightness done by checking the required clearance of bearing 2)locating ring proper placement done,Done,7-Jan-25,Refer attachment,bearing sleeve check nut found loose,1.) check nut tightness done by checking the required clearance of bearing,,,Done,,,,,
+,,,,,,,,,,,,, 2)locating ring proper placement done,,,Done,,,,,
+61,1-Jul-25,Pellet-2,E & I,TG MD-4,TG MD-4 Stopped Working Due to Motor Coil Burning.,18,Stop,TG MD-4 Motor Bypassed & Now TG Running With 3-Motors.,Done,10-Jul-25,Refer attachment,"As Per The Process need Motor Speed is Increased From 100% to 130% in VFD. 
+The Installed Gear Box Might Not be Permissive to Run at Increased Speed, Which Might be a Reason of High Axial Jerk Which Ultimately Affected the Performance of The Gear Box.
+Due to Degradation of Performance of The Gear Box, All The Loads Came on to the Motor Which Might Damage the Motor Bearings & Ultimately Resulting in Motor Coil Burning.
+Due to All the Above Phenomenon TG Feed Stopped Hence Production Loss.
+Other 3 Main Drive units are Having Similar Type of Abnormalities Which are Kept Under Observation.
+","1. As the TG is Running Condition, So The Motor & Gear Box Units are Can Not be Dismantled for Checking, So Further Checking will be Done While Opportunity Shutdown Only.",Mr. Bhajahari Das,,Done,,,,,
+,,,,,,,,,,,,,"2. Motor Replacement Will be Done During This Opportunity Only.
+",,,Done,,,,,
+62,2-Jul-25,Pellet-2,Mechanical,PCI-2 LIW screw feeder,LIW agitator gear motor bearing got loose,120,No,bearing replacement is done,Done,7-Feb-25,Refer attachment,bearing clearance disturb the line of contact,bearing replacement done,,,Done,,,,,
+63,2-Jul-25,PGP,Mechanical,Booster-4,Unusual sound from Booster#4,205,No,"inspection door bolt loose,tightening work done",Done,7-Feb-25,Refer attachment,inspection door one bolt loose,,,,,,,,,
+64,5-Jul-25,BNFC,E & I,RM-5,Conveyor tripped,65,Speed loss,Motor cable insulation done properly,Done,,Refer attachment,Motor cable insulation damage & short with armor due to hot work near base for motor replacement as motor cable dressing was not appropriate,"Motor cable dressed properly ,Cable insulation checked & insulated properly.Awareness created for any hot work near cables it should be covered prior performing the work",Mr. Bhajahari Das,12-Jul-25,Done,10-Jul-25,,,,
+65,5-Jul-25,BNFC,E & I,Clarifier -3,DCS and VFD side for taking it in remote mode.,70,Stop,Profibus option card changed & instrument earthing also checked,Done,,Refer attachment,Remote & vfd healthy feedback was missing due to profibus option card malfunctioning.,Profibus option card replaced & instrument earthing rechecked.,Mr. Bhajahari Das,12-Jul-25,Done,9-Jul-25,,,,
+66,5-Jul-25,Pellet-2,Mechanical,C-12,Belt patching,50,No,mechanical handover after 16min  Electrical side work u/p till  35 min,Not required,,,,,,,,,mechanical handover after 16min  Electrical side work u/p till  35 min,,,
+67,6-Jul-25,Pellet-2,Mechanical,FC-6,Skirt rubber damaged.,30,No,damage side skirt rubber replaced,Done,7-Jul-25,Refer attachment,using old conveyor best,,,,,,,,,
+68,6-Jul-25,BNFC,Mechanical,FP-5,feed hold due to hydraulic pump pressure relise valve  change,85,Speed loss,Shifter Chain link was replaced,Done,22-Jul-25,Refer attachment,"Pressure relief valve was not inspected or maintained regularly, leading to valve failure, poor pressure build-up, pump malfunction, and eventual stoppage of Filter Press 5.",Replace the damaged pressure relief valve with a new one.,Mr Debashis Jena,15-Jul-25,Done,10-Jul-25,,,,
+69,6-Jul-25,BNFC,Mechanical,FP-2,plate shifter main drive chain link damage.,40,No,Shifter Chain link was relaced,Done,22-Jul-25,Refer attachment,Chain tension loose and low lub ,Damaged chain link was replaced and tension was properly adjusted.,Mr Debashis Jena,15-Jul-25,Done,10-Jul-25,,,,
+70,6-Jul-25,BNFC,E & I,Old clarified pump-3,stopped frequently with communication fault,75,Speed loss,Profibus option card changed & instrument earthing also checked,Done,17-Jul-25,Refer attachment,Remote & vfd healthy feedback was missing due to profibus option card malfunctioning.,Profibus option card replaced & instrument earthing rechecked.,Mr. Bhajahari Das,15-Jul-25,Done,9-Jul-25,,,,
+71,7-Jul-25,Pellet-2,E & I,Balling Disc-2,secondary rotary scraper motor fitting work,71,Speed loss,,Done,,Refer attachment,,,Mr. Bhajahari Das,,Done,,,,,
+72,7-Jul-25,Pellet-2,E & I,proportinate,Disc feeder-5 stopped due to weigh feeder tachometer cable damage ,54,No,,Done,,Refer attachment,"Due to Accumulation of Spillage Materials Proportionate WF-1 Tacho Sensor Cable Was Damaged Due to Which it Stopped Running, as Tacho Sensor Was In-Line With Motor Run Feedback.","Operation Dept Were Informed to Keep The Machine & Electrical Equipment Clean & Arrest Any Material Spillage.
+
+Also, E&I Dept Increased Their Cleaning Frequency of the Machine.",Mr. Bhajahari Das,,Done,,,,,
+73,7-Jul-25,Pellet-1,E & I,HR fan-1,tripped 4 times due to high current,37,No,Relay Replaced With Auxillary Contactor,Done,,Refer attachment,"After Long Term of Usage of Relay for Run Feed Back Relay Coil Was Burnt Due to Which HR Fan-1 Was Not Able to Run & Tripping Frequently.","In Place of Relay, One Auxiliary Contactor Was Installed.",Mr. Bhajahari Das,,Done,,,,,
+74,7-Jul-25,Pellet-1,Process,Balling Disc-1,tripped due to jamm,45,Speed loss,,Not done,,,,,,,,,,,,
+75,8-Jul-25,Pellet-2,Mechanical,Lime pipe,"pipe line damage, bend replaced",106,No,Bend replaced,Done,7-Sep-25,Refer attachment,Bend thickness reduce,,,,,,,,,
+76,8-Jul-25,Pellet-2,E & I,Balling Disc-2,Primary scrapper bearing inspection,44,Speed loss,,Done,,Refer attachment,"As Per Process Need Balling Disc Angles are Changed.
+With the Change in Angle BD Run For a Long Period of Time.
+After Long Time Running Scrapper Leg Gap is Decreased Which Resulted in Heavy Jerking From Bottom End Which Ultimately Damaged the Motor Shaft & Housing.","Mechanical Crew Informed to Check The Scrapper Legs During Every PM.",Mr. Bhajahari Das,,Done,,,,,
+77,8-Jul-25,BNFC,Mechanical,FP-3,Damaged track Bar replacement,405,Speed loss,Bar repalced by welding ,Done,22-Jul-25,~$RCA- Filter press -  track bar.pptx,Due to low lubrication track was damaged,Damaged Track bar was replaced by new one,Mr Debashis Jena,15-Jul-25,Done,10-Jul-25,,,,
+78,8-Jul-25,Pellet-1,E & I,Proportionate,"WF-1 stopped,motor tacho cable broken by material spillage over it.",50,No,,Not required,,,,,,,,,It was not required by Process to start at that time ,,,
+79,8-Jul-25,Pellet-2,Mechanical,C-15,Belt pasting,67,No,,Not required,,,,,,,,,as per dept. no work was done. stone was stucked due to LD sludge used,,,
+80,9-Jul-25,Pellet-2,Mechanical,C-12,Belt pasting,65,No,,Done,,Refer attachment,,,,,,,,,,
+81,9-Jul-25,Pellet-2,Mechanical,Compressor-6,tripped,36,No,,Done,,Refer attachment,,,,,,,,,,
+82,9-Jul-25,BNFC,Mechanical,Filter Press-1,"drive side shifter chain broken, re joint work done",65,No,Chain rejoint work done,Done,22-Jul-25,Refer attachment,Chain tension loose and low lub ,1 nos Shifter chain link replaced with new one.,Mr Debashis Jena,15-Jul-25,Done,12-Jul-25,,,,
+83,9-Jul-25,Pellet-2,Mechanical,FC-5A,belt torn out due to stone stuck on chute,220,Speed loss,Belt replaced,Done,7-Oct-25,Refer attachment,due to LD sludge feeding ,,,,,,,,,
+84,10-Jul-25,Pellet-2,Mechanical,Balling Disc-2,"stopped, gear box inspection",107,Speed loss,,Done,,Refer attachment,,,,,,,,,,
+85,11-Jul-25,Pellet-2,E & I,Balling disc-2,primary scrapper motor replacement,38,Speed loss,,Done,,Refer attachment,"As Per Process Need Balling Disc Angles are Changed.
+With the Change in Angle BD Run For a Long Period of Time.
+After Long Time Running Scrapper Leg Gap is Decreased Which Resulted in Heavy Jerking From Bottom End Which Ultimately Damaged the Motor Shaft & Housing.","Mechanical Crew Informed to Check The Scrapper Legs During Every PM.",Mr. Bhajahari Das,,Done,,,,,
+86,11-Jul-25,Pellet-2,Mechanical,Proportinate Disc feeder -4,Found the spillage from proportoonate DIsc feeder 4,93,No,"1) Disc edge structure fitted, in right round",Done,12-Jul-25,Refer attachment,"Since the transition piece centre  is out , Its flat plate are not able to stop the spillage ",1) disc edge structure fitted in right hand ,NITISH KUMAR,,Done,,,,,
+,,,,,,,,,,,,,2) also fitted stiff belt in the structure,,,Done,,,,,
+87,12-Jul-25,BNFC,Mechanical,FP-3,both side shifter chain broken,95,No,Shifter Chain link was relaced,Done,22-Jul-25,Refer attachment,Chain tension loose and low lub ,Damaged chain link was replaced and tension was properly adjusted.,Mr Debashis Jena,20-Jul-25,Done,17-Jul-25,,,,
+88,14-Jul-25,BNFC,Mechanical,DD Screen -1 ,Oversize diverter plate support was broken,180,Stop,Support was welded ,Done,22-Jul-25,~$RCA- DD screen - 1.pptx,Due to heavy and O/s material diverter plate support broken and material jam was occured,Support was provided to Diverter plate,Mr Debashis Jena,22-Jul-25,Done,19-Jul-25,,,,
+89,14-Jul-25,Pellet-1,E & I,PC-1 ,Dewatering pump was not running ,270,No,,Not required,,,,,,,,,,,,
+90,14-Jul-25,Pellet-1,Mechanical,FK pump,showing running in DCS but stopped on field,228,Speed loss,,Done,,Refer attachment,,,,,,,,,,
+91,14-Jul-25,Pellet-1,Mechanical,Bento conveying,stopped due to pipeline jammed,273,No,Cleaning the pipe line ,Done,19-Jul-25,Refer attachment,Due to Absence of Dry Air Compressor Bentonite Conveying Pipeline Regularly Getting Jam.,1. Additional Pipe Line To Be Provided (Pipe Already Indented),,,Done,,,,,
+,,,,,,,,,,,,,2. Heat Racer To Be Provided by Electrical Team.,,,Done,,,,,
+92,15-Jul-25,PGP,Mechanical,Secondary screen,Secondary screen stop,124,No,Drive side bearing replacement work done,Done,15-Jul-25,Refer attachment,drive side bearing damaged,,,,,,,,,
+93,16-Jul-25,Pellet-2,Process,PCI-2,Excessive moisture casused pipeline jamming,176,No,,Done,,Refer attachment,,,,,,,,,,
+94,16-Jul-25,Pellet-2,Process,Mixer,Feed stopped due to empty coke bin level ,53,No,,Not required,,, ,,,,,,,,,
+95,17-Jul-25,BNFC,Mechanical,FEED PUMP-7,gland rope damage,135,No,Gland rope was changed,Done,22-Jul-25,Refer attachment,Gland rope got damaged due to continuous operation under slurry pressure without timely replacement or condition monitoring.,1.Replace gland rope immediately.,Mr Debashis Jena,25-Jul-25,Done,22-Jul-25,,,,
+,,,,,,,,,,,,,2.Include gland rope condition check during planned shutdowns.,,,Done,,,,,
+,,,,,,,,,,,,,3.Train operators to report early signs of gland leakage,,,Done,,,,,
+,,,,,,,,,,,,,4.Maintain logbook for gland rope replacement and pump operation hours.,,,Done,,,,,
+,,,,,,,,,,,,,5.Ensure proper gland packing during every maintenance activity.,,,Done,,,,,
+96,17-Jul-25,Pellet-1,Mechanical,PC-6 trolley,"stopped, gearbox jammed",79,No,"1. The foreign material removed from the gearbox.
+2. The existing oil drained out and replaced it with new oil.",Done,19-Jul-25,Refer attachment,"Loosening of oil filling cap bolts, allowing pellets to enter into the gearbox and cause jamming.", 1. The foreign material removed from the gearbox and ensuring it is functioning properly before resuming operations.The loose bolt on the oil filling cap is replaced to secure it properly.,Mr. S K Muduli,17-Jul-25,Done,17-Jul-25,,,,
+,,,,,,,,,,,,,2. Drain the existing oil and replace it with new oil.,,,Done,,,,,
+,,,,,,,,,,,,,"3.Regular inspections of all critical components, including oil filling caps and bolts need to be done.",,,Done,,,,,
+,,,,,,,,,,,,,4.Consider redesigning the oil filling cap with a more secure fastening mechanism to prevent loosening in the future.,,,Done,,,,,
+97,18-Jul-25,Pellet-1,Mechanical,Multicore,v belt broken ,235,Speed loss,V-belt replacement done,Done,20-Jul-25,Refer attachment,V- belt damaged due to material overload resulting in excessive impact on the v-belt,1. Damaged V-belt replacement done,"Mr. Raghu V. 
+ & 
+Mr. S K Muduli",18-Jul-25,Done,,,,,
+,,,,,,,,,,,,,2. Monitoring of material loads required to prevent overloads.,,,Done,,,,,
+98,18-Jul-25,Pellet-2,Mechanical,FC-6,"Brely side edge torn out, 1nos. return roller, 1 nos. press roller ",90,No,,Done,,Refer attachment,,,,,,,,,,
+99,18-Jul-25,Pellet-2,Process,PCI LIW feeder,overload tripped,78,No,,Done,,Refer attachment,,,,,,,,,,
+100,19-Jul-25,Pellet-1,Mechanical,Proportiante,ESP and MTC-1 conveying stopped due to leakage arresting work,88,No,Pipeline bend puncture patching work completed,Done,21-Jul-25,Refer attachment,"Prolonged use and wear and tear of pipeline bend, resulting in reduced thickness and leakage.",1. Pipeline bend puncture patching work completed.,Mr. S.K. Muduli,19-Jul-25,Done,19-Jul-25,,,,
+,,,,,,,,,,,,,2. Implement a replacement plan for worn-out pipeline bends.,,,Done,,,,,
+,,,,,,,,,,,,,3. Worn-out pipeline bends will be replaced in shutdown,,,Done,,,,,
+101,19-Jul-25,BNFC,Process,Old thickener,high torque,113,Stop,,Done,20-Jul-25,Refer attachment,Thickener material poor settling.,1.Increase flocculant preparation from -0.05 % to 0.1 %.,Mr Manish Kumar Singh,20-Jul-25,Done,20-Jul-25,,,,
+102,19-Jul-25,Pellet-2,Mechanical,PCI-2 Fk Pump,"screw jam, NRV limit handle was broken",50,No,,Done,,Refer attachment,,,,,Done,,,,,
+103,20-Jul-25,Pellet-1,Mechanical,ESP 2,"conveying stopped due to ESP-2 dome valve seal damage, replaced",200,No,Dome seal replacement work done,Done,22-Jul-25,Refer attachment,Improper dome valve closure and aging of the dome seal.,1. New dome seal replacement completed.,"Mr. S K Muduli 
+&
+Mr. Bhajahari Das",25-Jul-25,Done,25-Jul-25,,,,
+,,,,,,,,,,,,,2. Ensuring valves are fully closed during operation,,,Done,,,,,
+,,,,,,,,,,,,,3. Scheduled replacemetn plan for dome valve need to be implemented.,,,Done,,,,,
+104,20-Jul-25,Pellet-1,Mechanical,Kiln Chair plate,Kiln I/L 1 No Chair Plate Broken,27,Stop,A rib has been provided for locking the broken chair plate.,Done,22-Jul-25,Refer attachment,Aging of the components,1.A rib has been provided for locking the broken chair plate..,Mr. S K Muduli,20-Jul-25,Done,20-Jul-25,,,,
+,,,,,,,,,,,,,2. Planned for replacement of all chair plates during the mega shutdown,,,Done,,,,,
+,,,,,,,,,,,,,3. Scheduled replacemetn plan for chair plate need to be implemented.,,,Done,,,,,
+105,21-Jul-25,BNFC,E & I,HT ball Mill,Feed stopped due to feed end LP pressure drop,60,Stop,"Auto manual selection pla relay was malfunctioning ,so auxiliary contactor installed ",Done,22-Jul-25,Refer attachment,"Due to Manufacturing Defect, NO/NC Contact Point Damaged During Operation Resulting to Stop HT Ball Mill.","In Place of the PLA Relay, Heavy Duty Auxiliary Contactor was Installed Which Will Provide More Robust Operation During Running.",Mr Siddhartha Mahapatra,28-Jul-25,Done,25-Jul-25,,,,
+106,22-Jul-25,BNFC,Mechanical,DD Screen-1,lower deck screen mesh gap increased,135,Stop,Gaps were covered up by rubber lagging,Done,22-Jul-25,Refer attachment,"The mesh loosened due to heavy vibration during start-up, which led to progressive clamp wear and tension loss during normal operation.",Filled the gaps between the mesh and frame with rubber lagging (Solution-310) to prevent material leakage,Mr Debashis Jena,25-Jul-25,Done,23-Jul-25,,,,
+107,23-Jul-25,Pellet-2,E & I,C-12,tripped ,161,No,Motor changed,Not required,,,,,,,,,As per dept. it is planned mainenance,,,
+108,23-Jul-25,BNFC,E & I,NFC-1D,Abnormal sound coming form motor,240,No,Motor changed,Not required,,,,,,,,,As per dept. it is planned mainenance,,,
+109,24-Jul-25,Pellet-2,Process,C-9,Pull cord activated,,Stop,Cover on the pull cord,Done,24-Jul-25,C9 Pullchord,,,,,Under progress,,,,,
+110,24-Jul-25,BNFC,Mechanical,HT ball Mill,pump dischrge line heavy leakage,165,Stop,Short pipe where leakage occured was replace by new spare one,Done,29-Jul-25,RCA_HT_BALLMILL_DISCHARGE.pptx,Thickness of pipe was less,"The leaking HDPE pipe section was replaced with a new, defect-free piece ensuring proper alignment and fit.",Mr Debashis Jena,27-Jul-25,Done,26-Jul-25,,,,
+111,24-Jul-25,BNFC,Process,CKT-1 ,feed stopped due to oversize bin jam,90,Stop,Optimize screen efficiency to reduce out-of-size material reporting to bin.,Done,,RCA_over size bin jamm.pptx,Operational Practices: Feeding sequence and loading pattern leading to segregation/compaction,Regular cleaning and inspection of oversize bin and chute.,,24-Jul-25,Done,24-Jul-25,,,,
+112,24-Jul-25,BNFC,Mechanical,Filter Press-6,Master plate damage P.P.welding work and 'O' ring group making work done,45,No,Damaged area PP welding & 'O' ring groove repairing work done,Done,28-Jul-25,RCA- Filter press - 2.pptx,"The master plate was damaged because repeated mechanical stress caused cracking or deformation in the O-ring groove area, which went unnoticed until failure.","The damaged area on the master plate was repaired by  PP welding, and the O-ring groove was re-shaped to restore proper sealing.
+",Mr Debashis Jena,27-Jul-25,Done,26-Jul-25,,,,
+113,24-Jul-25,BNFC,Mechanical,Filter Press-7,"drive side shifter chain line broken, re joint work done",60,No,Chain rejoint work done,Done,27-Jul-25,RCA- Filter press - 7.pptx,Chain tension loose and low lub ,1 nos Shifter chain link replaced with new one.,Mr Debashis Jena,27-Jul-25,Done,26-Jul-25,,,,
+114,24-Jul-25,Pellet-2,Mechanical,C-13,DDV flap fitting work,58,No,1) Flap plate fitted 2) Base bolt tightening done,Done,,DDV RCA.pdf,,,,,,,,,,
+115,25-Jul-25,Pellet-2,Mechanical,Wide Belt,due to overload the teflon bush broke,50,Stop,1) Damage teflon bush replaced,Done,,WIDE BELT RCA.pdf,,,,,,,,,,
+116,25-Jul-25,BNFC,Mechanical,Filter Press-2,Feed valve damage and leakage,39,No,Damaged Valve was replaced by a spare one,Done,28-Jul-25,RCA_FP 2.pptx,Seal was worn out due to abrasive material (dense),Valve was changed as per requirement,Mr Debashis Jena,28-Jul-25,Done,27-Jul-25,,,,
+117,26-Jul-25,Pellet-1,Mechanical,BC-2B,cut mark at the center of belt,90,No,Belt Patching done at the cut mark section,Done,,RCA BC-2B BELT CUT MARK,Foreign object stuck to the scrapper, Regularly inspect and maintain screening system to ensure effectiveness,,26-Jul-25,Done,26-Jul-25,,,,
+118,27-Jul-25,BNFC,Mechanical,Filter Press-5,plate shifter chain link damage.,115,No,Chain rejoint work done,Done,30-Jul-25,RCA- Filter press 5.pptx,Chain tension loose and low lub ,2 nos of Shifter chain link replaced with new one.,Mr Debashis Jena,30-Jul-25,Done,29-Jul-25,,,,
+119,28-Jul-25,Pellet-1,Mechanical,NFC-5,1 no. guide roller and 1 no. impact idler damage,32,No,,Not required,,,,,,,,,,,,
+120,29-Jul-25,BNFC,Process,Stack sizer -3,oversize line jam,55,Stop,Clean and inspect over size line regularly .,Done,,RCA_of stack sizer - 3 over size  jamm (1).pptx,Material bulid up blocked the sheet and jam the over size line .,Increase flushing water percentage .,,2-Aug-25,Done,2-Aug-25,,Quality of RCA requires to improve. Please discuss with RCA team.  HOD COMMENTS - We have already taken steps to procure 8 deck stack sizer for better screening efficiency,,
+121,30-Jul-25,Pellet-2,Process,"U/S roller 20,21,44",motor tripped due to material jam,73,No,,Done,,,,,,,,,,,,
+122,30-Jul-25,Pellet-2,Mechanical,U/S roller screen  ,44 no. motor gearbox replacement,44,No,1) Damage motor gearbox replacement done,Done,,UNDER SIZE ROLLER SCREEN RCA.pdf,,,,,,,,,,
+123,30-Jul-25,BNFC,Mechanical,Filter Press-2,feed line leakage found.,90,No,,Not required,,,,,,,,,,,,
+124,31-Jul-25,BNFC,E & I,HT ball Mill,HT Ball mill Trip,25,Stop,HT Ball Mill all Feedback cable tightness Done,Not required,,,,,,,,,,,,
+125,1-Aug-25,BNFC,Mechanical,RM-3 ,hopper vibro feeder not working properly,40,Stop,,Not required,,,,,,,,,,,,
+126,2-Aug-25,Pellet-1,E & I,Cooler DDP trolly,Cooler DDP trolly not running,480,No,Motor changed,Not required,,,,,,,,,,,,
+127,2-Aug-25,BNFC,Mechanical,Filter press -5,shifter chain pin broken from the joint ,71,Speed loss,Chain rejoint work done,Done,,fp  5 aug.pptx,Chain tension loose and low lub ,Chain link changed,,6-Aug-25,Done,6-Aug-25,,This failure is repeatedly occuring. Better analysis required . Please contact RCA team.HOD Comments  - All filters cat shifter chain life is already achieved replacement work under progress Procuring from china OEM,,
+128,3-Aug-25,Pellet-1,Mechanical,Balling Disc -1,Top Scrapper broken,200,Speed loss,New top scrapper replacement work was done.,Done,,RCA balling Disc-1 top scrapper,Stone-contaminated feed was not properly bypassed.,1. New top scrapper replacement work done.,,8-Mar-25,Done,8-Mar-25,,,,
+,,,,,,,,,,,,,2. Continue bypassing stone-contaminated feed until stones are effectively removed.,,,Done,,,,,
+129,3-Aug-25,Pellet-1,Mechanical,Balling Disc -3,Disc feeder liner came out,73,Speed loss,Stucked liner plate removed from the Disc feeder-6 discharge position.,Done,,"RCA BD-3, Disc feeder-6","1.The liner plate bolts experienced wear and tear over time due to prolonged use.
+2.The last scheduled Preventive maintenance was skipped.",1. Stucked liner plate removed from the Discfeeder-6 discharge position.,,8-Mar-25,Done,8-Mar-25,,,,
+,,,,,,,,,,,,,2. Adhere to preventive maintenance schedule to prevent similar issues.,,,Done,,,,,
+,,,,,,,,,,,,,3. Replacing worn-out parts to prevent future failures.,,,Done,,,,,
+130,3-Aug-25,BNFC,Mechanical,Filter press-1,Fix plate cloth an dplate polymer flange are damage.,120,No,,Not required,,,,,,,,,,,,
+131,4-Aug-25,BNFC,Process,Old Ground Hopper,Due to the moisture material coming,90,Stop,Hopper Cleaning,Done,19-Aug-25,RCA OLD GROUND HOPPER.pptx,Due to the moisture material coming,Material Has Been Changed,Mr Manish Singh,4-Aug-25,Done,19-Aug-25,,Quality of RCA requires to improve. Please discuss with RCA team. HOD Comments - During rainy season moisture was high in iron fines. Now we have already planned to change its grizzly from 100X100 mm to 150X150mm. ,,
+132,4-Aug-25,BNFC,Process,HT ball Mill,Mill discharge jammed.,285,Stop,Discharge line cleaning,Done,21-Aug-25,RCA_HT_BALLMILL_DISCHARGE.pptx,"The HDPE pipe broke because it was placed right after the pump where the slurry is rough and fast, and this pipe material can’t handle that kind of wear.","1.The leaking HDPE pipe section was replaced with a new, defect-free piece ensuring proper alignment and fit.",Mr Manish Singh,4-Aug-25,Done,21-Aug-25,,,,
+133,5-Aug-25,Pellet-2,E & I,ID fan-1,B-Phase Cable Lugs & Bolt Overheating For Which ID Fan-1 Was Stopped For Preventive Maintenance,35,Speed loss,"GI Nut Bolts Replaced to SS Nut Bolts, 280mm Cooling Fan Installed",Done,,RCA Link,"As The ID Fan & Chimney Area is High Sulphur(So2) Emitting Area.
+The Sulphur Becomes Sulphuric Acid (H2So4) In Contact With Air & Moisture.
+These Sulphuric Acid Gets Composited on Copper Bus Bar, SS Nut, Bolt, Washer, GI Lugs & Cable Tray Causing the Outer Layers Fade & Exposing the Internal Iron Metal.
+The Whole Phenomenon Caused Performance Losses.
+","For Excess Heat Control We Have Installed a Bigger Panel Cooling Fan From 140mm to 280mm For More Efficient Panel Cooling, Now Temp is at 51°c.
+GI Type Nut, Bolt & Washers Replaced by SS Type Which Are Better in H2So4 Resistant.
+Also, There is Proposed Plan to Shift the ID Fan Local JB to a Safer Location to Avoid Such Conditions.
+",,,Done,,,,,
+134,7-Aug-25,BNFC,Mechanical,DD Screen-2,Lower deck mesh was removed,45,Stop,mesh change,Done,,DD SCREEN - 2 7AUG.pptx,grazzly oppning 200 x 200 mm due to rainy seasson,GRAZZLY  OPPNING CHANGE TO 200MM X 100MM,,9-Aug-25,Done,9-Aug-25,,"Quality of RCA requires to improve. Please discuss with RCA team. HOD Comments -  Due to moist material, grizzly size increased to pass moist material. So due to grizzly size big stone came to DD Screen and Mat damaged. We have been taken care for future.",,
+135,8-Aug-25,BNFC,Mechanical,Filter press-1,Back blow line hose short piece leakage,69,No,,Not required,,,,,,,,,,,,
+136,9-Aug-25,BNFC,Process,PBM,Feed chute jam,252,Stop,feed stop and cleaning  feed chute .,Done,,RCA_of PBM feed spout jamm.pptx,circuit inlet so over size material ,feed stop and circuit stop  and clear the chute .,,10-Aug-25,Done,11-Aug-25,,,,
+137,10-Aug-25,BNFC,Mechanical,Weigh Feeder-2,plummer block and bearing damage,225,Speed loss,1 - plumber block changed,Done,,RCA_WF-2 (10.08.25).pptx,The tail end plummer block and bearing failed because oversized material entered the tail pulley,"Replaced damaged plummer block and bearing at the tail end of Weigh Feeder-2.,
+Checked and realigned the tail pulley and shaft.",,17-Aug-25,Done,15-Aug-25,,Analysis not satisfactory.  Please discuss with RCA team. HOD Comments - Due to high moist material Bin hanged. During Bin cleaning through air blaster suddenly material collapsed and big stone stuck between belt and pulley.,,
+138,10-Aug-25,BNFC,Mechanical,Filter Press-1,Feed end side fixed plate and cloth damage,67,No,,Not required,,,,,,,,,,,,
+139,10-Aug-25,Pellet-2,Mechanical,C-8,Stone stucked in the chute and belt torn out,267,Stop,Belt replaced,Not required,,,Due to LD sludge feeding stone stucked in the chute,,,,,,,,,
+140,10-Aug-25,Pellet-2,Mechanical,C-9,Stone stucked,120,No,Stone removed & chute modificated,Not required,,,Due to LD sludge feeding stone stucked in the chute,,,,,,,,,
+141,12-Aug-25,BNFC,Mechanical,Filter Press-2,"Flange of fix plate not so good, so flange change as well as membrane plate change.",65,No,,Not required,,,,,,,,,,,,
+142,12-Aug-25,BNFC,Mechanical,Filter Press-3,Feed side NRV gasket damage,75,No,,Not required,,,,,,,,,,,,
+143,12-Aug-25,BNFC,Mechanical,Filter Press-2,Drive side plate shifter chain link damage,50,No,chain link change,Done,,fp-2 12aug.pptx,Chain tension loose and low lub ,Chain link changed,,13-Aug-25,Done,13-Aug-25,,In future please attach picture of the failed object for proper analysis. HOD Comments - Okay noted,,
+144,13-Aug-25,Pellet-1,Mechanical,BC-2,BC-2 conveyor belt cut entirely along the center,180,Stop,Damaged belt replaced with a new one,Done,,BC-2 RCA, A foreign object stuck between the feed chute and conveyor belt due to screenig & Magnet system not effectively remove the foreign object.,1. Damaged belt replaced with a new one.,,13-Aug-25,Done,13-Aug-25,,,,
+,,,,,,,,,,,,,"2.  Regularly inspect, clean and maintain screening & Magnet system to ensure effectiveness",,,Done,,,"Picture of  cut belt could have  given an indication suggesting the cut  is initiated by a sharp object or by any other material.  Being  a critical belt, it is suggested to install a camera at the discharge side and one focussing at the receiving side.  Feasibity of installation has been checked by advisor instrumentation.",,
+145,15-Aug-25,BNFC,Process,Old thickener,high torque,420,No,,Done,19-Aug-25,RCA Link,Thickener material poor settling.,1.Increase flocculant preparation from -0.05 % to 0.1 %.,Mr Manish Singh,15-Aug-25,Done,19-Aug-25,,Wrong RCA report link attached.,,
+146,15-Aug-25,BNFC,Process,RM-3A, discharge chute jam,110,No,chute cleaning ,Done,19-Aug-25,RCA Link,Due to the moisture material coming,"Material Has been Changed,Training of operator for cleaning .
+",Mr Manish Singh,15-Aug-25,Done,19-Aug-25,,Responsibility with target date & signature to be added in the report.,,
+147,17-Aug-25,BNFC,Process,Hydro cyclone-3, Under flow line,210,Stop,clear underflow line,Done,19-Aug-25,Hydrocyclone-3.pdf,A apex found from cyclone under flow line ,Training operator and  create awarness,Mr Manish Singh,18-Aug-25,Done,26-Aug-25,,ok,,
+148,17-Aug-25,BNFC,E & I,HT ball Mill & Old ball mill,"Stopped,DCS controller hang and its communication to IO module stopped. DCS room temperature risen to more than 40 degree celsius.",210,Stop,"DCS DI module changed ,Separate AHU unit provided for temperature control ",Done,,RCA Link,"DCS Di module & base malfunctioning due to surge ,causing all downstream equipments to stop ","Dcs DI module & base replaced,Separate Earthing provided for surge protection,Separate AHU also installed for temperature control",,30-Aug-25,Done,25-Aug-25,,"1.0  RCA  done nicely  but to be signed by the members.  
+2.0  Fault fixing has taken lot of time. Has any provision been made in the system for quicker debugging of the fault in future ?                                                                                                              HOD Comments :-                                                                                           
+1.0. Signed Documents Attached.                                                     
+2.0.We have gone through the rectification process step by step by installing the selection blocks, aslo we had consult the honeywell service engineer regarding the problem & he also confirm that this was the right approach to solve such problem.",,
+149,19-Aug-25,BNFC,Mechanical,RC-2,belt was tored out,230,Speed loss,"1- damage belt changed
+",Done,,RCA Link,The over size material jammed the scrapper and pulley,Daily inspection conduct,,25-Aug-25,Done,22-Aug-25,,RCA report link does not include CAPA indicating responsibility with target date.,,
+150,22-Aug-25,BNFC,Mechanical,Weigh Feeder-4,tail pulley adjustment thread rod support plate broken near plummer block side.,78,Speed loss,"•Broken support plate replaced with a new, strengthened plate.",Done,,RCA Link,"No proper space available for inspection of the support plate, hence its poor condition went unnoticed.
+","Replaced the broken support plate with a new, strengthened plate.
+Reinforced the nut support area by welding and hardening.
+Checked and corrected alignment of tail pulley.
+Lubricated and re-fitted the adjustment thread rod and nut.
+Cleaned the surrounding area for temporary inspection access.
+",,23-Aug-25,Done,23-Aug-25,,"RCA is not done properly,  please discuss with RCA team.",,
+151,22-Aug-25,PGP,Mechanical,PGP-4, Leakage found in ash skirt,940,No,leakage arresting work done,Done,,ash skirt,,,,,,,,RCA  requires improvement. Please discuss with RCA team.,,
+152,22-Aug-25,PGP,Mechanical,PGP-4(ASH SKIRT),ASH SKIRT FOUND LEAKAGE ,940,No,new patching ms plate fitting and welding,Done,,DONE,,,,,,,,,,
+153,24-Aug-25,Pellet-1,E & I,DCS Panel,DCS Panel Communication Failure,338,Stop,Server Load Reduced,Done,,RCA Link,,"Top Most Management Has Decided to Reduce 2nd Most Priority Clients From the Running Server on Immediate Basis.
+
+Separate OPC Server Has Been Established to Record the All the Data Which Will Reduce Extra Load From Server.
+",,25-Aug-25,Done,25-Aug-25,,Approach  is  okay.  Please get the  document signed.                                                                                                                                  HOD Comments :- Signed Documents Attached.,,
+154,27-Aug-25,PGP,Mechanical,CBC-3,SCAPPER BLADE DAMAGED,115,No,new blade changing work,Not required,,,,,,,,,,,,
+155,28-Aug-25,BNFC,Process,Cyclone-3,Oversize line jam,104,Stop,line clear over size ,Done,,RCA Link,Coarse material found in the cyclone due to pressure  cyclone pressure drop .,Clear the underline line jam and feed stop .,,28-Aug-25,Done,29-Aug-25,,"RCA not done correctly, to be discussed with RCA team.
+CAPA to be coreected , also include responsibilities with target date and should be signed. HOD Comments - Okay noted will discuss with you.",,
+156,29-Aug-25,Pellet-2,Mechanical,Stripper Plate ,Stripper plate bend ,"4,320",Stop,Stripper plate replaced,Done,,"RCA Tracker (Pellet division) - Format, Why,Why.pdf",Due to physical proporties change of stripper plate during running,"Bend Stripper plate replaced ,Physical proporties of stripper plate to be checked before despatch",,,,,,RCA for this is done by RCA team seperately.,,
+157,1-Sep-25,BNFC,Mechanical,Filter Press-4 ,Drive side plate shifter chain broken to link pin damage,46,Speed loss,chain link change,Done,,PRESS FILTER 4 SEP.pptx,Chain tension loose and low lub ,Chain link changed,-,2-Aug-25,Done,2-Aug-25,,please attach picture of failed link to fix up cause of failure.  Same failure had occured on 2nd Aug and  12 Aug. Detail analysis required to prevent reoccurance.,,
+158,1-Sep-25,BNFC,Mechanical,Filter Press-3 ,Drive side shifter chain broken due to pin damage,56,Speed loss,chain link change,Done,,fp-3.pdf,Chain link quality not good,Chain link replaced by new one,,8-Sep-25,Done,10-Sep-25,,,,
+159,1-Sep-25,BNFC,Mechanical,Filter Press-7,Non drive side shifter chain broken due to pin and connecting link plate damage,70,Speed loss,chain link change,Done,,fp-7.pdf,"Chain is old , not changed for a long time",Chain link replaced by new one,,8-Sep-25,Done,10-Sep-25,,,,
+160,8-Sep-25,Pellet-1,Mechanical,BC-1,Air bubble formation on carrying side,260,Speed loss,Belt Replacement Done,Done,,BC-1,Manufacturing Defect,Damaged belt replaced with a new one,,8-Sep-25,Done,8-Sep-25,,,,
+161,8-Sep-25,Pellet-1,Mechanical,BC-3,bc-3 conv. belt 1 no carrying idler & 1no impact idler damaged,35,Stop,1no carrying & 1 no impact idler replaced,Done,,,IDLER BEARING DAMAGED DUE TO PROLONGED USE & AGING,Damaged idler replaced with a new one,,8-Sep-25,Done,8-Sep-25,,,,
+162,8-Sep-25,PGP,Mechanical,PGP-3(ASH SKIRT),ASH SKIRT FOUND LEAKAGE ,"2,190",No,new patching ms plate fitting and welding,Done,,DONE,,,,,,,,,,
+163,9-Sep-25,BNFC,Mechanical,DD Screen-1,Blind mesh lock pin,75,Stop,lock pin change,Done,,dds-1.pdf,Proper Tensioning was not done on blind panels,New locking pin were fitted ,,13-Sep-25,Done,11-Sep-25,,,,
+164,9-Sep-25,BNFC,Mechanical,Filter Press-4 ,Hydraulic motor tripping issue and over heating issue. So pump replacement work,135,Speed loss,radial pump change,Done,,fp-4.pdf,"Pump was jam ,which caused overload to motor",Pump was replaced by a new spare one,,13-Sep-25,Done,11-Sep-25,,,,
+165,9-Sep-25,PGP,Mechanical,"PGP(10,11)ASH CONVEYOR-2",CONVEYOR BELT DAMAGED,300,No,new belt replacing work,Done,,DONE,,,,,,,,,,
+166,11-Sep-25,Pellet-2,E & I,Multicore,"The instrument pressure tube was highly blocked by moisture, so the sov was damaged.",225,Speed loss,Currently auto drain valve was installed at entrance of instrument panel to drain out moisture.,Done,,RCA Link,"Moisture entered the pressure tube, blocking airflow.
+The instrument air was Having High Moisture.",Currently Auto drain Valve Was installed at Entrance of Instrument Panel to Drain Out Moisture.,,,Done,,,,,
+167,11-Sep-25,Pellet-1,Process,RF-3 Conveyor,Pull Cord Activation,5,Stop,"The pull cord was released, and the plant was made operational",Done,,RCA of RF-3 Conveyor’s Pull Cord Activation.pptx,"Heavy moisture in the raw material causes lump formation, which stuck to the pull cord.","Providing protection for the pull cord rope so that stones cannot hit it.
+",,,Done,,,,,
+168,14-Sep-25,BNFC,Mechanical,IOC-2,"Belt cut from center approx 18mtr due to rod, angle stuck in magnetic separtor",345,Speed loss,,Done,,IOC-2.pdf,,pProper checking of material jam in magnatic seperator to be checked and cleared daily,,17-Sep-25,Done,18-Sep-25,,,,
+169,16-Sep-25,BNFC,Mechanical,RM-4C,Belt tear out,375,No,,Done,,RM-4C.pdf,,"18 mtr belt shortpiece replaced in the damage anrea 
+reduce the hole of  grizzly",,19-Sep-25,Done,21-Sep-25,,,,
+170,17-Sep-25,BNFC,Mechanical,SBM feed pump,Discharge line short piece heavy leakage,74,Speed loss,,Done,,SEC CYCLONE FEED PUMP.pdf,,"damaged short piece changed
+during pm thickness of short piece must be checked ",,19-Sep-25,Done,21-Sep-25,,,,
+171,17-Sep-25,BNFC,Process,Vibro Feeder,Circuit-1 ground hopper discharge chute jammed,80,Speed loss,Increasing the vibro feeder cleaning per shift,Done,,Vibrofeeder jam.pdf,Only moisture material is present in Iron Yard,Increasing the vibro feeder cleaning per shift,,17-Sep-25,Done,19-Sep-25,,     ,,
+172,20-Sep-25,BNFC,Mechanical,Derrick-2,"Feed valve damage, flushing line valve damage",55,Stop,,Done,,DERRICK-2 FEED VALVE & FLUSHING VALVE DAMAGE.pdf,,"feed valve and flushing valve changed
+proper inspection required during the pm",,22-Sep-25,Done,25-Sep-25,,,,
+173,20-Sep-25,BNFC,Process,PBM,Stone stucked in PBM feed chute due to this raw material heap in feed chute,50,Speed loss,We can decrease the feed rate from 150 to 170 mt per hour,Done,,PBM feed chute jamm.pdf,feed material contains (-6 mm) size particle is 100%,We can add stand by feed pump,,21-Sep-25,Done,21-Sep-25,,,,
+174,20-Sep-25,PGP,Mechanical,VIBRATING SCREEN,SCREEN CLOTH OF LOWER DECK DAMAGED,660,No,new screen cloth repalcing work,Not required,,,,,,,,,,,,
+175,22-Sep-25,BNFC,E & I,Grinding MCC,breaker trip,140,Speed loss,ACB ETU unit replaced,Done,,RCA Link,,ETU testing scheduled for every 6 months or Long shutdown ,,28-Aug-25,Done,26-Aug-25,,,,
+176,23-Sep-25,BNFC,Process,HT ball mill sump box,Derrick 1 & 3 feed line jam and flow not coming at ground level,95,Speed loss,Hgms work is completed,Done,,Derrick 1 & 3 feed line jamm.pdf,The chute jamm because the mill was running on inlet,Hgms maintenance work ,,20-Sep-25,Done,3-Sep-25,,,,
+177,24-Sep-25,Pellet-2,Mechanical,PS-4,Discharge Chute modification,150,No,Modification Done,Not required,,,,,,,,,,,,
+178,24-Sep-25,PGP,Mechanical,CBC-2,GEARBOX SHAFT HAS BROKEN,321,No,new shaft changing work,Done,,DONE,,,,,,,,,Yes,14-Feb-26
+179,26-Sep-25,BNFC,Mechanical,IOC-3,Belt overload due to fluid coupling bush damage,189,No,"Fusible safety plug changed ,hydraulic oil top-up done",Done,,RCA IOC-3 (26-09-25).pdf,Overloading of belt,"gathered material on the belt was cleared, the fusible safety plug was replaced and the fulid coupling was refilled with 10 Ltr of VG  68 oil",,28-Sep-25,Done,30-Sep-25,,,,
+180,27-Sep-25,BNFC,Mechanical,RM-4C,Belt joint remove,170,Speed loss,Belt rejointed (patching done),Done,,RCA RM-4C (27-09-25).pdf,Belt condition was poor,"belt joint re-joint work
+proper time should be given for curing after joining the belt",,30-Sep-25,Done,30-Sep-25,,,,
+181,30-Sep-25,BNFC,Mechanical,Derrick-3,Feed line short piece heavy leakage,60,Speed loss,Short piece changed,Done,,RCA STACK SIZER-3 (30-09-25).pdf,Reduced wall thickness of pipe,"damage short piece wa replaced
+pipe thickness should be measured during the pm",,4-Oct-25,Done,4-Oct-25,,,,
+182,1-Oct-25,BNFC,Mechanical,IOC-5,Head pulley drive and nondrive side plummer block broken,260,Speed loss,Plummer block changed both drive and non drive end  of head pulley,Done,,RCA IOC-5 (01-10-25).pdf,Interlock System was unavailable,Down stream interlock for IOC-5 with both RM-4 & RM-4B is added & trial taken ,,8-Oct-25,Done,5-Oct-25,,,,
+183,1-Oct-25,BNFC,Mechanical,Filter Press-4,Cake breaker broken,120,Speed loss,Cake breaker plates re welded,Done,,RCA FP-4 (01-10-25).pdf,Cake breaker 's plate condition was poor,welding was done on damage crake braker area,,5-Oct-25,Done,5-Oct-25,,,,
+,,,,,,,,,,,,,SS plate should be use instead of MS to reduce the corosion,,5-Oct-25,Done,5-Oct-25,,,,
+184,3-Oct-25,BNFC,Mechanical,Feed Pump -2 Motor, Motor Trip agian and again,70,Speed loss,,Not required,,,,,,,,,"Breakdown was resolved within 40 min ,rest 20 min was due to operation delay  (note-No major reason found for trip of motor,On changing belt problem resolved)",,,
+185,3-Oct-25,BNFC,Mechanical,Feed Pump-6,Suction line short piece leakage,55,No,Leakage arrested by welding,Done,,RCA FEED PUMP-6 (03-10-25).pdf,Weld was weak,Prope welding was done on joint,,6-Oct-25,Done,5-Oct-25,,,,
+186,3-Oct-25,BNFC,Mechanical,Filter Press-2,Drive motor shaft key damage,95,Speed loss,New key fabricated and fitted in shaft,Done,,RCA FP-2 (03-10-25).pdf,Worn out shaft,New fabricated key was fitted in shaft,,8-Oct-25,Done,6-Oct-25,,,,
+187,3-Oct-25,BNFC,Process,Derrick 1&3,Line jammed from distribution box to derrick inlate ,95,Speed loss,Open a view point from top side of distribution box,Done,,RCA DERRICK LINE JAMM.pdf,Feed to Derrick-1 valve was closed,Open a view point from top side of distribution box,,6-Oct-25,Done,5-Oct-25,,,,
+188,6-Oct-25,BNFC,Process,PBM,"Taking high current, tripped",160,Speed loss,PBM current monitored,Done,,RCA PBM TRIP.pdf,Raw material hardness was High,Continuously monitored PBM current,,12-Oct-25,Done,10-Oct-25,,,,
+189,6-Oct-25,BNFC,Mechanical,TBC R/F,Belt wear out,455,Speed loss,,Done,,TFC R RCA.pdf,Material Jam in pulley ,New Belt was fitted,,10-Oct-25,Done,11-Oct-25,,,,
+190,5-Oct-25,Pellet-2,Process,C-9,Overload tripped,6,Speed loss,SOP made & follow,Done,6-Oct-25,RCA of C9 belt tripped.pptx,ecause safety interlock or protection circuit got activated.,The Standard Operating Procedure (SOP) prepared for this activity is being strictly followed.,,,Done,,,,,
+191,7-Oct-25,BNFC,Mechanical,W.F.-2,Nondrive side bearing damage,193,No,Replaced,Done,,WF 2 RCA.pdf,Tail pulley NDE bearing damage,Bearing was replaced by new one,,12-Oct-25,Done,10-Oct-25,,,,
+192,13-Oct-25,BNFC,Mechanical,Filter Press-1,Back blow hose damage with thread,60,Speed loss,Hose change and new nipple welded,Done,,Filter press-1.pdf,,Hose change and new nipple welded,,18-Oct-25,Done,23-Oct-25,,,,
+193,18-Oct-25,Pellet-2,Mechanical,ID FAN 1,ID fan 1 abnormal sound observed from drive end,280,Speed loss,DE side bearing and sleeve replaced,Done,,ID FAN 1 RCA.pdf,moc of star lock may be poor,proper insection of star lock during installation,,,Done,,,,,
+194,20-Oct-25,BNFC,Mechanical,Filter Press-2,Return core blow valve seal damage,75,Speed loss,Already was in plan,Not required,,,,,,,,,,,,
+195,22-Oct-25,BNFC,Mechanical,DD Screen-2,"Upper deck mesh support angle broken, so welding of angle work done",55,Stop,Damaged part removed and welded new plate,Done,,dd screen-2.pdf,Support Angle was rusted,Damaged part removed and welded new plate,,28-Oct-25,Done,25-Oct-25,,,,
+196,23-Oct-25,BNFC,Process,DSC & secondary cyclone feed pump,dsc & secondary cyclone feed flow got floctuation ,40,Speed loss,dsc sump flushing done&secondary feedpump suction line leakage arresting,Not required,,,material setteled in dsc sump& Secondary cyclone feed pump suction line punctured., Instuct for dds lower deck mess checking & closely monitor for dsc sump box checking,,,,,,,,
+197,22-Oct-25,BNFC,Process,DD Screen-2,Dummy mesh support damage,45,Stop,support repalced,Done,,dd screen-2.pdf,,"the rusted angle was replaced
+each 6 month the angle should be change",,25-Oct-25,Done,25-Oct-25,,,,
+198,24-Oct-25,Pellet-2,E & I,PCI MCC,PCI MCC incomer ACB breaker tripped,23,Stop,,Done,,RCA For P-2 Power Fluctuation.pdf,Power fluctuation from power plant,"ACB undervoltage settings was reduced to lowest rating that is 80% which was set at 85% asper standard
+Also it was planned for control supply in any opportunity",,,Done,,,,,
+199,24-Oct-25,BNFC,Mechanical,Filter Press-4,Dewatering valve body damage due to valve bypass,60,Speed loss,Valve changed,Done,,RCA FP-4.pdf,Inner walls of valve was eroded,Damaged valve was replaced by new valve,,28-Oct-25,Done,28-Oct-25,,,,
+200,25-Oct-25,BNFC,Mechanical,NFC-1,Belt cut in middle portion,55,No,Belt patching work done,Done,,RCA NFC-1.pdf,Cake breaker stuck in feed chute of NFC-1 resulted in tearing of belt,Cake breaker removed and belt patching was done,,29-Oct-25,Done,25-Oct-25,,,,
+201,26-Oct-25,Pellet-1,E & I,U/S roller,U/S roller screen motor replacement,,No,,Not required,,,,,,,,,,,,
+202,12-Nov-25,BNFC,Mechanical,DD Screen-2,Oversize material passed into the under size sump box of DD Screen 2,55,Speed loss,Mesh repatched,Done,14-Nov-25,DD SCREEN 2 (12-11-25).pdf,No secondary review was performed after the mesh installation.,Mesh repatched and rubber seal mount in between them to correct the defect and ensure proper sealing.,,,Done,,,There has to be a schedule of inspection and a checklist.  It should be signed by the inspection team as well as the area incharge. Same to be incorporated in the CAPA.,,
+203,14-Nov-25,BNFC,Mechanical,IOC 3,IOC- 3 coupling fusible plug damage and hydraulic oil drained,55,Speed loss,"Fusible plug change, oil topup",Done,21-Nov-25,IOC 3 RCA.pdf,Feeder output was not effectively controlled  or monitored so  that the belt conveyed on overloaded to the coupling which could damage the fusible plug and hydraulic oil drain,1- Replaced fusible plug & top up hydraulic oil,,25-Nov-25,Done,21-Nov-25,rca updated,"1.  Reasons  of  overloading  of belt not mentioned in why why analysis. 
+2.  As discussed, there is no provisions of  isolating gate between the hopper and the vibrofeeder. A gate to be provided for isolation purpose for maintenance as well as for controlling flow rate if required.
+3.  CAPA to indicate installation of  gate with responsibility and deadline.  Further, name of the person responsible for execution to be indicated  not the designation as  it is done.",,
+,,,,,,,,,,,,,2-Unstallation of belt weighe to monitor the belt load,,25-Nov-25,Done,21-Nov-25,rca updated,,,
+,,,,,,,,,,,,,3-Make continue inspection check list for vibro feeder discharge rate.,,25-Nov-25,Done,21-Nov-25,rca updated,,,
+204,19-Nov-25,BNFC,Process,Cyclone -4 ,Cyclone -4 under flow line jam .,210,Speed loss,Clear the under flow line . Remove all the jam material .,Done,20-Nov-25,RCA OF CYCLONE -4.pdf,low grinding and high density .,1- flushing line is to be installed on the under flow connecting line to ensure smooth flow and preventing chocking .,,25-Nov-25,Done,22-Nov-25,,"1.  Provision  of  additional flushing line  during pellet fines grinding is ok but  instructions need to be issued to stop flushing  after pellet fines grinding ceases,  otherwise unnececessarily  extra water shall be added in the circuit and this shall affect the grinding efficiency of ball mills.. CAPA to include the above.",,
+,,,,,,,,,,,,,2-Flushing line will operate when any abnormal flow condition.,,25-Nov-25,Done,22-Nov-25,,,,
+205,23-Nov-25,BNFC,Mechanical,Cyclone -1,Cyclone 1 over flow valve seal damage,60,Speed loss,Valve knife gate valve DN 150 replaced,Done,25-Nov-25,CYCLONE 1 VALVE 23-11-25.pdf,Quaterly valve seal need to be replace,1-Replace knife gate valve DN 150,,,Done,,,1. System to be developed to include these jobs in the defect list prepared before planned shutdowns. CAPA to include issuance of instruction by the maint head to ensure the above.,,
+,,,,,,,,,,,,,2-Proper water flushing of valve seal in every shift,,,Done,,,,,
+206,23-Nov-25,Pellet-2,Mechanical,Swing device,Swing device cam shaft disconnected from swing conveyor,170,Stop,Cam shaft re fitting done,Done,23-Nov-25,swing conveyor.pdf,Un-even Jurk may came due to no bottom side support provided by OEM,CA-: Cam shaft refitting done ,Mr. Nitish kumar,23-Nov-25,Done,23-Nov-25,,"1.  Reason for the   shearing of swing arm holding bolt is high clearance in the bearing as visible from the video.REFER VIDEO LINK. Excess brg clearance shall lead to cyclic impact loading on the holding bolt causing shearing due to fatigue.  Same to be mentioned in the WHY WHY ANALYSIS.
+2.   Size of holding bolt in place is M16. Strength of bolt which failed is not known. However, only HT bolt to used and possibilities of using next higher size to be considered. 
+3.   Holding bolt tightness to be checked in every shutdown.",,
+,,,,,,,,,,,,,PA-: Provided extra locking arrangement by welding,,23-Nov-25,Done,23-Nov-25,,,,
+208,17-Nov-25,PGP,E & I,PGP-9 hydraulic cyclinder,Not working properly in auto mode,280,No, ,Not required,,,,,,,,,,,,
+209,5-Nov-25,PGP,Mechanical,,Damage of the rapture sheet in the TG plant gas pipe line before U-seal,70,Stop,Fitting of gasket on both side of rapture sheet to avoid direct contact with its metal flange,Done,6-Dec-25,RCA Tracker (Pellet division) - PGP Raptue sheet.pdf,Unusual degradation (weakening) of the rapture sheet due to reaction with tar vapour,Change of rapture sheet with a new one & change the same in every plant long shutdown,Mr Anurag Ray & His team,,Done,,,,,
+,,,,,,,,,,,,,Protection of the rapture sheet with a Teflon sheet to avoid direct contact with tarry vapour,,,Done,,,,,
+,,,,,,,,,,,,,Fitting of gasket on both side of rapture sheet to avoid direct contact with its metal flange,,,Done,,,,,
+210,2-Dec-25,PGP,Mechanical,booster fan-4,"Unusual sound from booster fan-4                                                                                                                                               
+",,No,Stop booster fan-4 and stand by booster -3 running,Done,3-Dec-25,booster-4,Coupling Misalignment  between motor and fan shaft and loosness of NDE bearing check nut,Coupling alignment carried out to correct misalignment between motor and fan shaft.,Mr Anurag Ray & His team,,Done,,,,,
+211,9-Nov-25,BNFC,E & I,DCS,"Dcs communication failure during UPS overhauling by service engineer at Pellet-1,some cables were disturbed as cable dressing was going on for pellet-1 shutdown causing UPS power supply disruption to communication modules & hence communication failure.  ",100,Stop,Back up power supply provided with proper marking of cable used for DCS communication modules.& also informed Service engineer regarding the same & taking clearance form automation enginner at site  before switching on or off of any UPS during over hauling prior ,Done,10-Nov-25,DCS Communication Failure.pdf,Power disruption to communication modules of dcs while UPS over hauling & cable dressing at Pellet-1  ,Back up power supply provided with proper marking of cable used for DCS communication modules.& also informed Service engineer regarding the same & taking clearance from automation enginner at site  before switching on or off of any UPS during over hauling prior ,Mr Siddhartha Mahapatra & Automation team,,Done,,,1. Taking of prior permission in writing is a must by the Service Engineer from E&I area-in-charge.,,
+,,,,,,,,,,,,,,,,,,,2. Service engineer must write down the job-schedule step-wise on the permission letter to the satisfaction of E&I area-in-charge..,,
+212,12-Nov-25,BNFC,E & I,HGMS Pulsating Motor,HGMS-1 Pulsating motor tripped 2-3 times in high current due to locked rotor condition & tripping didn't reset.,,Speed loss,Physically checked the motor & found its pulley jam & damaged.,Done,14-Nov-25,HGMS Pulsating motor.pdf,As per process needs HGMS was running with High tesla creating magnetic field around motor & due to pulley worn out caused the rotor to lock & damage,"Damaged pulley replacement done,also replaced the motor due to rotor shaft damage.Insulation pad installation to reduce effect of magnetism around motor ",Mr Siddhartha Mahapatra,,Done,,,,,
+213,12-Nov-25,BNFC,E & I,HGMS Pulsating Motor,HGMS-1 Pulsating motor replacement due to its shaft broken,60,Speed loss,Spare motor arranged & shifted from pellet-2 motor shed & handed over to mechanical for replacement ,Done,14-Nov-25,HGMS Pulsating motor replacement.pdf,Due to P2 motor shed is bit far from HGMS installed location it took bit long to replace the motor  ,Spare motor made available at beneficiation Motor shed ,Mr Siddhartha Mahapatra,,Done,,,,,
+214,24-Nov-25,BNFC,E & I,DSC Cyclone Pump ,Dsc cyclone feed pump trippling in earth fault ,395,Stop,"During running time vfd tripped in earth fault 2-3 times after reset again the fault occured & didn't reset so checked for  motor its IR value,earthing rectification,Auto remote mode was not getting healthy due to IGBT temperature high",Done,26-Nov-25,DSC cyclone FP earth fault.pdf,Checked & found at a place earthing strip was rusted & damaged due to engraved in soil & covered in slurry.Also Auto remote mode was not getting switched due to IGBT card faulty. ,Damaged earthing strip was replaced by welding new earthing strip & other engraved earthing strips indentified & cleaned.IGBT card upgradation from MK-1 to MK-2 along with its software.,Mr Siddhartha Mahapatra,,Done,,,"1. There must not be a weld in earthing strip where slurry or other materials may fall. 
+2. It means, the defective portion of earthing strip must be replaced by a longer one of the same specification with the welds at both ends lying at a safer place. The welds must be thicker and on all four sides. Weld must be galvanised and the replaced strip should bear same color as of the rest of  the earthing strip.",,
+215,16-Nov-25,BNFC,Process,Clarifier ,Pressure drop due to river water not coming,50,Stop,Manage with water tanker,Not required,,,,,,,,,,,,
+216,16-Nov-25,BNFC,Process,HT ball mill ,During TG fines feeding take over size material in feed caused feed chute jam,135,Stop,Clear the jam,Not required,,,,,,,,,,,,
+217,22-Nov-25,BNFC,Process,DSC pump,pump flow fluctuation due to pellet fines feeding,60,Speed loss,Stop the pellet fines feeding ,Not required,,,,,,,,,,,,
+207,2-Dec-25,BNFC,Process,Derrick 2 feed line(Secondary sump box),Secondary sump box filled with material causing Derrick 2 feed pump suction line choked ,410,Stop,Cleared the sump box as well as suction line,Done,3-Dec-25,"SBM trip,Derrick-2 Jamm.pdf","Due to SBM tripped,the discharge flow was interrupted resulting material build up inside the mill",1-Cleared the sump box as well as suction line,Debasish Jena,,Done,,,,,
+,,,,,,,,,,,,,"2-Pop-up alarm to be given dcs so that Whenever LP Pressure drops,it will show.",Sidharth Mohapatra,,Done,,,,,
+,,,,,,,,,,,,,3-Ball Mill will run in Auxiliary mode for Minimum 20 Min. with max.flush water. Ball mill Discharge density& Sump Box level to be monitored during flushing.,Process Shift-in Charge,,Done,,,,,
+218,29-Nov-25,Pellet-2,Mechanical,TG hollow shaft,Hollow shaft leakage,,Stop,Hollow shaft new design as single piece shaft and by the help of newly installed softner and gravel filter input water of the hollow shaft is mataining less that 25 PPM,Done,,RCA hollow shaft.pdf,,Hollow shaft new design as single piece shaft and by the help of newly installed softner and gravel filter input water of the hollow shaft is mataining less that 25 PPM,,,Done,,,Detailed RCA being done by the RCA team.,,
+219,1-Nov-25,Pellet-2,Process,FC-6,Overload tripped,85,No,Material cleaning,Not required,,,,,,,,,,,,
+220,10-Dec-25,BNFC,E & I,HT ball mill ,Starting Delay,130,Stop,DI Module & Contactor Replaced & Mill Started,Done,,RCA Link,Due to slurry pipe line leakage & slurry entered with heavy flow caused DI feedback channel short circuited & malfunctioned.,Feed end lubrication system panel sealed properly with canopy provided.,Mr Siddharth Mahapatra,,Done,,,"CAPA  to include the following:
+1.  Electrical panel to be barricaded .
+2.  Improve panel sealing.
+3.  Slurry pipeline support to be strengthen to reduce jerk acting on the flange joints during start and stop of pump.
+4.  Location of the flange joint in the slurry pipeline to be  shifted away from the electrical  panel.",,
+221,13-Dec-25,BNFC,E & I,HT ball mill ,Tripping Due to High Starting Current,230,Stop,"Checked motor end as per checklist,trial taken in de-coupled mode & found electrical side ok  with running water circuit & flushing mill started",Done,,RCA Link,HT ball mill tripped due to experiencing high starting current as mill was earlier stopped due to thickener reddish  ,With prolonged flushing of mill in inching reduced high starting current.,Siddhartha Mahapatra,,Done,,,"CAPA  to include the following.
+1.  SOP to be developed for shutting down and starting  of  ball mills..
+2.  Operators to be trained.",,
+222,11-Dec-25,BNFC,E & I,PBM,Tripping Due to High Starting Current,95,Stop,"Checked motor end as per checklist,with inching for more than 45 minutes with flushing & started",Done,,RCA Link,PBM tripped in to high starting current due to material settled-compacted & adhered to mill shell as mill was in stopped for longer duration for opportunity shutdown.,With inch run for more than 45mins & increased water flow of flushing water mill started,Siddhartha Mahapatra,,Done,,,"CAPA  to include the following.
+1.  SOP to be developed for shutting down and starting  of  ball mills..
+2.  Operators to be trained.",,
+32,11-Dec-25,Pellet-2,Mechanical,TG,TG through shaft damage,110,Stop,Shaft No 231 & 315 Re-placement is done,Done,,RCA TG THROUGH SHAFT.pdf,TG SHAFT GOT BEND.,Shaft No 231 & 315 Re-placement is done,,,Done,,,Failed material to be tested and compared with original drawing.,,
+223,13-Dec-25,Pellet-2,Process,Cooler,Cooler discharge jam,310,Stop,,Done,,Root Cause Analysis of Cooler Discharge Jam,Due to accretion coating pieces,Ensuring kiln and cooler discharge areas are clear.,Mr. Raghu,,Done,,,"Analysis is ok.  Accretion formation in kiln can not be avoided fully. Accretion handling in the kiln discharge and the cooler is labour intensive and hence to avoid delay, the  operation group need to be vigilant and mobilize   resources on proactive basis.  ",,
+,,,,,,,,,,,,,Training operators on the early signs of cooler discharge jam.,,,Done,,,,,
+,,,,,,,,,,,,,Monitoring and clearing accretion in the discharge area  regularly.,,,Done,,,,,
+224,12-Dec-25,Pellet-2,Process,Kiln,Kiln discharge jam,300,Stop,,Done,,Root Cause Analysis of Kiln Discharge Jam,Due to accretion coating pieces,Ensuring kiln and cooler discharge areas are clear.,"Mr. Raghu
+",,Done,,,"Analysis is ok.  Accretion formation in kiln can not be avoided fully. Accretion handling in the kiln discharge and the cooler is labour intensive and hence to avoid delay, the  operation group need to be vigilant and mobilize   resources on proactive basis.  ",,
+,,,,,,,,,,,,,Training operators on the early signs of kiln discharge jam.,,,Done,,,,,
+,,,,,,,,,,,,,Monitoring and clearing accretion in the discharge area  regularly.,,,Done,,,,,
+,,,,,,,,,,,,,Planned shut down has to be taken to clear the accretion and material built-up for a smooth plant operation.,,,Done,,,,,
+225,13-Dec-25,BNFC,Process,Thickener Reddish ,Thickener overflow apperas reddish .due to material settling rate low.,180,Speed loss,Stop feeding and increase flucculant dosing  .,Done,,Thickener Reddish.pdf,Low grade material (Ld sludge contaminate with iron fines.,1-Proper dosing as well as decrease the feed rate .,,13-Dec-25,Done,14-Dec-25,,Flocculant dozing rate to be monitored properly.,,
+,,,,,,,,,,,,,2-Check grinding as well as cyclone apex and screen u/s.,,13-Dec-25,Done,14-Dec-25,,,,
+226,23-Dec-25,BNFC,Mechanical,FEED PUMP,Sudden feed pump start and leakage issue while working time at feed line,,No,Engage the emergency switch to stop the feed pump,Done,23-Dec-25,RCA FEED PUMP.pdf,Not taken electrical isolation and not act any emergency switch of feed pump.,"Took Electrical isolation, Engage the emergency switch",,,Done,,,"violation of  safety protocol, to be avoided at any cost.",,
+227,31-Dec-25,Pellet-1,Mechanical,TG Chain through shaft,TG chain one through shaft broken,140,Stop,One through shaft & 4 nos bush replacement done,Done,3-Jan-26,RCA-TG Through Shaft,Manufacturing defect of the through shaft,CA: One through shaft & 4 nos bush replacement done,Mr. S. K. Muduli,31-Dec-25,Done,31-Dec-25,,Failed material to be tested and compared with the  drawing.,,
+,,,,,,,,,,,,,PA: 1. Test certificate to be provided by the vendor.,,31-Dec-25,Done,31-Dec-25,,,,
+,,,,,,,,,,,,,2. Thorough inspection during GRN.,,31-Dec-25,Done,31-Dec-25,,,,
+228,22-Dec-25,PGP,Mechanical,CBC-4,CONVEYOR BELT DAMAGED,510,No,New belt replaced,Done,3-Feb-26,CBC-4 belt damage PGP.pdf,Rubber belt scrapper was worn out.,"1. PM schedule to be made for replacing the rubber belt scrapper and checking tightness of bolts.
+2. Job lists to be finalised for checking preventive maintenace.",Mr Anurag Ray,15-Feb-26,Done,,,,,
+229,31-Dec-25,BNFC,Process,THICKENER ,Rake trip and not moving.,"3,085",Stop,Feed stoped and remove forgien material from arm .,Done,7-Jan-26,NEW THICKNESS RAKE TRIP AND NOT MOVING.pdf,Forgien material found (net ) entered the thickener causing slurry accumulation at thickener corner .,1- Remove net from thickener  .,"Kausal Kishor Singh 
+& Debasis Jena ",3-Jan-26,Done,3-Jan-26,,,,
+,,,,,,,,,,,,,"2-Check rake drive ,gear box and torque setting .",,3-Jan-26,Done,3-Jan-26,,,,
+,,,,,,,,,,,,,3- Conduct operator training on early warning sign of high torque .,,3-Jan-26,Done,3-Jan-26,,,,
+230,31-Dec-25,Pellet-1,E & I,TG MD-1,Motor NDE Bearing Damage,95,Speed loss,Motor replaced,Done,7-Jan-26,RCA Link,,,,,,,,,Yes,10-Feb-26
+231,13-Dec-25,Pellet-2,Mechanical,NPC-2,Accrection stucked in tail pulley,160,Stop,accrection piece removed and damaged block replacement done,Done,15-Dec-25,NPC-2 TAIL PULLEY PLUMMER BLOCK BROCKED.pdf,due to accretion stucked in tail pulley, Damage plummer blocked replaced,Mr. Nitish kumar,,Done,,,,,
+,,,,,,,,,,,,,  3 nos damage carrying idler replaced,,,Done,,,,,
+232,25-Dec-25,Pellet-1,Mechanical,ESP,Pipe line leakage,217,No,Welding done,Not required,,,,,,,,,,,,
+233,12-Dec-25,Pellet-2,Process,NPC-1,NPC-1 was overload tripped due to accretion came,60,Stop,accrection piece removed,Not required,,,,,,,,,,,,
+234,28-Dec-25,Pellet-2,Mechanical,Proportionate,Lime conveying leakage .,125,No,,Not required,,,,,,,,,,,,
+235,30-Dec-25,Pellet-2,Mechanical,FK pump,Stopped due to air line tapping .,162,No,,Not required,,,,,,,,,,,,
+236,30-Dec-25,Pellet-2,Mechanical,LIW-3,Mixer stopped due to LIW skirt rubber changing,65,No,,Not required,,,,,,,,,,,,
+237,19-Dec-25,BNFC,Mechanical,Compressor-5,Compressor-5 discharge line air leakage.,80,Stop,Rubber gasket replaced with metallic gasket.,Done,20-Dec-25,RCA BNF Compressor-5 19-12-2025.pdf,Incorrect gasket used in the compressed air line.,1. Rubber gasket to be replaced with 3mm metallic gasket (Style 20).,Jay Prakash,20-Dec-25,Done,19-Dec-25,,ok,,
+,,,,,,,,,,,,,2. checking on regular interval to be done to avoid such breakdowns in future.,Jay Prakash,20-Dec-25,Done,19-Dec-25,,,,
+238,28-Dec-25,PGP,Process,ETP,Tripping of ETP showing DC under voltage,"10,800",No,The defective electrode was removed,Done,30-Dec-25,RCA_PGP_ETP - Google Sheets.pdf,Touching of electrode with the body due to the gradual thinning of the electrode & detached,ca: the defective electrode was removed,,,Done,,,,,
+,,,,,,,,,,,,,pa: etp field to be checked during the long shutdown of the pellet plant,,,,,,,,
+239,6-Jan-26,Pellet-1,Process,Kiln,Discharge hopper jam,,Stop,Accretaion pieces came,Not required,,,,,,,,,,,,
+240,10-Jan-26,Pellet-1,Mechanical,WIDE BELT,WIDE BELT DISCHARGE PULLEY SHAFT BROKEN,707,Stop,DISCHARGE PULLEY REPLACEMENT DONE.,Done,12-Jan-26,RCA- Wide Belt discharge pulley shaft beaking,heavy additional load act on pulley,ca- pulley replaced with new one.,"SK MUDULI
+RAGHU",10-Jan-26,Done,10-Jan-26,,"Remark-1: RCA team would like to inspect the damaged pulley to establish the cause of failure.
+Remark-2: Inspected damaged pulley. Shaft has sheared from the pulley hub end. This kind of failure is possible if the pulley is subjected to high bending load due to excessive belt tension.  There is no means of measuring belt tension.  However, the belt tension to be kept minimum just to avoid belt slippage. Further, healthy rubber lining on the driving drum is a must. please revise the RCA.
+Remark-3: OK NOW",,
+,,,,,,,,,,,,,pa-observation frequency to be rised to avoid additional heavy load act on pulley.,,,,,,,,
+241,10-Jan-26,Pellet-1,Mechanical,PC-1,PC-1 BELT CONVEYOR TORNED OUT,74,Stop,BELT TORN OUT PORTION PATCHING AND FASTNING DONE.,Done,12-Jan-26,RCA PC-1 CONV BELT TORN OUT,tail pulley area was jamed and belt rubbed with material and torned out.,ca-belt torn out portion patching and fastning done.,"SK MUDULI
+RAGHU",10-Jan-26,Done,10-Jan-26,,"Remark-1: Healthiness of installed belt scrapper to be checked.
+Remark-2: Root cause of belt failure is accumulation of material at the tail end side. Ideally the belt scrapper should be functional to avoid accumulation of material at the tail end side. As discussed the scraper is deliberately kept out of service  due to blisters on the belt. Presently, in this situation the site is to be managed by proper housekeeping deploying additional manpower but after this belt is replaced, the scrapper should be made functional.
+Remark-3: OK NOW",,
+,,,,,,,,,,,,,pa-always to keep clean and clear the tail pulley area.,,,Done,,,,,
+242,14-Jan-26,BNFC,Mechanical,IOC-5,IOC 5 BELT  DAMAGE,330,No,IOC 5 BELT REPLACED,Done,16-Jan-26,22.pdf,DAMAGED GRIZZLY,INSPECTION OF GRIZZLY TO BE STRENGHTHENED,"Debasish jena
+Kausal singh",20-Jan-26,Done,16-Jan-25,,"1.  Cause of  belt failure is not clear.
+2. Belt last replaced on 7/10/2026 but rubber thickness reported to be reduced from 12 to 6mm within 3 months. Belt life is too less.
+3.  Please discuss with the past history of belt replacement.
+4.  CAPA completion date is missing in the report.
+RCA report (CAPA)  revised.
+ok now",,
+243,20-Jan-26,BNFC,Mechanical,WEIGH FEEDER 2,WEIGH FEEDER 2 BEARING (HEAD PULLEY DRIVE SIDE),135,No,Z SEAL BEARING REPLACED,Done,22-Jan-26,33.pdf,LAPSE  IN TIMELY EQUIPMENT INSPECTION,INSPECTION OF EQUIPMENTS TO BE STRENGHTHENED,"Debasish jena
+Kausal singh",Continuous basis,Done,,,"1.   This is a normal  maintenance activity.  
+2.   This defect should have been identified by your inspection team  and  the job could have been taken up  as a  
+       planned maintenace activity.
+3.   Inspection team  requires  to be more accountable with job clarity. System  for equipment inspection  to be 
+       improved.
+4.   Job completion date  to be indicated  against  CAPA . 
+RCA report (CAPA)  revised.
+ok now",,
+244,20-Jan-26,PGP,Mechanical,Gas Booster-2, Gas booster rotary assembly got decoupled and got axially shifted away from the drive.,270,Stop,Adapter sleeve lock nut tightened properly and alignment done.,Done,21-Jan-26,RCA PGP GB-2 FAILURE 20-01-26.pdf, Adapter sleeve was not correctly positioned and lock nut not fully tightened.,1.Training to be given for proper fitting of adapter sleeve.,Anurag Ray,21-Jan-26,Done,21-Jan-26,,okay,,
+,,,,,,,,,,,,,2. Preventive maintenance schedule to be strictly followed.,,21-Jan-26,Done,21-Jan-26,,,,
+245,8-Jan-26,BNFC,Mechanical,IOC 3,IOC 3 COUPLING FUSIBLE PLUG DAMAGED,95,Speed loss,FUSIBLE PLUG REPLACED WITH NEW ONE,Done,23-Jan-26,IOC 3 FLUID COUPLING.pdf,Feeder output was not effectively controlled or monitored so that the belt conveyed an overload to the coupling which could damage the fusible plug and hydraulic oil drain.,"Replace damaged fusible plug, Refill hydraulic oil and check temperature and any abnormal sounds.",,,Done,,,"1.  Completion  date missing in  CAPA. 
+2.   After the installation of belt weigher,  an interlock to be put in place to trip the conveyor beyond a predecided load.",,
+,,,,,,,,,,,,,Installation of belt weigher to monitor the belt load,,,Done,,,,,
+,,,,,,,,,,,,,Make continue inspection checklist for Vibro feeder discharge rate.,,,Done,,,,,
+246,8-Jan-26,BNFC,Mechanical,COMPRESSOR,DRY AIR VALVE LINE GASKET DAMAGE,100,Stop,GASKET ADJUSTMENT DONE,Done,24-Jan-26,DRY AIR LINE VALVE GASKET DAMAGE.pdf,Gasket was not replacd from the installation period,By pass line should be give for empty the tank in a minimum time.,,,Done,,,"1. This is a normal maintenance job and should have been done  as a planned maintenance activity but it appears  as a breakdown job. 
+2.  Root cause here is  poor  equipment inspection and preventive job planning.
+3.  CAPA to include  development of systematic equipment inspection  and  job planning to avoid  breakdoown.
+Comment:-  RCA report revised, CAPA added as suggested. 
+ RCA Link
+Okay",,
+,,,,,,,,,,,,,Spare valve should be ready always,,,Done,,,,,
+,,,,,,,,,,,,,"Recommended valve manufacture for air line to be like L&T, KSB standard",,,Done,,,,,
+,,,,,,,,,,,,,Flow chart of compressor pipe tine should be displayed.,,,Done,,,,,
+,,,,,,,,,,,,,Installed valve should be operate in regular interval.,,,Done,,,,,
+247,11-Jan-26,Pellet-2,Process,bucket elevator,bucket elevator tripped.,70,Stop,material cleared and plant was made operational.,Done,6-Feb-26,Bucket Elevator Trip (11-1-2026).jpeg,Poor life of stripper plate.,Damage stripper plates to be replaced with OEM stripper plates.,Mr. Nitish Kumar,Next S/D,,,,"Discussed, signed copy of RCA report to be attached.
+
+RCA Revised as suggested.
+ok now.",Yes,14-Feb-26
+248,21-Jan-26,Pellet-2,Mechanical,bucket elevator,bucket elevator tripped due to excess material came in tail pulley,10,Stop,the side plate of bucket elevator re - fitted,Done,21-Jan-26,RCA OF BUCKET ELEVATOR 2.pdf,due to excess hot material came at tail pulley,the side plate of bucket elevator re - fitted,Mr. Jiten Patra,,Done,,,CAPA to be revised as suggested. okay,Yes,14-Feb-26
+249,26-Jan-26,BNFC,Mechanical,hgms cooling pump,hgms cooling pump coupling tyre damage,225,No,replaced with a standard f 60 coupling,Done,28-Jan-26,HGMS COOLING PUMP.pdf,unavailability of non standard tyre,ca- replaced with a new standard f 60 type coupling.,,,Done,,,ok but SMP to be revised so that the next tyre replacement  does not get missed out on its due date. ,,
+,,,,,,,,,,,,,pa-replacement of tyre in a schedule of 6 months,,,Done,,,,,
+250,28-Jan-26,Pellet-2,Process,C-9,Over load tripped,1,Stop,Materials cleaning,Done,6-Feb-26,C9 Conveyor tripped (28-1-26).jpeg,Delay in diverting the material to other bins.,Instructing operators to ensure regular and continuous monitoring of bin levels during operation.,Mr. Raghu,10-Feb-26,Done,,,"1. RCA to be made in standard format.
+2. CAPA should indicate responsibility with timeline compmitment.
+3. RCA to be signed by all members.
+
+RCA Revised as suggested.  
+ok now",,
+,,,,,,,,,,,,,Training operators on the importance of timely material flow regulation to avoid overfilling.,,,Done,,,,,
+,,,,,,,,,,,,,Introducing periodic reminders/checks in shift operations for bin level monitoring.,,,Done,,,,,
+,,,,,,,,,,,,,Calibration of load cells during next S/D.,Mr. Ashis Sahu,Next S/D,,,,,,
+251,15-Jan-26,Pellet-1,Mechanical,Kiln inlet chute cooling fan,Kiln inlet chute cooling fan vibration,,No,Balancing done & Expansion Bellow installment done for the Kiln Tongue chute cooling fan,Done,16-Jan-26,RCA-KILN TONGUE CHUTE COOLING FAN,Impeller Imbalanced & vibration transmission through the supporting structure,"CA- Impeller balancing done, Expansion bellow installation done.",S.K. Muduli ,14-Jan-26,Done,14-Jan-26,,"High amplitude in Vibration  is likely to be due to rotor unbalance. 
+Complied 
+ok now.",Yes,14-Feb-26
+,,,,,,,,,,,,,PA-Base Modification need to be done.,,14-Jan-26,Done,14-Jan-26,,,,
+252,15-Jan-26,Pellet-1,Mechanical,TG PA fan,TG PA fan vibration ,180,No,Impeller cleaning & Balancing done for the TG PA Fan,Done,16-Jan-26,RCA- TG PA Fan-1,Impeller Imbalanced & not cleaned properly,"CA- Impeller cleaning & Balancing done for the TG PA Fan 
+PA-Cleaning of the impeller need to be done time to time",S.K. Muduli ,15-Jan-26,Done,15-Jan-26,,"Dynamic balancing of the impeller after deposition cleaning.  Vibration levels to be monitored.
+Complied
+ok now.",Yes,14-Feb-26
+253,15-Jan-26,Pellet-1,Mechanical,balling disc-2,Secondary scrapper tiles brakoen ,53,Speed loss,4 nos scraper tiles replaced,Done,16-Jan-26,RCA- BALLING DISC-2 SCRAPPER TILE,Stone pieces stuck in between scraper & Disc,"CA-4 nos scraper tiles replaced
+PA-Continue bypassing stone-contaminated feed until stones are effectively removed.","Mr. S.K. Muduli 
+Mr. Raghu V.",15-Jan-26,Done,15-Jan-26,,Pl discuss.,Yes,28-Feb-26
+254,26-Jan-26,Pellet-1,E & I,Balling Disc-4,VFD problem,178,Speed loss,Backup VFD Installtion Done,Done,26-Jan-26,BD-4 VFD RCA,Over Current,"Immediately VFD Was Replaced.
+
+One Backup (Standby) VFD Was Installed.
+
+This Kaizen Enables All 4nos of Balling Disc to Have Standby VFD Which will Come Into Play Whenever  Any VFD Gets Failure. 
+Mechanical Dept. Were Intimated Regarding this Problem to Look Into The Matter From, Their Side.
+",Mr. Chitta Ranjan Sahoo & Mechanical Dept,30-Jan-26,Done,30-Jan-26,,RCA  can be made simpler. Either the cause is malfunctioning of the MCCB or it is actually subjected to higher load. Accordingly CAPA can be made.,,
+255,3-Jan-26,Pellet-2,Process,Cooler,Hopper jamed ,78,Stop,Accretion pieces came,Not required,,,,,,,,,,,,
+256,1-Jan-26,PGP,Mechanical,chp-crusher,non drive bearing damaged,690,No,new bearing replaced,Done,1-Jan-26,Coal crusher bearing.pdf,Lack of proper PM schedule.,1. Job list to be finalised for checking preventive maintenace.,Mr. Anurag Ray,15-Feb-26,Done,9-Feb-26,,"Systematic defect generation practice missing.
+RCA report revised as suggested.
+ok",,
+,,,,,,,,,,,,,"2. PM schedule to be made, followed and activities to be documented properly.",,15-Feb-26,Done,9-Feb-26,,,,
+257,7-Jan-26,PGP,Mechanical,PGP-4,Leakage was observed from the PGP-4 INNER CONE,"3,170",No,proper welding,Done,9-Jan-26,done,"Improper welding due to non-adherence or non-qualification of WPS, resulting in weld defects (porosity / lack of fusion).","1. Identify leakage location, remove defective weld.",Mr. Anurag Ray,9-Jan-26,Done,9-Jan-26,,"Does this failure happen regularly ? 
+Comment: No, it is not a regular failure. Welding done properly and DP test conducted.
+ok now",,
+,,,,,,,,,,,,,"2. After welding it, perform NDT (DP test) in the welded location.",,9-Jan-26,Done,9-Jan-26,,,,
+258,8-Jan-26,BNFC,E & I,PBM,PBM TRIPPED,105,No,CHECKING PURPOSE,Not required,,,,,,,,,,,,
+259,15-Jan-26,BNFC,Process,Secondary Sump Jam ,"Secondary sump box jammed .
+Leakage found in suction line .",265,Stop,"Material clear from sump box .
+Welding done at leakage area .",Done,20-Jan-26,Secondary sump jam.pdf,NPSH dropped due to suction line leakage.,"CA-  Leakage arrested by welding work.
+PA- 1. SOP to be followed strictly.
+       2. Proper training to be given to operators.",Ashish Mishra,15-Jan-26,Done,,,,,
+260,30-Jan-26,BNFC,Process,SecondaryCyclone feed pump ,"Secondary cyclone flow dropped . 
+Mataerial deposite at sumpbox  .",520,Stop,Material clear from sump box .,Done,2-Feb-26,Seconadry cyclone  feed pump  pressure drop .pdf,Suction line punchered .,"CA- 1. Secondary sump made empty through manual cleaning.
+        2. Suction line to be modified.
+PA-  1. SOP to be followed strictly.
+        2. Proper training to be given to operators.",Kumar Maharana ,"2-Feb-2026
+Next S/D",,,,"Suction line to be modified with minimum 12 mm thick pipe (8"") with ground clearence for ease of maintenance.
+Comment: RCA report & CAPA revised.
+ok now",,
+261,31-Jan-26,BNFC,Process,ZBC-1 ,ZBC-1 stoped due to over load materil  stored .,,Stop,",Material clear from ZBC ",Done,1-Feb-26,ZBC CHUTE JAMMED.pdf,"2cycles of filter discharge , shifter was not taken in line before feeding . ",Training given about SOP& keeep interlock with ZBC before feeding .,,,Done,,,,,
+262,12-Jan-26,PGP,Mechanical,CBC-1,CBC-1 output coupling damaged.,885,No,gear coupling replaced.,Done,3-Feb-26,CBC-1 output coupling PGP.pdf,Systematic defect generation practice missing.,1. Systematic procedure to be made for inspection & defect generation,Mr. Anurag Ray,15-Feb-26,Done,9-Feb-26,one defect register generate ,"Systematic procedure to be made for inspection & defect generation. 
+RCA report revised as suggested.
+ok now",,
+,,,,,,,,,,,,,2. Job list to be finalised for checking preventive maintenace.,,15-Feb-26,Done,9-Feb-26,,,,
+263,31-Jan-26,BNFC,Mechanical,secondary cyclone feed pump,secondary feed pump suction line developed leakage due to erosion and wear,110,Stop,welding work done,Done,4-Feb-26,11.pdf,Poor access for maintenance,Plan A- new standby m/s pump box will be made and installed (will be done in running),,28-Feb-26,Done,,Implementation under progress,"Suction line to be modified with minimum 12 mm thick pipe (8"") with ground clearence for ease of maintenance.
+Comment: RCA report & CAPA revised.
+ok now",,
+,,,,,,,,,,,,,"Plan B- Suction line to be modified with minimum 12 mm thick pipe ( 8"" ) with ground clearance for ease of maintenance",,,,,,,,
+264,1-Feb-26,BNFC,Mechanical,Derrick 3,Derrick 3 feed box leakage from short piece,170,Stop,Rubberised bend to be used,Done,23-Mar-26,DERRICK 3 FEED BOX LEAKAGE.pdf,Due to space concern and use of non standard bend,Rubberised bend to be used,Mr. Bijayasen Pradhan,15-Apr-26,,,,ok,,
+,,,,,,,,,,,,,,,,,,,,,
+265,6-Feb-26,Pellet-1,E & I,TG MD,Motor Burning & Bearing Damage Repeated Failurity,Chronic Problem,Stop,Expert Help Required,Done,24-Feb-26,RCA P1 TG MOTOR BRG  FAILURE.pptx,1. Use of incorrect size and spec  of brg. It requires intermittent greasing but it can not be done  because brg is sealed from either  ends.,"1). TG drive triple ring gearbox unit #1, to be overhauled. Its backlash to be maintained closer to the recommended value.","Mr. S. K. Muduli
+&
+Mr. Bhajahari Das
+",24-May-26,,,,"
+
+
+
+
+
+
+Done by RCA team.
+
+
+
+
+
+
+
+
+ok",,
+,,,,,,,,,,,,,2). TG drive motor to be replaced with a same rating motor fitted  with 6309 C3 brg in place of 6209 ZZ C3 brg in the non-drive end and having lubrication facility.,,24-May-26,,,,,,
+,,,,,,,,,,,,2. Knocking sound from the  gearbox (unit#1).,"3). In the initial stages after motor replacement, the temp and vibrations of motor DE & NDE bearings shall be measured.",,24-May-26,,,,,Yes,10-Feb-26
+266,12-Feb-26,BNFC,Mechanical,TFC 2 CONVEYOR,TFC 2 BEND PULLEY SHAFT WAS BROKEN,190,Speed loss,PULLEY WAS REPLAED,Done,23-Mar-26,TFC 2 BEND PULLEY SHAFT.pdf,stress development due to welding on shaft,WELDING SHOULD BE AVOIDED AND PULLEY SHOULD BE REPLACED WITH IMMEDIATE EFFECT.,Mr. O P Singh,COMPLETED,,,,ok,,
+,,,,,,,,,,,,,,,,Done,,,,,
+267,18-Feb-26,Pellet-1,Process,BE-2,Emergncy activation,47,Stop,Emergency swith pressed,Done,28-Feb-26,RCA Bucket elevator emg,,,,,,,,,,
+268,8-Feb-26,Pellet-2,Mechanical,BE-2,THE CHAIN GOT OUT FROM TAIL PULLEY SOCKET.,5,Stop,"CHAIN TENSIONING DONE WITH
+BUCKET ELEVATOR IN RUNNING
+CONDITION.",Done,24-Mar-26,be2.pdf,INCORRECT PRACTICE OF CHAIN TENSIONING IN IDLE CONDITION.,"1. CHAIN TENSIONING TO BE DONE WITH
+BUCKET ELEVATOR IN RUNNING
+CONDITION.",MR. NITISIH KUMAR,IN PRACTICE,Done,,,"Discussion held with the Department
+ok",Yes,21-Feb-26
+,,,,,,,,,,,,,2. SMP TO BE REVISED,MR. NITISIH KUMAR,28-Mar-26,,,,,,
+270,5-Feb-26,Pellet-2,Process,Kiln,Kiln Discharge Jam,55,Stop,Material cleaned,Done,,Root Cause Analysis of Kiln Discharge Jam,,,,,Done,,,,,
+271,19-Feb-26,Pellet-2,Mechanical,Balling Disc -4,A STONE GOT STUCK IN THR ROTARY SCRAPPER LEG,600,Speed loss,"PERSON TO BE DEPLOYED IN FC5A & FC6
+(NEAR OFFLINE HOPPER) FOR REMOVING BIG
+SIZE FOREIGN MATERIAL.",Done,24-Mar-26,balling disc.pdf,FOREIGN MATERIAL ENTRY ALONG WITH OFFLINE FEED,"PERSON TO BE DEPLOYED IN FC5A & FC6
+(NEAR OFFLINE HOPPER) FOR REMOVING BIG
+SIZE FOREIGN MATERIAL.",MR. SOURAV MOHANTY,15-Apr-26,,,,"Discussion held with the Department
+OK",Yes,21-Feb-26
+272,19-Feb-26,Pellet-2,Process,C-11,C-11 stopped due to broken scrapper stuck,29,Stop,,Done,,RCA OF BALLING DISC 4 ROTARY.pdf,Same as Sl. 272,,,,Done,,,,,
+274,24-Feb-26,Pellet-1,Process,BC-3,Pull coard activated,,Stop,,Not required,,,,,,,,,,,,
+275,27-Feb-26,Pellet-2,All,Mixer,Mixer tripped,,Speed loss,,Done,,P-2 Mixer Tripping Problem.pptx,,,,,Done,,,,Yes,3-Mar-26
+276,22-Feb-26,BNFC,Process,HGMS-2,HGMS-2 SHOWING NEGATIVE CURRENT,960,No,"ADDITIONAL PVC NIPPLE TO BE FITTED OVER
+THE ESXISTING INSULATED SOCKET.",Done,23-Mar-26,HGMS-2 SHOWING NEGATIVE CURRENT REPORT,INSULATED SOCKET OF HGMS-2 COIL COOLING WATER HOSE GOT DAMAGED AFFECTING INSULATION VALUE.,"ADDITIONAL PVC NIPPLE TO BE FITTED OVER
+THE ESXISTING INSULATED SOCKET.",MR. GANESH MOHANTY,COMPLETED,Done,,,OK,,
+277,23-Feb-26,Pellet-1,Mechanical,PCI LIW Agitator,LIW agitator shaft dislocate from its position,150,No,Dislocated shaft removed from its position.,Done,24-Feb-26,RCA PCI LIW agitator,Agitator shaft housing bottom bearing damaged due to aging.,CA: Dislocated shaft removed from its position.,Mr. SK Muduli,23-Feb-26,Done,23-Feb-26,,,,
+,,,,,,,,,,,,,PA: Scheduled replacement plan for bearing need to be implemented,,23-Feb-26,Done,23-Feb-26,,,,
+278,25-Feb-26,Pellet-1,Mechanical,FC-3,FC-3 carrying roller base (located below V-plough scrapper) broken,75,No,New Carrying roller base replaced.,Done,26-Feb-26,RCA FC-3 ,The carrying roller base failure is due to prolonged use & aging.,CA: Damaged carrying roller base (located below V-plough scrapper) replaced.,Mr. SK Muduli,25-Feb-26,Done,25-Feb-26,,,,
+,,,,,,,,,,,,,PA: Scheduled preventive replacement for the roller base need to be implemented before fatigue limit.,,25-Feb-26,Done,25-Feb-26,,,,
+279,27-Feb-26,Pellet-2,Mechanical,C 1A,Belt joint top rubber torn out,7,No,Belt Patching Done,Done,3-Mar-26,C 1A BELT TOP JOINT GOT DAMAGE 27-02-26.pdf,Belt got off track and started rubbing in runner channel at return dide,CA: Off track adjustment done ,Mr.Nitish kumar,27-02-26,Done,,,,,
+,,,,,,,,,,,,,PA: Belt patching done both on top and bottom,,27-02-26,Done,,,,,
+280,28-Feb-26,Pellet-2,Mechanical,C 8,C8 BELT GOT CUT THROUGH,110,No,"1. DEDICATED PERSON TO BE DEPLOYED FOR
+BELT INSPECTION
+
+2. CONVEYOR INSPECTION CHECK LIST
+TO BE MADE",Done,24-Mar-26,C8 BELT CUT THROUGH.PDF,EQUIPMENT INSPECTION QUALITY NOT UPTO THE MARK,"DEDICATED PERSON TO BE DEPLOYED FOR
+BELT INSPECTION",MR. NITISIH KUMAR,25-Apr-26,Done,,,"Discussion held with the Department
+OK",,
+,,,,,,,,,,,,,"CONVEYOR INSPECTION CHECK LIST
+TO BE MADE",,30-Mar-26,Done,,,,,
+281,28-Feb-26,Pellet-2,Mechanical,FC 5A,FC5A GEARBOX OUTPUT GEAR COUPLING GOT FREE,200,No,"DRIVE VIBRATION LEVEL TO BE MAINTAINED
+BELOW 4 mm/s",Done,24-Mar-26,fc5a.pdf,DRIVE OPERATION WITH HIGH VIBRATION (7 mm/s),"DRIVE VIBRATION LEVEL TO BE MAINTAINED
+BELOW 4 mm/s",MR. NITISIH KUMAR,COMPLETED,Done,,,"Discussion held with the Department
+OK",,
+282,28-Feb-26,Pellet-1,Mechanical,TG,TG Primary Gearbox-1 I/P shaft bearing damage,118,Stop,TG Primary Gearbox-1 I/P shaft & Motor dismantled & removed,Done,3-Mar-26,RCA TG P.G.box-1 IP shaft Bearing damage,Due to axial floating the I/P shaft bearing dmaged.,CA- TG Primary Gearbox-1 I/P shaft & Motor dismantled & removed,Mr. S.K. Muduli,28-02-2026,Done,,,,,
+,,,,,,,,,,,,,PA- Observation frequency to be rised.,,28-02-2026,Done,,,,,
+283,5-Mar-26,Pellet-2,Mechanical,Mixer,Mixer gate not opening,130,No,"remove the gate for now, bypassed the pvc logic from mixer hydraulic gate",Done,10-Apr-26,rca report,the gate sliding groove seal got damaged,Plan for visit of service engineer in coming shutdown,Mr.Nitish kumar,30-Apr-26,,,,"Discussion held with the team.
+OK",,
+,,,,,,,,,,,,,SMP to be developed based on the recommendation of service engineer,"Mr.Nitish kumar
++
+Mr. Ashish Sahoo",25-May-26,,,,,Yes,14-Mar-26
+284,13-Mar-26,Pellet-1,E & I,BC-2,Pull cord activated,13,Stop,De activated and running,Done,8-Apr-26,PDF,This job should be done after availing proper shutdown. This is must due to working space constraint.,Necessary instruction to be issued to avail shutdown for taking up lighting job in this conveyor due to space constraint for safe working to avoid similar incident.,Mr. Bhajahari Das,Completed,Done,,,"Discussion held with the team.
+OK",Yes,14-Mar-26
+285,10-Feb-26,BNFC,Process,HT BALL MILL,HT Ball Mill Discharge Line Jamm.,310,Stop,STANDARD OPERATING PROCEDURE TO BE MADE FOR PROPER STACKING OF MATERIAL IN YARD.,Done,23-Mar-26,HT BALL MILL DISCHARGE LINE JAM REPORT,NO PROPER YARD MANAGEMENT.,STANDARD OPERATING PROCEDURE TO BE MADE FOR PROPER STACKING OF MATERIAL IN YARD.,MR. KAUSHAL SINGH,30-Mar-26,,,,OK,,
+286,22-Feb-26,BNFC,Process,HT BALL MILL,HT Ball Mill Feed Chute Jamm.,120,Stop,STANDARD OPERATING PROCEDURE TO BE MADE FOR PROPER STACKING OF MATERIAL IN YARD.,Done,23-Mar-26,HT BALL MILL FEED CHUTE JAM REPORT,NO PROPER YARD MANAGEMENT.,STANDARD OPERATING PROCEDURE TO BE MADE FOR PROPER STACKING OF MATERIAL IN YARD.,MR. KAUSHAL SINGH,30-Mar-26,,,,OK,,
+287,1-Feb-26,Pellet-1,Process,BE-2,Dischage jam,10,Speed loss,Another BE was took in line and pipe angle was changed,Done,17-Mar-26,BE-2.jpeg,Poor material flow due to Improper pipe angle,CA: Another BE was took line.,Raghu,,Done,,,,,
+,,,,,,,,,,,,,PA: Pipe angle was changed,,,Done,,,,,
+288,17-Feb-26,BNFC,Process,Derrick-3,DERRICK-3 OVER FLOW LINE TO BALL MILL JAMMED.,235,Speed loss,"-3 mm material (pellet fines) to be changed in circuit.
+ ",Done,23-Mar-26,DERRICK-3 OVERFLOW LINE JAM REPORT,Over size material feeding in circuit,"-3 mm material (pellet fines) to be changed in circuit.
+ ",MR. KAUSHAL SINGH,COMPLETED,Done,,,OK,,
+,,,,,,,,One more flushing line to be added at the place of chokage,,,,,One more flushing line to be added at the place of chokage,MR. B. S. CHANDEL,27-Mar-26,,,,,,
+289,17-Mar-26,BNFC,Mechanical,RM 4 (B),RM 4 (B) discharge chute damage,95,Stop,Damaged discharge chute repair done,Done,8-Apr-26,RM 4 B DISCHARGE CHUTE.pdf,Damaged grizzly,Status of grizzly condition is to be recorded shitwise in log book & corrective measure to be taken immediately after,Mr. Kaushal Singh,10-Apr-26,,,,ok,,
+290,17-Mar-26,BNFC,Mechanical,DERRICK 2,DERRICK 2 UNDER SIZE PIPE LEAKAGE DUE TO GASKET DAMAGE,65,Stop,REPLACE DAMAGE GASKET WITH NEW ONE,Done,8-Apr-26,DERRICK 2 PIPE LINE GASKET DAMAGE.pdf,Job done by unskilled person,"Training to be given to the workman.
+SMP to be made and signed by the workman.",Mr. Bijay Pradhan,10-Apr-26,,,,ok,,
+,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+291,18-Mar-26,BNFC,Mechanical,TFC 3 CONVEYOR,TFC 3 TAKEUP PULLEY HUB DRUM CRACK,190,Speed loss,PULLEY REPLACEMENT DONE,Done,8-Apr-26,TFC 3 BEND PULLEY DRUM CRACK.pdf,Pulley Shell Thickness less (10 mm),Pulley Shell Thickness to be increased to 12 mm,MR. OM PRAKASH SINGH,Completed,Done,,,ok,,
+,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+292,4-Mar-26,BNFC,E & I,PBM,Ball mill tripped in high current due to sparking in slipring segment,240,Stop,Cleaned the damaged slipring segment surface & trimming done for smooth rubbing of carbon brush over the segment & started  ,Done,21-Mar-26,rca report,"During the inspection of the PBM slip ring segment, spark occurrence and high current trip were observed. All critical components including slip ring surface, brushes, holders, electrical connections, and environmental conditions were thoroughly inspected. No definitive root cause could be identified at this stage.We have  mailed this case to the OEM for detailed analysis and further investigation there after this RCA will be completed.","As the RCA is handed over to OEM for further analysis & completion of this RCA,CAPA status is pending. ",,,,,,ok,,
+293,17-Mar-26,Pellet-2,E & I,Pellet-2 Stack Monitering UPS,"At P#2 stack monitoring room, a UPS which was installed to provide backup power supply to critical monitoring equipment, failed during operation resulting in the shutdown of the UPS and interruption of power supply to all connected equipment in the monitoring system.",5,Stop,"1. A separate power supply was provided for external agencies (SPCB) equipment to ensure no additional load is connected to the UPS.
+2. UPS-backed supply and normal power supply were physically segregated.
+3. Clear and prominent identification with warning signage was provided at UPS supply points.
+4. SPCB personnel and internal staff were briefed regarding correct power source usage and UPS limitations",Done,8-Apr-26,RCA LINK,"Indentification marking on the UPS supply point was present but oerlooked by SPCB  personnel. Due to lack of awareness of load limitations, external equipment was connected to the UPS instead of the designated raw power source.",UPS source to be placed in an enclosure with screwed cover.,Mr. Bhajahari Das,15-Apr-26,,,,"Discussion held with the team
+OK",,
+294,22-Mar-26,Pellet-1,Process,FK pump Screw feeder,Screw feeder jam,325,No,short piece removed /clean the material & tied it with ceramic blanket then start the feeder,Done,13-Apr-26,rca report,Jamming due to foreign material,Pulverizing coal feeding pipe and LAW hopper to be properly connected,Mr. Uday Singh,Completed,Done,,,"Discussion held with the team
+ok",Yes,24-Mar-26
+295,29-Mar-26,Pellet-1,Mechanical,TG,TG chain 2nos comb plate locked with each other,3,Stop,2 no.s locking cleat replaced,Done,14-Apr-26,rca report,Fitment & wear out of 'L' cleat,"During shutdown, thorough checking of grate & replacement of all worn out cleat plates & ensure proper fitment",Mr. S.K. Muduli,,Done,,,"Discussion held with the team
+ok",Yes,4-Apr-26
+296,29-Mar-26,Pellet-2,Mechanical,C-15,Polymer came in C-15 discharge chute,12,Stop,1) DAMAGED POLYMER REMOVED 2) JAM CLEARED,Done,4-Apr-26,RCA C-15  04-04-26.pdf,,,,,,,,Discussion held with the department,Yes,4-Apr-26
+297,29-Mar-26,Pellet-2,Mechanical,Balling Disc-2,Wall scrapper got bend,116,Speed loss,1) OLD SCRAPPER REMOVED 2) NEW SCRAPPER FITMENT DONE,Done,1-Apr-26,RCA BD-2 01-04-26.pdf,,,,,,,,Discussion held with the department,Yes,4-Apr-26
+298,30-Mar-26,Pellet-2,Mechanical,Balling Disc-3,Pinion Coupling teflon bush got damaged,56,Speed loss,1) NEW TEFLON BAR FITTED 2) BALLING DISC DEGREE INCREASED,Done,2-Apr-26,RCA BD-3 02-04-26.pdf,,,,,,,,Discussion held with the department,Yes,4-Apr-26
+299,1-Apr-26,Pellet-1,Mechanical,BC-1,Belt torn out at middle portion(Approx 300mm),107,No,Belt patching work done at the torn out section,Done,19-May-26,rca report,A stone piece stuck in between belt and press roller,1. Belt patching done at the torn out section.,Mr. S.K. Muduli ,1-Apr-26,Done,,,"RCA REPORT reviewed and signed by Mr. S. K. Rama. link
+ok",,
+,,,,,,,,,,,,,"2. Regularly inspect and maintain
+screening system to ensure effectiveness.", Mr. Raghu V.,"
+ Continuous",Done,,,,,
+301,6-Apr-26,BNFC,Mechanical,ROTARY SCREEN,ROTARY SCREEN FLUSHING LINE LEAKAGE ISSUE,76,Speed loss,REPLACE THE HOSE PIPE,Done,7-Apr-26,RCA REPORT,"Due to lack of standardization, improper specification guidelines, and inadequate verification during installation.","Corrective Action
+Replace with correctly sized and matching nipples",Mr. Sunil Das,,Done,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link
+OK",,
+,,,,,,,,,,,,,"Preventive Action
+Develop and implement standard specifications for hose and fittings",,,,,,,,
+302,13-Apr-26,Pellet-1,Mechanical,RF-3 Jam,RF-3 DISCHARGE CHUTE GOT JAMMED ,20,Stop,JAM CLEARED BY REMOVING DAMAGED POLYMER LINER FROM THE CHUTE,Done,19-May-26,RCA REPORT,Use of polymer lincr of lesser thickening & delay in timely replacement of worn out liner due to poor inspection,1. Face of the chute where material is falling is to be replaced with 20 mnn thick PU liner,Mr. S. K. Muduli,15-Aug-26,,,,"Discussion held with the team and rca report modified. Link
+ok",,
+,,,,,,,,,,,,,"2. Life of the PU lincr to be monitored &
+compared with polymer liner",Mr. Uday Kumar Singh,Continuous,,,,,,
+303,14-Apr-26,Pellet-2,Process,Balling Disc,Ball formation issue,,,Use jigging material to BENF. for grinding by less quantity which is suitable for good binding for ball formation,Done,,rca report,,,,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link  
+ok",Yes,20-Apr-26
+304,4-Apr-26,Pellet-1,Mechanical,Pellet,Conveyor spillage reduction,,,"1.Blade replaced & to be done in regular interval
+2.Skirt guard replced & to be done in regular interval
+3.Modification of chute & proper observation
+4.Suction pipe cleaning & hood modification with new bag filter (Higher capacity)",Done,,pellet-1 mech.jpeg,,,,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link
+ok",Yes,20-Apr-26
+305,21-Apr-26,PGP,Process,PGP,Clinker formation,,,Change in coal source on trial basis_ Source Kulda mines to Garjanbahal mines,Done,,RCA PGP CLINKER.pdf,,,,,,,,"RCA report revised and signed by Mr. S. K. Rama, link 
+ok",Yes,20-Apr-26
+306,26-Apr-26,PGP,Mechanical,PGP-1,Grate movment restriction,"1,140",No,support and guide roller adjustment work,Done,28-Apr-26,RCA REPORT,"Due to jamming caused by oversized clinker,grate misalignment ocuured,resulting in support and guide roller one sided.",,,,,,,"RCA report revised and signed by Mr. S. K. Rama, link
+ok",Yes,20-Apr-26
+307,24-Apr-26,Pellet-2,Mechanical,PELLET-2,C1B SNUB PULLEY GOT DAMAGED,51,Speed loss,1) SNUB PULLEY REMOVED 2) NEW SNUB PULLEY WITH THICK DRUM FITMENT DONE,Done,21-4-26,RCA OF C 1B 21-4-26.pdf,,"DUE TO THIN PLATE OF DRUM , IT WAS NOT ABLE TO TAKE LOAD AND GOT CRACKED",,,,,,"RCA report revised and signed by Mr. S. K. Rama. Link 
+ok",,
+308,4-May-26,Pellet-1,Process,,Temperature is not sustainable at Kiln of Pellet 1,,Speed loss,Analising the cause by process team,Done,,RCA_for_Low_Production_Due_to_TG_Stripper_Cast_Plate_Lifting_During.xls,,,,,,,,,Yes,28-Apr-26
+309,5-May-26,BNFC,Mechanical,CYCLONE,Cyclone tapping flushing line broken from the old clarify main header line ,110,Speed loss,PIPE LINE REPAIRED,Done,4-May-26,CYCLONE TAPPING FLUSHING LINE BROKEN.pdf,OLD AND CORRODED PIPE LINE,AWARENESS WAS PROVIDED TO THE WORKMEN TO PREVENT RECURRENCE OF SUCH INCIDENTS,Mr. Bijayasen Pradhan,COMPLETED,Done,,,"The RCA report has been reviewed, modified incorporating inputs from discussions with Mr. D. Jena, and duly signed by Mr. S. K. Rama. Link
+ok",,
+,,,,,,,,,,,,,CHECKLIST OF EQUIPMENT INSPECTION SHOULD BE FOLLOWED STRICTLY,Mr. Bijayasen Pradhan,COMPLETED,Done,,,,,
+310,28-Apr-26,BNFC,Mechanical,SECONDARY BALL MIL LP PUMP,SECONDARY BALL MILL LOW PRESSURE PUMP PRESSURE DROP,85,Stop,STAINER CLEANING DONE,Done,14-May-26,rca report,Oil filter clogging,"Oil pump develops 4-5 bar.
+Stand by oil pump auto starts at 3 bar.
+Mill tripping set at 2-5 bar.
+1. Alarm to be set at 3-5 bar.",Mr. Sidharta Mahapatra,20-May-26,,,,"rca report revised and signed by Mr. S. K. Rama. Link
+ok",,
+,,,,,,,,,,,,,Oil pump to be changed over to the stand by pump every fort night. Filter cleaning to be done at 3-5 bar. An SOP to be made above and followed.,Mr. Kaushal Singh,,,,,,,
+311,28-Apr-26,BNFC,E & I,PRIMARY BALL MILL,PRIMARY BALL MILL TRIP IN HIGH STARTING CURRENT,190,Stop,Mill started after flushing for more than 45-50mins & with jog start starting current came down to normal range after bypass then started.,Done,15-May-26,RCA BNFC.pdf,"Ball mill stopped in loaded condition ,during starting it caused prolonged high starting current even after LRSS bypass. ",,,,,,,"rca report reviewed and signed by Mr. S. K. Rama. Link
+ok",,
+312,23-Apr-26,Pellet-1,Process,BE-1,EMERGENCY SWITH ACTIVATION,7,Stop,"1. Installing CCTV cameras in the area to identify such incidents in future. 
+2.Restrict unauthorized access near emergency switches
+3. Creating awareness among workers on working with emergency switches. ",Done,23-Apr-26,P1 RCA TG trip.pdf,Unintentional manual activation of Emergency Stop switch and lack of surveillance system,"Corrective Action-System reset, inspection completed, TG restarted safely",Raghu Viswanadhu,,,,,,,
+,,,,,,,,,,,,,"
+Preventive Action - 1. Installing CCTV cameras in the area to identify such incidents in future. 
+",Raghu Viswanadhu,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link 
+ok",,
+,,,,,,,,,,,,,2.Restrict unauthorized access near emergency switches,Raghu Viswanadhu,,,,,,,
+,,,,,,,,,,,,,3. Creating awareness among workers on working with emergency switches.,Raghu Viswanadhu,,,,,,,
+313,7-Apr-26,Pellet-1,Mechanical,TG,CHAIN 2 NOS COMB PLATE LOCKED WITH EACH OTHER,5,Stop,,Done,,rca report,2 NOS OF LOCKING CLEAT LOOSE,,Mr.Santosh Ku Muduli,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link  
+ok",,
+314,27-Apr-26,Pellet-1,Mechanical,Balling Disc-3,STOP DUE TO SCRAPPER BEND AND TILES BROKEN,124,Speed loss,,Done,,rca report,STONE CONTAMINATED FEED WAS NOT PROPERLY BYPASSED,,Mr.Santosh Ku Muduli,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link
+ok",,
+315,29-Apr-26,Pellet-1,Mechanical,Balling Disc-1,COUPLING BUSH REPLACEMENT,193,Speed loss,,Done,,rca report,LOSS OF WEIGH FEEDER RATE FEEDBACK TO DCS DUE TO INSTRUMANTATION FAILURE,,Mr.Santosh Ku Muduli,,,,,"RCA report reviewed and signed by Mr. S. K. Rama. Link 
+ok",,
+316,29-May-26,BNFC,Mechanical,HT BALL MILL,HT BALL MILL TRIP DUE TO LP PUMP PRESSURE DROP,190,Stop,"1.TEMPORARY LEAKAGE ARREST
+2.120 LITRE OIL TOP UPIN TRUNION BEARING
+3.SUCTION STRAINER AND FILTER CLEANING DONE",Done,30-May-26,HT BALL MILL TRIP DUE TO LOW PRESSURE PUMP PRESSURE DROP.pdf,DURING PROJECT STANDARD MS TUBE WAS USED INSTEAD OF SS TUBE AND ALSO WELDING WAS DONE INSTEAD OF TUBE CONNECTORS,"PREVENTIVE ACTION:
+EXISTING TUBE TO REPLACE BY SS TUBE IN SHUT DOWN",MR. D. JENA,17-Jun-26,,,,"The RCA report has been reviewed, modified incorporating inputs from discussions with Mr. D. Jena, and duly signed by Mr. S. K. Rama. Link
+ok",,
+,,,,,,,,,,,,,INTRODUCE OF HP AND LP LINE TO DAILY CHECKLIST FOR REGULAR MONITORING,MR. D. JENA,17-Jun-26,,,,,,
+317,7-May-26,Pellet-2,Mechanical,NPC-1,Belt got thin & Hole formed on belt,11,Speed loss,TEMPORARY PATCHING DONE ON SAME DAY,Done,7-May-26,NPC 1 RCA.pdf,HOT MATERIALFREQUENTLY COMES ON BELT,CA: TEMPORARY PATCHING DONE ON SAME DAY,,,,,,,,
+,,,,,,,,,,,,, PA:WATER LINE TO BE STARTED AT NPC 1 BEFORE HOT MATERIAL DISCHARGE 2)COOLING FAN SHOULD BE AT HIGHER SIDE DURING KILN DISCHARGE & COOLER DISCHARGE JAM 3)KILN DISCHARGE CLEANING FREQUENCY TO BE INCREASED DURING ACCREATION DETERIORATION,,,,,,,,
+318,10-May-26,Pellet-1,Mechanical,ESP-4,Dome seal leakage arresting work to be done,59,No,New dome seal replacement done,Done,4-Jun-26,ESP-4 DOME VALVE SEAL DAMAGE (new).pdf,"High wear rate due to operation at higher frequency, even with empty hoppers ",Seal pressure interlock to be ensured all the time,"Mr SK Muduli, Mr. Akash Mohanty",Continuous,Done,,,"The RCA report has been reviewed, modified incorporating inputs from discussions with Mr. Uday Kumar Singh, and duly signed by Mr. S. K. Rama. Link
+ok",,
+,,,,,,,,,,,,,Seal of good quality to be used,Mr Uday Kumar Singh,Continuous,Done,,,,,
+,,,,,,,,,,,,,Interval service cycle operation to be increased from 11.5 min to 15 min,Mr Uday Kumar Singh,6-Jun-26,Done,,,,,
+319,10-May-26,Pellet-1,Mechanical,Bento Conveying,Stop due to Unhealthy seal pressure,85,No,New dome seal replacement done,Done,12-May-26,RCA -Bento conveying  dome seal,Dome seal worn out due to aging,"CA: New dome seal replacement completed.
+PA: Scheduled replacemetn plan for dome valve need to be implemented.
+",Mr SK Muduli,10-May-26,Done,,,,,
+320,13-May-26,Pellet-2,Process,FC-6,Tripped due to high current,41,No,Some material on the belt was removed manually and then it was restarted,Done,,RCA for FC-6 Conveyor Trip Due to Low Torque.xls,Inadequate motor and gearbox capacity to provide the required torque under peak conveyor loading conditions.,".1.Planned to increase gearbox ratio and increase belt speed. 
+2.Planned to enhance motor capacity to prevent low initial torque trips.",Raghu Viswanadhu,,,,,,,
+321,21-May-26,Pellet-1,Mechanical,TG,Arresting the spillage of TG from the stipper plate chute,46,Stop,Punctured chute patching work done.,Done,4-Jun-26,Material spillage from TG stipper plate chute (new).pdf,"The TG stipper plate bent due to poor material quality. Deformation caused the plate to lift from it's position, resulting in material spillage and subsequent puncture of the chute",Material to be checked,Mr Uday Kumar Singh,12-Jun-26,,,,"The RCA report has been reviewed, modified incorporating inputs from discussions with Mr. Uday Kumar Singh, and duly signed by Mr. S. K. Rama. Link
+ok",,
+,,,,,,,,,,,,,PH-2 zone temp to be maintained within 1100 degree celsius,Mr. Raghu V.,Continuous,Done,,,,,
+,,,,,,,,,,,,,"TG stipper plates to be procured only from OEM, China as cost of failure being very high",Mr Uday Kumar Singh,4-Oct-26,,,,,,
+322,3-May-26,Pellet-2,E & I,C-17,"C-17 Conveyor ZSS Problem problem occurred.
+Due to dust accumulation this problem happened.
+",15,Stop,"1. A protective canopy was installed over the ZSS sensor and controller to shield them from conveyor dust spillage, preventing dust accumulation and ensuring reliable sensor performance.
+2. Also JH team were suggested to increase cleaning schedule.
+",Done,5-May-26,RCA-LINK,"The C-17 Conveyor ZSS Problem occurred because dust spillage from the conveyor accumulated on the sensor sensing area, obstructing its ability to detect conveyor movement accurately. Investigation revealed that inadequate spillage control and insufficient housekeeping around the conveyor allowed dust to build up over time.
+As a result, the sensor generated an incorrect signal, leading to the Problem. To prevent recurrence, dust-spillage control, regular housekeeping, sensor-area inspections, and protective shielding for the sensor be implemented.
+","1. A protective canopy was installed over the ZSS sensor and controller to shield them from conveyor dust spillage, preventing dust accumulation and ensuring reliable sensor performance.
+",Mr. Ashis Kumar Sahoo,,,,,,Yes,4-Jun-26
+,,,,,,,,,,,,,2. Also JH team were suggested to increase cleaning schedule.,Mr. Ashis Kumar Sahoo,,,,,,,
+323,20-May-26,Pellet-1,E & I,RF-4,"RF-4 Conveyor ZSS Problem problem occurred,Due to foreign material damaged the striker.
+",5,Stop,"Protective canopy was installed covering both striker & sensor.
+
+Striker strengthening work done.
+",Done,22-May-26,RCA-LINK,"Probably some foreign material had hit the striker due to which it was broken.","Protective canopy was installed covering both striker & sensor. Striker strengthening work done.
+",Mr. Chitta Ranjan Sahoo,,,,,,,
+324,28-May-26,PGP,E & I,"PGP Breaker
+","PGP Breaker / Tripped on Ground Fault
+",25,Stop,"Replaced the damaged section of the power cable with proper high-voltage splicing/jointing kit, test insulation resistance (Megger), and reset the PGP breaker.
+Power cable was rerouted from the route of duct line work to prevent any further hazard.
+",Done,29-May-26,RCA-LINK,"he PGP Breaker damage occurred because a severe ground fault problem current rushed back into the system when the incoming power cable from Pellet-1 was punctured. 
+Investigation revealed that CMT duct line laying work was executed directly over the cable route work.
+","Replaced the damaged section of the power cable with proper high-voltage splicing/jointing kit, test insulation resistance (Megger), and reset the PGP breaker.
+Power cable was rerouted from the route of duct line work to prevent any further hazard.
+","Mr. Ashis Kumar Sahoo",,,,,,,

@@ -131,7 +131,14 @@ const BreakdownTable = ({ data, showAll = false }) => {
                                     <td style={{ color: 'var(--text-secondary)', width: 28, fontSize: '0.78rem' }}>
                                         {processed.indexOf(row) + 1}
                                     </td>
-                                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.equipment_name || '—'}</td>
+                                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                        {row.equipment_name || '—'}
+                                        {row.component_name && (
+                                            <span style={{ fontWeight: 400, fontSize: '0.82rem', color: 'var(--text-secondary)', marginLeft: 6 }}>
+                                                ({row.component_name})
+                                            </span>
+                                        )}
+                                    </td>
                                     <td><span className="tag">{row.asset_tag || '—'}</span></td>
                                     <td>
                                         {sev

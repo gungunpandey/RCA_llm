@@ -15,15 +15,17 @@ const authFetch = (url) => {
     });
 };
 
-export const fetchAnalytics = ({ range = '3m', month = '' } = {}) => {
+export const fetchAnalytics = ({ range = '3m', month = '', plant = '' } = {}) => {
     const p = new URLSearchParams({ range });
     if (month) p.append('month', month);
+    if (plant) p.append('plant', plant);
     return authFetch(`/api/analytics?${p}`);
 };
 
-export const fetchDrillDown = ({ tag, range = '3m', month = '' } = {}) => {
+export const fetchDrillDown = ({ tag, range = '3m', month = '', plant = '' } = {}) => {
     const p = new URLSearchParams({ range });
     if (tag) p.append('tag', tag);
     if (month) p.append('month', month);
+    if (plant) p.append('plant', plant);
     return authFetch(`/api/analytics/drilldown?${p}`);
 };

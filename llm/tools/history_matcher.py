@@ -60,7 +60,7 @@ def _query_sync(
     query_text = f"Equipment: {equipment_name}. Problem: {problem_description}"
     query_vec  = model.encode(query_text, normalize_embeddings=True).astype("float32")
 
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD), connection_timeout=3.0)
     try:
         with driver.session() as session:
             rows = session.run("""

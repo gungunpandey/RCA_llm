@@ -49,7 +49,7 @@
         }
 
         html, body {
-            height: 100%;
+            min-height: 100%;
         }
 
         body {
@@ -150,10 +150,16 @@
             align-items: center;
             justify-content: center;
             gap: 24px;
-            padding: 18px 32px;
+            padding: 14px 32px;
             position: sticky;
             top: 0;
             z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(60, 61, 63, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            transition: var(--transition);
         }
         .db-nav-brand {
             position: absolute;
@@ -901,7 +907,7 @@
                 <a href="/log-breakdown" class="nav-btn {% if active_page == 'log-issue' %}active{% endif %}">Log Issue</a>
                 <a href="/capa/board" class="nav-btn {% if active_page == 'capa-board' %}active{% endif %}">CAPA Board</a>
                 <a href="/equipment" class="nav-btn {% if active_page == 'equipment' %}active{% endif %}">Equipment</a>
-                <a href="/analytics" class="nav-btn {% if active_page == 'analytics' %}active{% endif %}">Analytics</a>
+                <a href="/prodai" class="nav-btn {% if active_page == 'prodai' %}active{% endif %}">ProdAI</a>
                 <div class="nav-dropdown">
                     <button class="nav-btn" onclick="this.nextElementSibling.classList.toggle('open')" type="button">
                         Hello, {{ user.name }} &#9662;

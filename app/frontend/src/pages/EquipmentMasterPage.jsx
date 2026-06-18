@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import NavBar from '../components/NavBar';
-import { fetchEquipmentList, fetchEquipmentDetail, createEquipment } from '../api/equipment';
+import { fetchEquipmentList, fetchEquipmentDetail, createEquipment, addEquipmentComponent, deleteEquipmentComponent } from '../api/equipment';
 
 const CRITICALITY_OPTIONS = ['High', 'Medium', 'Low'];
 const SORT_OPTIONS = [
@@ -50,11 +50,24 @@ const SortIcon = ({ field, sortKey, sortDir }) => {
 
 const EquipmentMasterPage = () => {
     const { user } = useAuth();
+    
+    const isPlantHeadOrAdmin = user?.role === 'Admin' || [
+        'BNFC', 'Pellet 1', 'Pellet 2', 'SMS 1', 'SMS 2',
+        'DRI 1', 'DRI 2', 'CPP', 'CPP 2', 'PGP', 'FIRE SERVICE'
+    ].includes(user?.role);
+
     const [equipment, setEquipment] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [critFilter, setCritFilter] = useState('');
-    const [plantFilter, setPlantFilter] = useState('');
+    const [plantFilter, setPlantFilter] = useState(() => (user?.role !== 'Admin' ? user?.role : ''));
+
+    // Sync plant filter if user loads asynchronously
+    useEffect(() => {
+        if (user && user.role !== 'Admin') {
+            setPlantFilter(user.role);
+        }
+    }, [user]);
     const [sortMode, setSortMode] = useState('plant_asc');
     const [selected, setSelected] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -65,6 +78,9 @@ const EquipmentMasterPage = () => {
     const [saveError, setSaveError] = useState('');
     const [loadError, setLoadError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+    const [newComponentName, setNewComponentName] = useState('');
+    const [componentSaving, setComponentSaving] = useState(false);
+    const [componentError, setComponentError] = useState('');
 
     const loadList = useCallback(() => {
         setLoading(true);
@@ -148,6 +164,39 @@ const EquipmentMasterPage = () => {
         return errs;
     };
 
+    const handleAddComponent = async (e) => {
+        e.preventDefault();
+        if (!newComponentName.trim()) return;
+        setComponentSaving(true);
+        setComponentError('');
+        try {
+            const added = await addEquipmentComponent(selected.id, newComponentName.trim());
+            setSelected(prev => ({
+                ...prev,
+                components: [...(prev.components || []), added]
+            }));
+            setNewComponentName('');
+        } catch (err) {
+            setComponentError(err.message || 'Failed to add component.');
+        } finally {
+            setComponentSaving(false);
+        }
+    };
+
+    const handleDeleteComponent = async (compId) => {
+        if (!window.confirm('Are you sure you want to delete this component?')) return;
+        setComponentError('');
+        try {
+            await deleteEquipmentComponent(compId);
+            setSelected(prev => ({
+                ...prev,
+                components: (prev.components || []).filter(c => c.id !== compId)
+            }));
+        } catch (err) {
+            setComponentError(err.message || 'Failed to delete component.');
+        }
+    };
+
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         setSaveError('');
@@ -184,13 +233,23 @@ const EquipmentMasterPage = () => {
                     <h1 className="bl-hero-title">Equipment Master</h1>
                     <p className="bl-hero-sub">Track all assets, criticality, and breakdown history.</p>
                 </div>
-                <button
-                    className="btn btn-primary"
-                    style={{ width: 'auto', whiteSpace: 'nowrap' }}
-                    onClick={() => { setShowAdd(true); setForm(EMPTY_FORM); setSaveError(''); setFormErrors({}); }}
-                >
-                    + Add New Equipment
-                </button>
+                {isPlantHeadOrAdmin && (
+                    <button
+                        className="btn btn-primary"
+                        style={{ width: 'auto', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                            setShowAdd(true);
+                            setForm({
+                                ...EMPTY_FORM,
+                                category: user?.role !== 'Admin' ? user.role : ''
+                            });
+                            setSaveError('');
+                            setFormErrors({});
+                        }}
+                    >
+                        + Add New Equipment
+                    </button>
+                )}
             </div>
 
             {successMsg && (
@@ -218,15 +277,34 @@ const EquipmentMasterPage = () => {
                     style={{ maxWidth: 300 }}
                 />
                 {/* Plant filter */}
-                <select
-                    className="form-input bl-select"
-                    value={plantFilter}
-                    onChange={e => setPlantFilter(e.target.value)}
-                    style={{ maxWidth: 180 }}
-                >
-                    <option value="">All Plants</option>
-                    {plants.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                {user?.role === 'Admin' ? (
+                    <select
+                        className="form-input bl-select"
+                        value={plantFilter}
+                        onChange={e => setPlantFilter(e.target.value)}
+                        style={{ maxWidth: 180 }}
+                    >
+                        <option value="">All Plants</option>
+                        {plants.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                ) : (
+                    <div style={{
+                        padding: '6px 14px',
+                        background: 'rgba(51, 177, 176, 0.08)',
+                        border: '1.5px solid rgba(51, 177, 176, 0.25)',
+                        borderRadius: 10,
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#33B1B0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        height: 38,
+                        boxSizing: 'border-box'
+                    }}>
+                        🏭 {user?.role}
+                    </div>
+                )}
                 {/* Criticality filter */}
                 <select
                     className="form-input bl-select"
@@ -371,6 +449,74 @@ const EquipmentMasterPage = () => {
                             ))}
                         </div>
 
+                        {/* Components / Sub-Equipment Section */}
+                        <p className="section-title" style={{ marginBottom: 12, marginTop: 16 }}>Components / Sub-Equipment</p>
+                        
+                        {componentError && (
+                            <div style={{ color: '#ff5e5e', fontSize: '0.78rem', marginBottom: 10 }}>
+                                ⚠️ {componentError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                            {(!selected.components || selected.components.length === 0) ? (
+                                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic' }}>
+                                    No components defined.
+                                </p>
+                            ) : (
+                                selected.components.map(comp => (
+                                    <span key={comp.id} style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                                        padding: '4px 10px', borderRadius: 99, fontSize: '0.78rem',
+                                        fontWeight: 600, color: 'var(--text-primary)',
+                                        background: 'rgba(51,177,176,0.10)',
+                                        border: '1px solid rgba(51,177,176,0.25)',
+                                    }}>
+                                        {comp.name}
+                                        {isPlantHeadOrAdmin && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteComponent(comp.id)}
+                                                style={{
+                                                    background: 'none', border: 'none', color: '#ff5e5e',
+                                                    cursor: 'pointer', fontSize: '0.85rem', padding: 0,
+                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                    marginLeft: 2
+                                                }}
+                                                title="Remove component"
+                                            >✕</button>
+                                        )}
+                                    </span>
+                                ))
+                            )}
+                        </div>
+
+                        {isPlantHeadOrAdmin && (
+                            <form onSubmit={handleAddComponent} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Add sub-equipment (e.g. Feed Pump)…"
+                                    value={newComponentName}
+                                    onChange={e => setNewComponentName(e.target.value)}
+                                    style={{
+                                        flex: 1, padding: '6px 12px', fontSize: '0.82rem',
+                                        background: 'rgba(255,255,255,0.7)',
+                                        border: '1.5px solid rgba(60,61,63,0.15)',
+                                    }}
+                                    disabled={componentSaving}
+                                />
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    style={{ padding: '6px 16px', fontSize: '0.82rem', width: 'auto', minWidth: 0 }}
+                                    disabled={componentSaving || !newComponentName.trim()}
+                                >
+                                    {componentSaving ? 'Adding…' : 'Add'}
+                                </button>
+                            </form>
+                        )}
+
                         <p className="section-title" style={{ marginBottom: 12 }}>Breakdown History</p>
                         {detailLoading ? (
                             <div className="skeleton" style={{ height: 60, borderRadius: 8 }} />
@@ -386,9 +532,16 @@ const EquipmentMasterPage = () => {
                                                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: sev }}>{b.severity_level}</span>
                                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{formatDate(b.reported_at)}</span>
                                             </div>
-                                            {b.failure_type && (
-                                                <span className="category-tag" style={{ marginBottom: 4, display: 'inline-block' }}>{b.failure_type}</span>
-                                            )}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4 }}>
+                                                {b.failure_type && (
+                                                    <span className="category-tag">{b.failure_type}</span>
+                                                )}
+                                                {b.component_name && (
+                                                    <span className="tag" style={{ background: 'rgba(251,146,60,0.12)', color: '#fb923c', fontSize: '0.68rem', fontWeight: 700 }}>
+                                                        ⚙️ {b.component_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {b.description && (
                                                 <p className="ellipsis" style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>{b.description}</p>
                                             )}
@@ -455,7 +608,13 @@ const EquipmentMasterPage = () => {
                                             placeholder={placeholder}
                                             value={form[field]}
                                             onChange={e => handleFormChange(field, e.target.value)}
-                                            style={{ background: '#f9fafb', border: '1.5px solid rgba(60,61,63,0.18)' }}
+                                            style={{ 
+                                                background: (field === 'category' && user?.role !== 'Admin') ? 'rgba(60,61,63,0.06)' : '#f9fafb', 
+                                                border: '1.5px solid rgba(60,61,63,0.18)',
+                                                color: (field === 'category' && user?.role !== 'Admin') ? 'rgba(60,61,63,0.5)' : 'inherit',
+                                                cursor: (field === 'category' && user?.role !== 'Admin') ? 'not-allowed' : 'text'
+                                            }}
+                                            disabled={field === 'category' && user?.role !== 'Admin'}
                                         />
                                         {formErrors[field] && <p className="field-error">{formErrors[field]}</p>}
                                     </div>
