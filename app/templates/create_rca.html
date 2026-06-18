@@ -1033,6 +1033,10 @@
                     Equipment: <strong style="color: var(--text-main);">{{ log.machine_name }}</strong><br>
                     Downtime: <strong style="color: var(--text-main);">{{ log.downtime_minutes or 0 }} min</strong>
                 </div>
+                <label for="search-history-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+                    <input type="checkbox" id="search-history-toggle" checked style="width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;">
+                    <span>Search historical incident database<br><span style="font-size: 0.78rem;">Uncheck to skip history and go straight to domain &amp; image analysis.</span></span>
+                </label>
                 <button type="button" class="btn btn-primary" id="run-ai-btn" onclick="runAnalysis()">
                     <span id="run-btn-content" style="display: flex; align-items: center; gap: 0.5rem;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1387,7 +1391,8 @@
             operator_observations: document.getElementById('operator-obs').value || null,
             image_path:          document.getElementById('hid-image-path').value || null,
             image_desc:          document.getElementById('hid-image-desc').value || null,
-            pdf_text:            document.getElementById('hid-pdf-text').value || null
+            pdf_text:            document.getElementById('hid-pdf-text').value || null,
+            skip_history:        !document.getElementById('search-history-toggle').checked
         };
 
         try {

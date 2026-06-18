@@ -359,7 +359,7 @@ Drives the 5 Whys early stop logic. On any exception it returns `False` so the p
 
 ## RAG Manager
 
-`rag_manager.py` connects to Weaviate Cloud and retrieves OEM manual chunks for each query.
+`rag_manager.py` connects to a self-hosted Weaviate instance (e.g. on AWS EC2, REST + gRPC, API-key auth) and retrieves OEM manual chunks for each query. Retrieval is **BM25 keyword search only** — the collection stores no vectors, so no embedding/HuggingFace key is needed for RAG.
 
 **Key method:**
 ```python
@@ -421,12 +421,15 @@ The `capa` field on each match is what gets injected into the CAPA generator —
 | `OPENROUTER_API_KEY` | OpenRouter key | When `LLM_PROVIDER=openrouter` |
 | `OPENROUTER_MODEL` | Model id, e.g. `openai/gpt-5` | No (defaults to `openai/gpt-5`) |
 | `GOOGLE_API_KEY` | Gemini key | When `LLM_PROVIDER=gemini` |
-| `WEAVIATE_URL` | Weaviate Cloud cluster URL | Yes |
-| `WEAVIATE_API_KEY` | Weaviate key | Yes |
+| `WEAVIATE_URL` | Self-hosted Weaviate REST endpoint, e.g. `http://<ec2-ip>:8080` | Yes |
+| `WEAVIATE_API_KEY` | Weaviate API key | Yes |
+| `WEAVIATE_GRPC_HOST` | gRPC host (default: same host as `WEAVIATE_URL`) | No |
+| `WEAVIATE_GRPC_PORT` | gRPC port (default `50051`) | No |
+| `WEAVIATE_GRPC_SECURE` | `true`/`false` (default: matches URL scheme) | No |
 | `NEO4J_URI` | Bolt URI (default `bolt://localhost:7687`) | No |
 | `NEO4J_USER` | Neo4j user (default `neo4j`) | No |
 | `NEO4J_PASSWORD` | Neo4j password (default `rcapassword`) | No |
-| `HUGGINGFACE_API_KEY` | HF key for embeddings | Optional |
+| `HUGGINGFACE_API_KEY` | Not used by RAG (BM25-only). History matcher loads a public sentence-transformers model with no key. | No |
 
 Weaviate collection / embedding settings live in `data_ingestion/weaviate_config.json`. `.env` values override the JSON config.
 

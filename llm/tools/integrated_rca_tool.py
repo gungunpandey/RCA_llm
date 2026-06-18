@@ -103,6 +103,7 @@ class IntegratedRCATool(BaseTool):
         status_callback = kwargs.get("status_callback")
         image_path = kwargs.get("image_path")
         image_desc = kwargs.get("image_desc")
+        skip_history = kwargs.get("skip_history", False)
 
         async def _send_status(msg: str):
             if status_callback:
@@ -126,18 +127,22 @@ class IntegratedRCATool(BaseTool):
                 return None
 
         async def _perform():
-            # 0. Historical lookup
-            await _send_status("📜 Searching historical incident database...")
-            history_matches, history_context = await history_matcher.find_and_format(
-                equipment_name=equipment_name,
-                problem_description=failure_description,
-            )
-            if history_matches:
-                await _send_status(f"✓ Found {len(history_matches)} similar past incident(s)")
-                if status_callback:
-                    await status_callback(("__HISTORY_MATCHES__", history_matches))
+            # 0. Historical lookup (skippable by the user)
+            if skip_history:
+                await _send_status("⏭ Skipping historical incident search (user choice)")
+                history_matches, history_context = [], ""
             else:
-                await _send_status("No similar historical incidents found")
+                await _send_status("📜 Searching historical incident database...")
+                history_matches, history_context = await history_matcher.find_and_format(
+                    equipment_name=equipment_name,
+                    problem_description=failure_description,
+                )
+                if history_matches:
+                    await _send_status(f"✓ Found {len(history_matches)} similar past incident(s)")
+                    if status_callback:
+                        await status_callback(("__HISTORY_MATCHES__", history_matches))
+                else:
+                    await _send_status("No similar historical incidents found")
 
             # 1. Route to domain agents
             await _send_status("🔍 Routing to domain experts...")

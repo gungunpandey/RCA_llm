@@ -74,6 +74,7 @@ class AnalyzeRequest(BaseModel):
     image_path: Optional[str] = None   # absolute path to uploaded image
     image_desc: Optional[str] = None   # user description of image
     pdf_text: Optional[str] = None     # extracted text from uploaded PDF document
+    skip_history: bool = False         # if True, skip the historical incident lookup
 
 
 class FinalizeRequest(BaseModel):
@@ -360,6 +361,7 @@ async def analyze_prepare_stream(req: AnalyzeRequest):
                 status_callback=_status_callback,
                 image_path=req.image_path,
                 image_desc=req.image_desc,
+                skip_history=req.skip_history,
             )
             await status_queue.put(("__RESULT__", result))
         except Exception as e:

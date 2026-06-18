@@ -79,9 +79,9 @@ class RAGManager:
 
         weaviate_url = os.getenv("WEAVIATE_URL")
         weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
-        hf_api_key = os.getenv("HUGGINGFACE_API_KEY", "")
 
         # ── Production path: env vars present → build config dict directly ──
+        # BM25-only retrieval: no embedding / HuggingFace config needed.
         if weaviate_url and weaviate_api_key:
             logger.info("Weaviate config loaded from environment variables")
             return {
@@ -91,9 +91,6 @@ class RAGManager:
                 },
                 "collection": {
                     "name": os.getenv("WEAVIATE_COLLECTION", "Rca"),
-                },
-                "embedding": {
-                    "huggingface_api_key": hf_api_key,
                 },
             }
 
@@ -114,8 +111,6 @@ class RAGManager:
             cfg["weaviate"]["url"] = weaviate_url
         if weaviate_api_key:
             cfg["weaviate"]["api_key"] = weaviate_api_key
-        if hf_api_key:
-            cfg["embedding"]["huggingface_api_key"] = hf_api_key
 
         return cfg
     
@@ -126,20 +121,40 @@ class RAGManager:
             return
         
         logger.info(f"Connecting to Weaviate at {self.config['weaviate']['url']}")
-        
+
         try:
-            # Use Weaviate v4 connection method with Auth class
+            # Self-hosted Weaviate (e.g. AWS EC2) via REST + gRPC, API-key auth.
+            from urllib.parse import urlparse
             from weaviate.classes.init import Auth, AdditionalConfig, Timeout
 
-            self.client = weaviate.connect_to_weaviate_cloud(
-                cluster_url=self.config["weaviate"]["url"],
-                auth_credentials=Auth.api_key(self.config["weaviate"]["api_key"]),
+            url = self.config["weaviate"]["url"]
+            api_key = self.config["weaviate"]["api_key"]
+
+            parsed = urlparse(url if "://" in url else f"http://{url}")
+            http_secure = parsed.scheme == "https"
+            http_host = parsed.hostname
+            http_port = parsed.port or (443 if http_secure else 8080)
+
+            grpc_host = os.getenv("WEAVIATE_GRPC_HOST", http_host)
+            grpc_port = int(os.getenv("WEAVIATE_GRPC_PORT", "50051"))
+            grpc_secure = os.getenv(
+                "WEAVIATE_GRPC_SECURE", "true" if http_secure else "false"
+            ).strip().lower() == "true"
+
+            self.client = weaviate.connect_to_custom(
+                http_host=http_host,
+                http_port=http_port,
+                http_secure=http_secure,
+                grpc_host=grpc_host,
+                grpc_port=grpc_port,
+                grpc_secure=grpc_secure,
+                auth_credentials=Auth.api_key(api_key) if api_key else None,
                 skip_init_checks=True,
                 additional_config=AdditionalConfig(
                     timeout=Timeout(init=10, query=15, insert=120)  # fail fast on stale gRPC
                 ),
             )
-            
+
             # Verify connection by checking if client is ready
             if self.client.is_ready():
                 logger.info("Successfully connected to Weaviate")

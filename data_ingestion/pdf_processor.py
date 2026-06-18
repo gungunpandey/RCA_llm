@@ -1211,10 +1211,52 @@ def _load_config() -> dict:
         cfg["weaviate"]["url"] = env["WEAVIATE_URL"]
     if "WEAVIATE_API_KEY" in env:
         cfg["weaviate"]["api_key"] = env["WEAVIATE_API_KEY"]
-    if "HUGGINGFACE_API_KEY" in env:
-        cfg["embedding"]["huggingface_api_key"] = env["HUGGINGFACE_API_KEY"]
 
     return cfg
+
+
+def _connect_weaviate(cfg: dict, log: logging.Logger):
+    """Connect to a self-hosted Weaviate instance (e.g. on AWS EC2) via REST + gRPC.
+
+    Connection details are taken from the config / .env:
+      WEAVIATE_URL        REST endpoint, e.g. http://1.2.3.4:8080 or https://weaviate.example.com
+      WEAVIATE_API_KEY    API key for authentication
+      WEAVIATE_GRPC_HOST  gRPC host          (default: same host as REST URL)
+      WEAVIATE_GRPC_PORT  gRPC port          (default: 50051)
+      WEAVIATE_GRPC_SECURE  "true"/"false"   (default: matches REST scheme)
+    """
+    from urllib.parse import urlparse
+    from weaviate.classes.init import Auth
+
+    env = _load_env()
+    url = cfg["weaviate"]["url"]
+    api_key = cfg["weaviate"]["api_key"]
+
+    parsed = urlparse(url if "://" in url else f"http://{url}")
+    http_secure = parsed.scheme == "https"
+    http_host = parsed.hostname
+    http_port = parsed.port or (443 if http_secure else 8080)
+
+    grpc_host = env.get("WEAVIATE_GRPC_HOST", http_host)
+    grpc_port = int(env.get("WEAVIATE_GRPC_PORT", "50051"))
+    grpc_secure = env.get(
+        "WEAVIATE_GRPC_SECURE", "true" if http_secure else "false"
+    ).strip().lower() == "true"
+
+    log.info(
+        "Connecting to self-hosted Weaviate: http=%s:%s (secure=%s) grpc=%s:%s (secure=%s)",
+        http_host, http_port, http_secure, grpc_host, grpc_port, grpc_secure,
+    )
+
+    return weaviate.connect_to_custom(
+        http_host=http_host,
+        http_port=http_port,
+        http_secure=http_secure,
+        grpc_host=grpc_host,
+        grpc_port=grpc_port,
+        grpc_secure=grpc_secure,
+        auth_credentials=Auth.api_key(api_key) if api_key else None,
+    )
 
 
 def _parse_pages(text: str) -> list:
@@ -1279,33 +1321,33 @@ def _create_collection(client, cfg: dict, log: logging.Logger):
     except Exception:
         pass  # collection does not exist
 
-    def _skip(prop_name: str):
-        """TEXT/KEYWORD property excluded from vectorization."""
+    def _keyword(prop_name: str):
+        """TEXT property tokenized as a single keyword (exact-match metadata)."""
         return Property(
             name=prop_name,
             data_type=DataType.TEXT,
             tokenization=Tokenization.KEYWORD,
-            vectorizer_config=Configure.VectorizerConfig.text2vec_huggingface(skip=True),
         )
 
+    # BM25-only: no vectorizer. Weaviate stores no vectors and makes no external
+    # embedding calls during ingestion. Retrieval uses keyword (BM25) search,
+    # so no HuggingFace API key is required anywhere in this pipeline.
     collection = client.collections.create(
         name=name,
-        vectorizer_config=Configure.Vectorizer.text2vec_huggingface(
-            model=cfg["embedding"]["model"],
-        ),
+        vectorizer_config=Configure.Vectorizer.none(),
         properties=[
-            Property(name="content",     data_type=DataType.TEXT),   # only vectorized field
-            _skip("chunkType"),
-            _skip("sourcePdf"),
-            _skip("sourceFolder"),
+            Property(name="content",     data_type=DataType.TEXT),   # BM25-searchable
+            _keyword("chunkType"),
+            _keyword("sourcePdf"),
+            _keyword("sourceFolder"),
             Property(name="pageNumber",  data_type=DataType.INT),
             Property(name="chunkIndex",  data_type=DataType.INT),
-            _skip("imageType"),
-            _skip("imagePath"),
-            _skip("collectionName"),  # collection name from config for metadata tracking
+            _keyword("imageType"),
+            _keyword("imagePath"),
+            _keyword("collectionName"),  # collection name from config for metadata tracking
         ],
     )
-    log.info("Created collection '%s'", name)
+    log.info("Created collection '%s' (BM25-only, no vectorizer)", name)
     return collection
 
 
@@ -1447,34 +1489,9 @@ def run_ingestion(log: logging.Logger, force: bool = False, target_file: str = N
     cfg    = _load_config()
     status = _load_status(STATUS_INGEST)
 
-    headers = {}
-    hf_key = cfg["embedding"].get("huggingface_api_key", "")
-    if hf_key:
-        headers["X-HuggingFace-Api-Key"] = hf_key
-
-    # ApiKey was introduced in a later v4 build; fall back to the internal
-    # class for older installs.  Upgrade: pip install --upgrade weaviate-client
+    # BM25-only ingestion: no embedding headers required (no HuggingFace key).
     log.info("Connecting to Weaviate at %s …", cfg["weaviate"]["url"])
-
-    _auth_cls = getattr(weaviate.auth, "ApiKey", None) or getattr(
-        weaviate.auth, "_APIKey", None
-    )
-
-    try:
-        client = weaviate.connect_to_weaviate_cloud(
-            cluster_url=cfg["weaviate"]["url"],
-            auth_credentials=_auth_cls(api_key=cfg["weaviate"]["api_key"]),
-            additional_headers=headers,
-        )
-    except TypeError:
-        if headers:
-            log.warning(
-                "additional_headers not supported – upgrade weaviate-client; retrying without …"
-            )
-        client = weaviate.connect_to_weaviate_cloud(
-            cluster_url=cfg["weaviate"]["url"],
-            auth_credentials=_auth_cls(api_key=cfg["weaviate"]["api_key"]),
-        )
+    client = _connect_weaviate(cfg, log)
 
     try:
         collection = _create_collection(client, cfg, log)

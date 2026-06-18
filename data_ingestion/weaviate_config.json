@@ -6,11 +6,6 @@
   "collection": {
     "name": "rca"
   },
-  "embedding": {
-    "vectorizer": "text2vec-huggingface",
-    "model": "sentence-transformers/all-MiniLM-L6-v2",
-    "huggingface_api_key": ""
-  },
   "chunking": {
     "words_per_chunk": 500,
     "overlap_words": 50
@@ -21,7 +16,7 @@
   },
   "ingestion": {
     "ingest_text": true,
-    "ingest_images": true,
+    "ingest_images": false,
     "batch_size": 200
   }
 }
