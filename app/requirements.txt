@@ -20,3 +20,9 @@ sqlalchemy
 # Date parsing
 python-dateutil
 MarkupSafe==2.0.1
+
+# AI-generated PowerPoint reliability reviews
+python-pptx
+
+# Outbound calls to the LLM backend (reliability review narrative, chat, insights)
+httpx

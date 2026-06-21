@@ -77,6 +77,8 @@ const HistoricalAnalyticsPage = () => {
     const [drillName, setDrillName] = useState('');
     const [drillData, setDrillData] = useState([]);
     const [drillLoading, setDrillLoading] = useState(false);
+    const [genLoading, setGenLoading] = useState(false);
+    const [genError, setGenError] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -105,6 +107,40 @@ const HistoricalAnalyticsPage = () => {
         finally { setDrillLoading(false); }
     };
     const closeDrill = () => setDrillTag(null);
+
+    const generateReview = async () => {
+        setGenLoading(true);
+        setGenError('');
+        try {
+            const p = new URLSearchParams({ range });
+            if (specificMonth) p.append('month', specificMonth);
+            const resp = await fetch(`/api/reliability-review?${p}`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || `Failed to generate review (${resp.status})`);
+            }
+            // Extract filename from Content-Disposition, fall back to a default.
+            const cd = resp.headers.get('Content-Disposition') || '';
+            const match = cd.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : 'Reliability_Review.pptx';
+            const blob = await resp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            setGenError(e.message || 'Could not generate the reliability review.');
+        } finally {
+            setGenLoading(false);
+        }
+    };
 
     const handleMonthChange = (e) => {
         const val = e.target.value;
@@ -163,8 +199,34 @@ const HistoricalAnalyticsPage = () => {
                         onChange={handleMonthChange}
                         title="Pick a specific month"
                     />
+                    <button
+                        onClick={generateReview}
+                        disabled={genLoading}
+                        className="btn"
+                        title="Generate an AI reliability-review PowerPoint for the selected period"
+                        style={{
+                            display:'flex', alignItems:'center', gap:7, padding:'7px 14px',
+                            borderRadius:9, border:'none', cursor: genLoading ? 'default' : 'pointer',
+                            fontSize:'0.82rem', fontWeight:700, fontFamily:'inherit', color:'#fff',
+                            background: genLoading ? 'rgba(51,177,176,0.6)' : ACCENT,
+                            boxShadow:'0 4px 12px rgba(51,177,176,0.25)', transition:'all 0.2s',
+                        }}
+                    >
+                        {genLoading ? (
+                            <>
+                                <span className="spinner" style={{ width:13, height:13, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.4)' }} />
+                                Generating…
+                            </>
+                        ) : (
+                            <>📊 Generate Reliability Review</>
+                        )}
+                    </button>
                 </div>
             </div>
+
+            {genError && (
+                <div className="bl-banner bl-error fade-in" style={{ maxWidth:'100%', position:'relative', zIndex:1 }}>⚠️ {genError}</div>
+            )}
 
             {error && (
                 <div className="bl-banner bl-error fade-in" style={{ maxWidth:'100%', position:'relative', zIndex:1 }}>⚠️ {error}</div>

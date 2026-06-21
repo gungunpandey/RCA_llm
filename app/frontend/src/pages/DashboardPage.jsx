@@ -122,6 +122,9 @@ const DashboardPage = () => {
     const [insights, setInsights] = useState([]);
     const [insightsLoading, setInsightsLoading] = useState(false);
     const [insightsError, setInsightsError] = useState(null);
+    const [insightsSource, setInsightsSource] = useState(null);   // 'ai' | 'rule_based'
+    const [execSummary, setExecSummary] = useState(null);          // executive summary rollup
+    const [showExec, setShowExec] = useState(false);               // executive summary dropdown open?
 
     useEffect(() => {
         if (!loading && data) {
@@ -165,6 +168,9 @@ const DashboardPage = () => {
             const result = await resp.json();
             if (result.status === 'success' && Array.isArray(result.insights)) {
                 setInsights(result.insights);
+                setInsightsSource(result.source || null);
+                setExecSummary(result.executive_summary || null);
+                setShowExec(!!result.executive_summary);   // reveal the summary once generated
             } else {
                 throw new Error("Invalid insights response format");
             }
@@ -356,34 +362,143 @@ const DashboardPage = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: '1.1rem', display: 'inline-flex', alignItems: 'center' }}>🤖</span>
                                 <SectionTitle style={{ margin: 0 }}>ProdAI Insights</SectionTitle>
-                            </div>
-                            <button 
-                                onClick={refreshAIInsights} 
-                                disabled={insightsLoading}
-                                className="btn btn-ghost"
-                                style={{ 
-                                    padding: '6px 12px', 
-                                    fontSize: '0.8rem', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: 6,
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    transition: 'var(--transition)'
-                                }}
-                            >
-                                {insightsLoading ? (
-                                    <>
-                                        <span className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#33B1B0', borderLeftColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-                                        Generating...
-                                    </>
-                                ) : (
-                                    <>🔄 Refresh with ProdAI</>
+                                {insightsSource && (
+                                    <span
+                                        title={insightsSource === 'ai'
+                                            ? 'AI-narrated from verified plant data'
+                                            : 'Computed directly from plant data (rule-based)'}
+                                        style={{
+                                            fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.03em',
+                                            textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999,
+                                            border: `1px solid ${insightsSource === 'ai' ? 'rgba(51,177,176,0.4)' : 'rgba(148,163,184,0.4)'}`,
+                                            color: insightsSource === 'ai' ? '#2b8c8b' : '#64748b',
+                                            background: insightsSource === 'ai' ? 'rgba(51,177,176,0.10)' : 'rgba(148,163,184,0.10)',
+                                        }}
+                                    >
+                                        {insightsSource === 'ai' ? '🤖 AI' : '📊 Computed'}
+                                    </span>
                                 )}
-                            </button>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {execSummary && (
+                                    <button
+                                        onClick={() => setShowExec(v => !v)}
+                                        className="btn btn-ghost"
+                                        style={{
+                                            padding: '6px 12px', fontSize: '0.8rem', display: 'flex',
+                                            alignItems: 'center', gap: 6, borderRadius: '8px',
+                                            cursor: 'pointer', fontWeight: 600, transition: 'var(--transition)',
+                                        }}
+                                    >
+                                        📋 Executive Summary
+                                        <span style={{ transform: showExec ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                                    </button>
+                                )}
+                                <button
+                                    onClick={refreshAIInsights}
+                                    disabled={insightsLoading}
+                                    className="btn btn-ghost"
+                                    style={{
+                                        padding: '6px 12px', fontSize: '0.8rem', display: 'flex',
+                                        alignItems: 'center', gap: 6, borderRadius: '8px',
+                                        cursor: 'pointer', fontWeight: 600, transition: 'var(--transition)',
+                                    }}
+                                >
+                                    {insightsLoading ? (
+                                        <>
+                                            <span className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#33B1B0', borderLeftColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>🔄 Refresh with ProdAI</>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                         
+                        {showExec && execSummary && Array.isArray(execSummary.metrics) && execSummary.metrics.length > 0 && (
+                            <div style={{
+                                marginBottom: 14, borderRadius: 14, overflow: 'hidden',
+                                border: '1px solid rgba(51,177,176,0.25)',
+                                boxShadow: '0 6px 20px rgba(51,177,176,0.10)',
+                                animation: 'fadeInUp 0.35s ease both',
+                            }}>
+                                {/* Header band */}
+                                <div style={{
+                                    padding: '14px 18px',
+                                    background: 'linear-gradient(135deg, rgba(51,177,176,0.16), rgba(51,177,176,0.06))',
+                                    borderBottom: '1px solid rgba(51,177,176,0.18)',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '1.05rem' }}>📋</span>
+                                        <strong style={{ fontSize: '0.98rem', color: 'var(--text-primary)' }}>
+                                            {execSummary.headline}
+                                        </strong>
+                                        {/* Filter context chips */}
+                                        {[
+                                            filters.plant || 'All Plants',
+                                            filters.equipType || 'All Equipment',
+                                            ({ '': 'All Time', '7d': 'Last 7 Days', '30d': 'Last 30 Days', '90d': 'Last 90 Days', '180d': 'Last 180 Days', '1y': 'Last 1 Year' }[filters.dateRange] || execSummary.period),
+                                        ].map((chip, i) => (
+                                            <span key={i} style={{
+                                                fontSize: '0.68rem', fontWeight: 600, padding: '2px 9px', borderRadius: 999,
+                                                background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(51,177,176,0.3)',
+                                                color: '#2b8c8b',
+                                            }}>{chip}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* Metric tiles */}
+                                <div style={{ padding: '16px 18px', background: 'rgba(255,255,255,0.4)' }}>
+                                    <div style={{
+                                        display: 'grid', gap: 10,
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                        marginBottom: execSummary.recommended_focus?.length ? 16 : 0,
+                                    }}>
+                                        {execSummary.metrics.map((m, i) => (
+                                            <div key={i} style={{
+                                                padding: '12px 14px', borderRadius: 11,
+                                                background: '#fff',
+                                                border: `1px solid ${m.good === false ? 'rgba(220,38,38,0.22)' : 'rgba(22,163,74,0.20)'}`,
+                                                borderLeft: `3px solid ${m.good === false ? '#dc2626' : '#16a34a'}`,
+                                            }}>
+                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                    {m.label}
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                                                    <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
+                                                        {m.value}
+                                                    </span>
+                                                    {m.trend && (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: m.good ? '#16a34a' : '#dc2626' }}>
+                                                            {m.direction === 'up' ? '▲' : m.direction === 'down' ? '▼' : ''} {m.trend}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {execSummary.recommended_focus?.length > 0 && (
+                                        <div style={{
+                                            padding: '12px 14px', borderRadius: 11,
+                                            background: 'rgba(51,177,176,0.07)', border: '1px solid rgba(51,177,176,0.18)',
+                                        }}>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#2b8c8b', marginBottom: 7, letterSpacing: '0.04em' }}>
+                                                🎯 RECOMMENDED FOCUS
+                                            </div>
+                                            <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                                {execSummary.recommended_focus.map((f, i) => (
+                                                    <li key={i} style={{ fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                                                        {f}
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {insightsError && (
                             <div className="alert-error" style={{ marginBottom: 10, padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem' }}>
                                 ⚠️ {insightsError}

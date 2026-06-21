@@ -817,46 +817,57 @@ async def analyze_image_endpoint(
 # ── Dashboard Insights endpoint ──────────────────────────────────────────────
 
 class DashboardDataRequest(BaseModel):
-    open_breakdowns: int
-    capa_overdue: int
-    avg_bd_hours: float
-    total_failures: int
-    top_equipment: List[Dict[str, Any]]
-    failures_by_asset: List[Dict[str, Any]]
+    # Phase-1 contract: a pre-computed, verified analysis bundle plus a
+    # rule-based fallback. All fields optional so a malformed request degrades
+    # rather than 422-ing the dashboard.
+    analysis_bundle: Optional[Dict[str, Any]] = None
+    deterministic_insights: Optional[List[Dict[str, Any]]] = None
+
 
 @app.post("/dashboard-insights")
 async def generate_dashboard_insights(req: DashboardDataRequest):
-    if llm_adapter is None:
-        raise HTTPException(status_code=503, detail="LLM adapter not initialized")
-    
-    # Construct a prompt for the LLM
-    prompt = f"""You are an expert maintenance analyzer. Given the following plant breakdown statistics:
-- Open Breakdowns: {req.open_breakdowns}
-- CAPA Overdue: {req.capa_overdue}
-- Average Breakdown Hours (MTTR): {req.avg_bd_hours} hours
-- Total Recent Failures: {req.total_failures}
-- Top 5 Failing Equipment: {json.dumps(req.top_equipment)}
-- Failures by Plant: {json.dumps(req.failures_by_asset)}
+    """Narrate the pre-computed analysis bundle as insight cards.
 
-Provide 3 to 5 highly actionable, short, bulleted maintenance insights and recommendations. 
-For each recommendation, assign a specific type from:
-  - "danger" (for critical overdue tasks or very high failures)
-  - "warning" (for escalating indicators)
-  - "success" (for good performance metrics)
-  - "info" (for general status)
+    IMPORTANT: the LLM does NOT compute statistics. Every number is already in
+    `analysis_bundle`; the model only rephrases verified facts into clear,
+    actionable language. If anything goes wrong we return the deterministic
+    insights the app already computed, so the panel always shows correct data.
+    """
+    fallback = req.deterministic_insights or []
 
-You MUST select an appropriate icon for each (e.g. 🏭, 🔧, 🔴, ⏱️, ⚠️, ✅, 📍).
-Format your response as a JSON object containing a list under the key "insights":
-{{
-  "insights": [
-    {{"icon": "...", "text": "...", "type": "..."}}
-  ]
-}}
-Your response must be VALID JSON ONLY. Do not include markdown formatting or backticks (no ```json).
+    if llm_adapter is None or not req.analysis_bundle:
+        # Nothing to narrate with, or no model — hand back the verified facts.
+        return {"status": "success", "source": "rule_based", "insights": fallback}
+
+    bundle_json = json.dumps(req.analysis_bundle, default=str)
+    fallback_json = json.dumps(fallback, default=str)
+
+    prompt = f"""You are ProdAI, a plant reliability analyst. You are given a VERIFIED analysis bundle that was computed deterministically from the maintenance database. Write 3-6 concise, actionable insight cards for a plant manager.
+
+STRICT RULES:
+1. Use ONLY the numbers, names, and facts present in the ANALYSIS BUNDLE below. NEVER invent, estimate, round differently, or extrapolate any number, percentage, equipment name, or date.
+2. If a metric is missing or marked "reliable": false, do NOT present it as a confident trend. You may omit it, or mention it only as "early/low-confidence signal".
+3. If "data_quality.low_volume_warning" is true, include exactly one caution card noting the sample is small and trends are indicative only.
+4. Prefer the most decision-relevant items: un-implemented CAPA recurrences, repeat failures, risk_alerts, capa_effectiveness, then reliable equipment anomalies and correlations.
+5. For risk_alerts, frame them as elevated risk based on recent activity — NEVER as a guaranteed prediction or forecast.
+6. Every card must be self-explanatory to a manager who hasn't seen the data. NEVER write a bare "X → Y"; always say what the numbers mean, e.g. "up from 7 breakdowns last period to 8 now". Label every number with its unit/meaning (breakdowns, hours, %).
+7. Order cards by importance: put the single most critical issue first.
+8. Keep each card to one clear sentence. You may use <strong>...</strong> for emphasis. Do not output any number that is not in the bundle.
+
+Assign each card a "type": "danger" (critical/repeat failures/overdue), "warning" (escalating), "success" (improvement), or "info" (status/context).
+Choose a fitting "icon" emoji (e.g. 🏭, 🔧, 🔁, 📈, 🚧, ⚠️, ✅, ℹ️, 📍).
+
+ANALYSIS BUNDLE (verified facts — your single source of truth):
+{bundle_json}
+
+For reference, here is a correct rule-based rendering of the same facts. You may improve the wording and prioritization, but you must not contradict its numbers:
+{fallback_json}
+
+Return VALID JSON ONLY (no markdown, no backticks):
+{{"insights": [{{"icon": "...", "text": "...", "type": "..."}}]}}
 """
     try:
         content = await llm_adapter.generate(prompt, json_mode=True)
-        # Parse it with safety fallbacks
         parsed = json.loads(content)
         insights = []
         if isinstance(parsed, dict):
@@ -867,18 +878,85 @@ Your response must be VALID JSON ONLY. Do not include markdown formatting or bac
             elif "icon" in parsed and "text" in parsed and "type" in parsed:
                 insights = [parsed]
             else:
-                # Use the first list type value we find
                 for val in parsed.values():
                     if isinstance(val, list):
                         insights = val
                         break
         elif isinstance(parsed, list):
             insights = parsed
-            
-        return {"status": "success", "insights": insights}
+
+        # Validate shape; if the model returned junk, use the verified fallback.
+        clean = [
+            i for i in insights
+            if isinstance(i, dict) and i.get("text") and i.get("type")
+        ]
+        if not clean:
+            return {"status": "success", "source": "rule_based", "insights": fallback}
+        return {"status": "success", "source": "ai", "insights": clean}
     except Exception as e:
         logger.error(f"Dashboard insights generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        # Never 500 — the dashboard falls back to verified rule-based insights.
+        return {"status": "success", "source": "rule_based", "insights": fallback}
+
+
+class ReliabilityNarrativeRequest(BaseModel):
+    analysis_bundle: Optional[Dict[str, Any]] = None
+    analytics: Optional[Dict[str, Any]] = None
+    deterministic_narrative: Optional[Dict[str, Any]] = None
+
+
+@app.post("/reliability-review-narrative")
+async def reliability_review_narrative(req: ReliabilityNarrativeRequest):
+    """Write the prose blocks for the reliability-review PPTX (executive summary,
+    root-cause analysis, recommended actions, management decisions).
+
+    Numbers are NOT computed here — the model rewrites/expands the deterministic
+    narrative using only facts in the verified bundle/analytics. Falls back to
+    the deterministic narrative on any failure.
+    """
+    fallback = req.deterministic_narrative or {}
+    if llm_adapter is None or not req.analysis_bundle:
+        return {"status": "success", "source": "rule_based", "narrative": fallback}
+
+    bundle_json = json.dumps(req.analysis_bundle, default=str)
+    analytics_json = json.dumps(req.analytics or {}, default=str)
+    fallback_json = json.dumps(fallback, default=str)
+
+    prompt = f"""You are ProdAI, a plant reliability analyst writing a management reliability review. Produce concise, board-ready prose for four slide sections.
+
+STRICT RULES:
+1. Use ONLY facts/numbers present in the VERIFIED DATA below. Never invent or alter any number, name, percentage, or date.
+2. Write for executives: clear, specific, action-oriented. Each bullet one sentence.
+3. "recommended_actions" must be concrete maintenance/engineering actions. "management_decisions" must be decisions that need a manager's sign-off (budget, staffing, prioritization, deadlines).
+4. Frame any risk as elevated risk based on recent activity, never a guaranteed forecast.
+5. 3-6 bullets per section.
+
+VERIFIED ANALYSIS BUNDLE:
+{bundle_json}
+
+VERIFIED ANALYTICS (trends, top equipment, root-cause categories):
+{analytics_json}
+
+Deterministic baseline you may improve on (do not contradict its numbers):
+{fallback_json}
+
+Return VALID JSON ONLY (no markdown), with these exact keys, each a list of strings:
+{{"executive_summary": [], "root_cause_analysis": [], "recommended_actions": [], "management_decisions": []}}
+"""
+    try:
+        content = await llm_adapter.generate(prompt, json_mode=True)
+        parsed = json.loads(content)
+        if not isinstance(parsed, dict):
+            return {"status": "success", "source": "rule_based", "narrative": fallback}
+        out = {}
+        for key in ("executive_summary", "root_cause_analysis",
+                    "recommended_actions", "management_decisions"):
+            val = parsed.get(key)
+            out[key] = [str(x) for x in val] if isinstance(val, list) and val else fallback.get(key, [])
+        return {"status": "success", "source": "ai", "narrative": out}
+    except Exception as e:
+        logger.error(f"Reliability narrative generation failed: {e}", exc_info=True)
+        return {"status": "success", "source": "rule_based", "narrative": fallback}
 
 
 @app.post("/chat")

@@ -12,7 +12,7 @@ from typing import Optional
 import jwt
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File, Form, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -21,6 +21,8 @@ from dateutil import parser as dateparser
 
 from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment, EquipmentComponent
 from utils import normalize_full_owner_string, clean_equipment_name
+from insights_engine import compute_analysis_bundle, bundle_to_deterministic_insights
+from reliability_review import build_deck, deterministic_narrative
 
 # ── Config ─────────────────────────────────────────────────────────────────
 ALLOWED_PLANT_HEAD_ROLES = {
@@ -272,100 +274,51 @@ async def api_dashboard_insights(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # 1. Fetch filtered logs
-    logs = get_filtered_breakdown_logs(db, user, plant, equip_type, date_range, month).all()
-    
-    # 2. Open breakdowns
-    open_count = len([l for l in logs if l.status in ("Open", "In Progress")])
-    
-    # 3. CAPA overdue
-    capa_query = db.query(CAPA).join(BreakdownLog, CAPA.breakdown_log_id == BreakdownLog.id)
-    if user.division != "Admin":
-        capa_query = capa_query.filter(BreakdownLog.division == user.division)
-    elif plant:
-        capa_query = capa_query.filter(BreakdownLog.division == plant)
-    if equip_type:
-        capa_query = capa_query.filter(BreakdownLog.machine_name.ilike(f"%{equip_type}%"))
-        
-    if month:
-        month_parsed = _parse_month_label(month)
-        if month_parsed:
-            from sqlalchemy import func
-            y, m = month_parsed
-            capa_query = capa_query.filter(
-                func.strftime("%Y", BreakdownLog.logged_at) == f"{y:04d}",
-                func.strftime("%m", BreakdownLog.logged_at) == f"{m:02d}",
-            )
-    elif date_range:
-        now = datetime.utcnow()
-        if date_range == "7d":
-            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=7))
-        elif date_range in ("30d", "30D"):
-            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=30))
-        elif date_range in ("90d", "90D", "3m", "3M"):
-            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=90))
-        elif date_range in ("180d", "180D", "6m", "6M"):
-            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=180))
-        elif date_range in ("1y", "1Y", "365d"):
-            capa_query = capa_query.filter(BreakdownLog.logged_at >= now - timedelta(days=365))
+    """ProdAI Insights — Phase 1 (anomaly + repeat-failure detection).
 
-    capa_overdue = capa_query.filter(
-        CAPA.status.notin_(["Completed"]),
-        CAPA.due_date != None,
-        CAPA.due_date != "",
-        CAPA.due_date < datetime.utcnow().strftime("%Y-%m-%d"),
-    ).count()
-    
-    # 4. Avg BD Hours
-    mttr_vals = []
-    for log in logs:
-        mttr_val = None
-        if log.mttr_hours is not None:
-            mttr_val = float(log.mttr_hours)
-        elif log.downtime_minutes and log.downtime_minutes > 0:
-            mttr_val = round(log.downtime_minutes / 60, 1)
-        if mttr_val is not None:
-            mttr_vals.append(mttr_val)
-    avg_bd_hours = round(sum(mttr_vals) / len(mttr_vals), 1) if mttr_vals else 0.0
+    All statistics are computed deterministically by the insights engine; the
+    LLM only narrates the verified facts. If the LLM is unreachable or returns
+    invalid output, we fall back to the rule-based insights so the panel always
+    shows correct numbers (and never 500s the dashboard).
+    """
+    # 1. Compute verified analytics deterministically (no LLM math involved).
+    try:
+        bundle = compute_analysis_bundle(db, user, plant, equip_type, date_range)
+    except Exception as e:
+        # Analytics themselves failed — surface a clean message rather than crash.
+        return {
+            "status": "success",
+            "source": "rule_based",
+            "insights": [{
+                "icon": "⚠️", "type": "warning",
+                "text": "Unable to compute insights for the selected filters right now.",
+            }],
+            "note": str(e),
+        }
 
-    # 5. Top Equipment
-    machine_counts = Counter(log.machine_name for log in logs if log.machine_name)
-    top_equipment = []
-    for equip_name, count in machine_counts.most_common(5):
-        sample = next((l for l in logs if l.machine_name == equip_name), None)
-        top_equipment.append({
-            "equipment_name": equip_name,
-            "asset_tag": equip_name[:6].upper().replace(" ", ""),
-            "category": sample.division if sample else "Unknown",
-            "breakdown_count": count,
-        })
+    deterministic = bundle_to_deterministic_insights(bundle)
+    # Executive summary is a pure rollup of verified facts — always deterministic.
+    executive_summary = bundle.get("executive_summary")
 
-    # 6. Failures by Plant
-    division_counts = Counter(log.division for log in logs if log.division)
-    failures_by_asset = [
-        {"category": div, "count": cnt}
-        for div, cnt in division_counts.most_common(8)
-    ]
-
-    # Prepare payload for LLM Backend
-    llm_payload = {
-        "open_breakdowns": open_count,
-        "capa_overdue": capa_overdue,
-        "avg_bd_hours": avg_bd_hours,
-        "total_failures": len(logs),
-        "top_equipment": top_equipment,
-        "failures_by_asset": failures_by_asset
-    }
-
-    # Call LLM backend
+    # 2. Ask the LLM to NARRATE the verified facts. Degrade gracefully on failure.
     llm_api_url = os.getenv("LLM_API_URL", "http://localhost:8000")
+    payload = {"analysis_bundle": bundle, "deterministic_insights": deterministic}
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(f"{llm_api_url}/dashboard-insights", json=llm_payload)
+            resp = await client.post(f"{llm_api_url}/dashboard-insights", json=payload)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+        insights = data.get("insights")
+        if isinstance(insights, list) and insights:
+            return {"status": "success", "source": data.get("source", "ai"),
+                    "insights": insights, "executive_summary": executive_summary}
+        # Empty / malformed AI output -> deterministic fallback.
+        return {"status": "success", "source": "rule_based",
+                "insights": deterministic, "executive_summary": executive_summary}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch insights from LLM backend: {e}")
+        # LLM backend unreachable / errored -> deterministic fallback, no 500.
+        return {"status": "success", "source": "rule_based", "insights": deterministic,
+                "executive_summary": executive_summary, "note": str(e)}
 
 
 @router.get("/dashboard/top-equipment")
@@ -732,6 +685,17 @@ async def api_capa_create(
     return {"id": capa.id, "message": "CAPA created"}
 
 
+def _apply_capa_completion(capa, new_status):
+    """Keep CAPA.completed_at in sync with status transitions.
+    Sets it the first time status becomes 'Completed'; clears it if the CAPA is
+    reopened. Powers the Phase-3 effectiveness (before/after) analysis."""
+    if new_status == "Completed":
+        if capa.completed_at is None:
+            capa.completed_at = datetime.utcnow()
+    else:
+        capa.completed_at = None
+
+
 @router.put("/capa/{capa_id}")
 async def api_capa_update(
     capa_id: int,
@@ -748,6 +712,7 @@ async def api_capa_update(
     capa.due_date = body.due_date
     capa.priority = body.priority
     capa.impact_level = body.impact_level
+    _apply_capa_completion(capa, body.status)
     capa.status = body.status
     capa.root_cause = body.root_cause
     db.commit()
@@ -768,6 +733,7 @@ async def api_capa_patch_status(
     capa = db.query(CAPA).filter(CAPA.id == capa_id).first()
     if not capa:
         raise HTTPException(status_code=404, detail="CAPA not found")
+    _apply_capa_completion(capa, body.status)
     capa.status = body.status
     db.commit()
     return {"message": "Status updated"}
@@ -1193,14 +1159,10 @@ def _division_clause(user: User, plant: Optional[str] = None) -> tuple:
     return "", {}
 
 
-@router.get("/analytics")
-async def api_analytics(
-    range: str = Query("3m"),
-    month: Optional[str] = None,
-    plant: Optional[str] = None,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def _compute_analytics(db: Session, user: User, range: str,
+                       month: Optional[str] = None, plant: Optional[str] = None) -> dict:
+    """Historical analytics rollup (reused by the /analytics endpoint and the
+    reliability-review PPTX generator)."""
     range_token = range if range in _RANGE_INTERVALS else "3m"
     month_parsed = _parse_month_label(month)
     date_clause, date_params = _date_filter_clause(range_token, month_parsed)
@@ -1387,6 +1349,83 @@ async def api_analytics(
         "top": top,
         "direction": direction,
     }
+
+
+@router.get("/analytics")
+async def api_analytics(
+    range: str = Query("3m"),
+    month: Optional[str] = None,
+    plant: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return _compute_analytics(db, user, range, month, plant)
+
+
+_RANGE_LABELS = {
+    "30d": "Last 30 Days", "3m": "Last 3 Months",
+    "6m": "Last 6 Months", "1y": "Last 1 Year",
+}
+
+
+@router.post("/reliability-review")
+async def api_reliability_review(
+    range: str = Query("3m"),
+    month: Optional[str] = None,
+    plant: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate an AI reliability-review PowerPoint for the selected scope.
+
+    Numbers come from verified analytics + the insights engine; the LLM only
+    writes prose. If the LLM is unreachable, a deterministic narrative is used,
+    so the deck always generates.
+    """
+    # 1. Verified data.
+    analytics = _compute_analytics(db, user, range, month, plant)
+    try:
+        bundle = compute_analysis_bundle(db, user, plant, None, range)
+    except Exception:
+        bundle = {"executive_summary": {}, "risk_alerts": [], "capa_effectiveness": [],
+                  "unimplemented_capa_recurrence": [], "capa_stats": {}}
+
+    # 2. Narrative — deterministic baseline, optionally upgraded by the LLM.
+    narrative = deterministic_narrative(bundle, analytics)
+    llm_api_url = os.getenv("LLM_API_URL", "http://localhost:8000")
+    try:
+        payload = {"analysis_bundle": bundle, "analytics": analytics,
+                   "deterministic_narrative": narrative}
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(f"{llm_api_url}/reliability-review-narrative", json=payload)
+            resp.raise_for_status()
+            ai = resp.json().get("narrative")
+        if isinstance(ai, dict):
+            # only accept non-empty lists; otherwise keep the deterministic block
+            for key in narrative:
+                val = ai.get(key)
+                if isinstance(val, list) and val:
+                    narrative[key] = [str(x) for x in val]
+    except Exception:
+        pass  # keep deterministic narrative
+
+    # 3. Build the deck.
+    scope = plant or (user.division if user.division != "Admin" else "All Plants")
+    period = _RANGE_LABELS.get(range, month or "Selected period") if not month else month
+    meta = {
+        "scope": scope,
+        "period": period,
+        "generated": datetime.utcnow().strftime("%d %b %Y %H:%M UTC"),
+    }
+    deck = build_deck(meta, analytics, bundle, narrative)
+
+    safe_scope = "".join(c for c in scope if c.isalnum() or c in (" ", "-", "_")).strip().replace(" ", "_")
+    filename = f"Reliability_Review_{safe_scope}_{datetime.utcnow():%Y%m%d}.pptx"
+    return StreamingResponse(
+        deck,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/analytics/drilldown")

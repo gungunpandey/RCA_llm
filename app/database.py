@@ -83,6 +83,7 @@ class CAPA(Base):
     status = Column(String, default="Open")               # Open | In Progress | Pending Validation | Completed
     root_cause = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)         # set when status -> Completed; powers CAPA effectiveness (before/after)
 
     tasks = relationship("CAPATask", back_populates="capa", cascade="all, delete-orphan")
     comments = relationship("CAPAComment", back_populates="capa", cascade="all, delete-orphan")
