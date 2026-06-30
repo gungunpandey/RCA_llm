@@ -30,7 +30,7 @@ from tools.five_whys_tool import FiveWhysTool
 from tools.tool_registry import ToolRegistry
 from tools.fishbone_tool import FishboneTool
 from tools.integrated_rca_tool import IntegratedRCATool
-from rag_manager import RAGManager
+from rag_manager import RAGManager, extract_query_keywords
 from domain_agents import MechanicalAgent, ElectricalAgent, ProcessAgent
 from models.tool_results import ClarificationAnswer
 from tools import history_matcher
@@ -92,6 +92,8 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    # Optional uploads: [{type:'image'|'pdf', name, data(base64), mime}]
+    attachments: Optional[List[Dict[str, Any]]] = None
 
 
 # ── Lifespan: startup / shutdown ──
@@ -926,10 +928,10 @@ async def reliability_review_narrative(req: ReliabilityNarrativeRequest):
 
 STRICT RULES:
 1. Use ONLY facts/numbers present in the VERIFIED DATA below. Never invent or alter any number, name, percentage, or date.
-2. Write for executives: clear, specific, action-oriented. Each bullet one sentence.
+2. Write for executives: punchy and scannable. Each bullet ONE short line, ~12 words max, and lead with the number/asset (e.g. "Raw Water Pump: 15 failures — schedule bearing inspection").
 3. "recommended_actions" must be concrete maintenance/engineering actions. "management_decisions" must be decisions that need a manager's sign-off (budget, staffing, prioritization, deadlines).
 4. Frame any risk as elevated risk based on recent activity, never a guaranteed forecast.
-5. 3-6 bullets per section.
+5. 3-5 bullets per section. No filler, no repetition of the charts — add insight.
 
 VERIFIED ANALYSIS BUNDLE:
 {bundle_json}
@@ -959,6 +961,59 @@ Return VALID JSON ONLY (no markdown), with these exact keys, each a list of stri
         return {"status": "success", "source": "rule_based", "narrative": fallback}
 
 
+def _process_attachments(attachments, user_text):
+    """Turn uploaded files into text context: images via qwen vision
+    (analyze_image, qwen3.5 -> qwen2.5 fallback), PDFs via text extraction.
+    Returns (context_text, summary_list_for_ui)."""
+    import base64
+    import tempfile
+    blocks, used = [], []
+    for att in (attachments or []):
+        kind = (att.get("type") or "").lower()
+        name = att.get("name") or "attachment"
+        data = att.get("data") or ""
+        if data.strip().startswith("data:") and "," in data:
+            data = data.split(",", 1)[1]   # strip data URL prefix
+        try:
+            raw = base64.b64decode(data)
+        except Exception:
+            continue
+
+        if kind == "image":
+            try:
+                from tools.image_analysis_tool import analyze_image
+                ext = os.path.splitext(name)[1].lower() or ".jpg"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                    tmp.write(raw)
+                    tmp_path = tmp.name
+                try:
+                    r = analyze_image(tmp_path, user_description=user_text)
+                finally:
+                    try: os.unlink(tmp_path)
+                    except OSError: pass
+                blocks.append(
+                    f"Image '{name}': component={r.get('component')}, "
+                    f"damage={r.get('damage_type')}, severity={r.get('severity')}. "
+                    f"{r.get('ai_description', '')}"
+                )
+                used.append({"type": "image", "name": name})
+            except Exception as e:
+                logger.warning(f"Image attachment analysis failed: {e}")
+        elif kind == "pdf":
+            try:
+                import io
+                from pypdf import PdfReader
+                reader = PdfReader(io.BytesIO(raw))
+                text = "\n".join((p.extract_text() or "") for p in reader.pages[:30]).strip()[:6000]
+                if text:
+                    blocks.append(f"PDF '{name}' contents:\n{text}")
+                    used.append({"type": "pdf", "name": name})
+            except Exception as e:
+                logger.warning(f"PDF attachment extraction failed: {e}")
+
+    return ("\n\n".join(blocks), used)
+
+
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest):
     if llm_adapter is None:
@@ -968,58 +1023,92 @@ async def chat_endpoint(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Messages list cannot be empty")
         
     latest_message = req.messages[-1].content
-    
-    # 1. Retrieve manuals context (RAG)
+
+    # 0. Process uploaded attachments (images via qwen vision, PDFs as text).
+    attachment_context, attachment_used = "", []
+    if req.attachments:
+        attachment_context, attachment_used = _process_attachments(req.attachments, latest_message)
+
+    # 1. Retrieve manuals context (RAG). Strip the question to keywords first so
+    #    BM25 focuses on the equipment/subject, and pull a few more chunks.
     rag_text = ""
+    manual_sources = []
     if rag is not None:
         try:
-            rag_docs = await rag.retrieve_equipment_context(latest_message, [], top_k=4)
+            keywords = extract_query_keywords(latest_message)
+            rag_docs = await rag.retrieve_equipment_context(keywords, [], top_k=8)
             rag_text = rag.format_context_for_llm(rag_docs)
+            # Build a de-duplicated source list (manual + page) for the UI.
+            seen = set()
+            for d in rag_docs:
+                key = (d.source, d.metadata.get("page"))
+                if d.source and d.source != "Unknown" and key not in seen:
+                    seen.add(key)
+                    manual_sources.append({"title": d.source, "page": d.metadata.get("page")})
+            manual_sources = manual_sources[:6]
         except Exception as e:
             logger.warning(f"RAG retrieval failed in chat: {e}")
-            rag_text = "No manual documents retrieved due to an error."
-            
+            rag_text = ""
+
     # 2. Retrieve historical incidents context (Neo4j)
     history_text = ""
     try:
         _, history_text = await history_matcher.find_and_format("", latest_message, top_k=2)
     except Exception as e:
         logger.warning(f"History lookup failed in chat: {e}")
-        history_text = "No historical incident records retrieved due to an error."
-        
-    # Combine context
-    grounding_context = f"--- OEM MANUAL EXCERPTS ---\n{rag_text}\n\n{history_text}"
-    
-    # Format history
+        history_text = ""
+
+    # Combine reference material (used silently for grounding).
+    attach_block = f"\n\nUSER-ATTACHED FILES (analyze and use directly):\n{attachment_context}" if attachment_context else ""
+    grounding_context = f"PLANT MANUAL REFERENCE:\n{rag_text or '(none found)'}\n\nPLANT INCIDENT HISTORY:\n{history_text or '(none found)'}{attach_block}"
+
+    # Conversation history
     history_lines = []
     for msg in req.messages[:-1]:
         role_label = "User" if msg.role == "user" else "Assistant"
         history_lines.append(f"{role_label}: {msg.content}")
     conversation_history = "\n".join(history_lines) if history_lines else "(No previous conversation)"
-    
-    # Build prompt
-    prompt = f"""You are ProdAI, a helpful conversational AI assistant for industrial plant maintenance and root cause analysis (RCA).
-You help engineers diagnose equipment failures, search OEM manual documentation, understand historical breakdowns, and suggest corrective and preventive actions (CAPA).
 
-Use the following context to ground your answer. The context contains matching excerpts from OEM equipment manuals and details of similar past incidents:
+    system_msg = (
+        "You are ProdAI, an expert assistant for industrial plant maintenance, "
+        "reliability and root cause analysis. You answer as a single confident "
+        "expert voice."
+    )
 
+    prompt = f"""Use the reference material below (plant manuals, incident history) and, when needed, current web knowledge to answer the user's question accurately and practically.
+
+REFERENCE MATERIAL (for your grounding — do NOT quote or mention it):
 {grounding_context}
 
-If the context does not contain the answer, use your general industrial engineering knowledge, but make sure to distinguish between information retrieved from verified plant records/manuals and general recommendations. Be concise, professional, and practical.
-
-CONVERSATION HISTORY:
+CONVERSATION SO FAR:
 {conversation_history}
 
-User: {latest_message}
-Assistant:"""
+RULES:
+- Answer directly as one expert voice. NEVER mention manuals, excerpts, context, retrieval, databases, sources, or where the information came from. Never say information "is not available" or "wasn't provided" — just give the best correct answer. (Exception: you MAY naturally refer to a file the user attached in this message, e.g. "the photo you shared".)
+- Prefer specifics relevant to this plant's equipment when the reference material supports them; otherwise give accurate industry best-practice / standards-based guidance.
+- Be accurate. If a value genuinely depends on specifics, give typical ranges and state what determines the exact figure.
+- Format the reply in clean Markdown for readability: short **bold** labels, bullet points, and small tables where useful. Keep it concise and skimmable. Do NOT use large headings (no '#'/'##'); use bold text instead.
+
+User question: {latest_message}"""
 
     try:
-        content = await llm_adapter.generate(prompt)
+        web_citations = []
+        if hasattr(llm_adapter, "generate_with_web"):
+            try:
+                content, web_citations = await llm_adapter.generate_with_web(prompt, system=system_msg)
+            except Exception as web_err:
+                # Web plugin unavailable/errored — fall back to a normal answer.
+                logger.warning(f"Web-augmented chat failed, falling back: {web_err}")
+                content = await llm_adapter.generate(prompt)
+                web_citations = []
+        else:
+            content = await llm_adapter.generate(prompt)
         return {
             "status": "success",
             "reply": content,
-            "has_rag_context": bool(rag_text and "No manual documents" not in rag_text),
-            "has_history_context": bool(history_text and "No historical incident" not in history_text)
+            "sources": {"manuals": manual_sources, "web": web_citations, "attachments": attachment_used},
+            "has_rag_context": bool(manual_sources),
+            "has_history_context": bool(history_text),
         }
     except Exception as e:
         logger.error(f"Chat generation failed: {e}", exc_info=True)

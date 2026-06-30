@@ -155,6 +155,55 @@ class OpenRouterAdapter:
         self.total_cost += cost
         return content
 
+    def _chat_web(self, prompt: str, system: str, max_tokens: int = 2048):
+        """Chat completion with OpenRouter's native web-search plugin enabled.
+
+        Returns (content, citations, prompt_tokens, completion_tokens) where
+        citations is a list of {"title", "url"} parsed from the message
+        annotations OpenRouter attaches when it browses the web.
+        """
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=max_tokens,
+            extra_body={"plugins": [{"id": "web", "max_results": 5}]},
+        )
+        choice = response.choices[0]
+        content = choice.message.content or ""
+
+        citations = []
+        try:
+            msg = choice.message.model_dump()
+            for ann in (msg.get("annotations") or []):
+                if ann.get("type") == "url_citation":
+                    uc = ann.get("url_citation") or {}
+                    url = uc.get("url")
+                    if url:
+                        citations.append({"title": uc.get("title") or url, "url": url})
+        except Exception:
+            pass
+
+        usage = response.usage
+        return content, citations, usage.prompt_tokens, usage.completion_tokens
+
+    async def generate_with_web(self, prompt: str, system: Optional[str] = None,
+                                max_tokens: int = 2048):
+        """Async web-augmented generation. Returns (content, citations)."""
+        system = system or (
+            "You are an expert in industrial equipment maintenance and reliability."
+        )
+        loop = asyncio.get_event_loop()
+        content, citations, p_tokens, c_tokens = await loop.run_in_executor(
+            None, lambda: self._chat_web(prompt, system, max_tokens)
+        )
+        self.total_tokens += p_tokens + c_tokens
+        self.total_cost += self._calc_cost(p_tokens, c_tokens)
+        return content, citations
+
     def analyze_failure(
         self,
         failure_description: str,

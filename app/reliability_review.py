@@ -18,11 +18,14 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 
 
 # ── palette (matches the ProdAI teal theme) ──────────────────────────────────
 TEAL = RGBColor(0x33, 0xB1, 0xB0)
 TEAL_DARK = RGBColor(0x2B, 0x8C, 0x8B)
+PURPLE = RGBColor(0x7C, 0x6B, 0xFF)
 DARK = RGBColor(0x1F, 0x2D, 0x3D)
 GREY = RGBColor(0x64, 0x74, 0x8B)
 RED = RGBColor(0xDC, 0x26, 0x26)
@@ -30,6 +33,14 @@ GREEN = RGBColor(0x16, 0xA3, 0x4A)
 AMBER = RGBColor(0xB4, 0x7A, 0x00)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 LIGHT = RGBColor(0xF1, 0xF6, 0xF6)
+
+# Chart series palette (cycled for pie/doughnut/colored bars)
+_PALETTE = [
+    RGBColor(0x33, 0xB1, 0xB0), RGBColor(0x7C, 0x6B, 0xFF), RGBColor(0xF5, 0x9E, 0x0B),
+    RGBColor(0xEF, 0x44, 0x44), RGBColor(0x10, 0xB9, 0x81), RGBColor(0xF9, 0x73, 0x16),
+    RGBColor(0x8B, 0x5C, 0xF6), RGBColor(0x06, 0xB6, 0xD4), RGBColor(0xFB, 0x92, 0x3C),
+    RGBColor(0x4A, 0xDE, 0x80),
+]
 
 
 # ── low-level helpers ────────────────────────────────────────────────────────
@@ -135,6 +146,122 @@ def _metric_tiles(slide, metrics, left, top, total_width, prs):
                   Inches(0.3), f"{arrow} {m['trend']}", size=11, color=accent, bold=True)
 
 
+# ── chart + notes helpers ────────────────────────────────────────────────────
+def _notes(slide, lines):
+    """Push detail text into the speaker-notes pane to keep slides visual."""
+    if not lines:
+        return
+    tf = slide.notes_slide.notes_text_frame
+    tf.text = "\n".join(f"• {l}" for l in lines)
+
+
+def _style_axes(chart):
+    try:
+        chart.category_axis.tick_labels.font.size = Pt(9)
+        chart.category_axis.tick_labels.font.color.rgb = DARK
+    except Exception:
+        pass
+    try:
+        chart.value_axis.tick_labels.font.size = Pt(9)
+        chart.value_axis.tick_labels.font.color.rgb = GREY
+    except Exception:
+        pass
+
+
+def _legend(chart, position=XL_LEGEND_POSITION.BOTTOM):
+    chart.has_legend = True
+    chart.legend.position = position
+    chart.legend.include_in_layout = False
+    chart.legend.font.size = Pt(10)
+
+
+def _bar_chart(slide, left, top, width, height, categories, values,
+               color=TEAL, colors=None, horizontal=True):
+    cd = CategoryChartData()
+    cd.categories = categories
+    cd.add_series("Failures", values)
+    ct = XL_CHART_TYPE.BAR_CLUSTERED if horizontal else XL_CHART_TYPE.COLUMN_CLUSTERED
+    chart = slide.shapes.add_chart(ct, left, top, width, height, cd).chart
+    chart.has_title = False
+    chart.has_legend = False
+    series = chart.series[0]
+    if colors:
+        for i, pt in enumerate(series.points):
+            pt.format.fill.solid()
+            pt.format.fill.fore_color.rgb = colors[i % len(colors)]
+    else:
+        series.format.fill.solid()
+        series.format.fill.fore_color.rgb = color
+    try:
+        plot = chart.plots[0]
+        plot.has_data_labels = True
+        plot.data_labels.font.size = Pt(9)
+        plot.data_labels.font.color.rgb = DARK
+    except Exception:
+        pass
+    _style_axes(chart)
+    return chart
+
+
+def _line_chart(slide, left, top, width, height, categories, series_list, legend=True):
+    cd = CategoryChartData()
+    cd.categories = categories
+    for name, vals, _c in series_list:
+        cd.add_series(name, vals)
+    chart = slide.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, left, top, width, height, cd).chart
+    chart.has_title = False
+    if legend:
+        _legend(chart)
+    else:
+        chart.has_legend = False
+    for i, (_n, _v, color) in enumerate(series_list):
+        ser = chart.series[i]
+        ser.format.line.color.rgb = color
+        ser.format.line.width = Pt(2.25)
+        ser.smooth = False
+    _style_axes(chart)
+    return chart
+
+
+def _doughnut(slide, left, top, width, height, categories, values):
+    cd = CategoryChartData()
+    cd.categories = categories
+    cd.add_series("Count", values)
+    chart = slide.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, left, top, width, height, cd).chart
+    chart.has_title = False
+    _legend(chart, XL_LEGEND_POSITION.RIGHT)
+    for i, pt in enumerate(chart.series[0].points):
+        pt.format.fill.solid()
+        pt.format.fill.fore_color.rgb = _PALETTE[i % len(_PALETTE)]
+    try:
+        plot = chart.plots[0]
+        plot.has_data_labels = True
+        plot.data_labels.font.size = Pt(9)
+        plot.data_labels.font.color.rgb = WHITE
+    except Exception:
+        pass
+    return chart
+
+
+def _grouped_columns(slide, left, top, width, height, categories, series_list, legend=True):
+    cd = CategoryChartData()
+    cd.categories = categories
+    for name, vals, _c in series_list:
+        cd.add_series(name, vals)
+    chart = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, left, top, width, height, cd).chart
+    chart.has_title = False
+    if legend:
+        _legend(chart)
+    else:
+        chart.has_legend = False
+    for i, (_n, _v, color) in enumerate(series_list):
+        ser = chart.series[i]
+        ser.format.fill.solid()
+        ser.format.fill.fore_color.rgb = color
+    _style_axes(chart)
+    return chart
+
+
 # ── deterministic narrative (fallback when LLM is unavailable) ────────────────
 def deterministic_narrative(bundle: dict, analytics: dict) -> dict:
     es = bundle.get("executive_summary", {}) or {}
@@ -191,8 +318,11 @@ def _slide_exec(prs, bundle, narrative):
     es = bundle.get("executive_summary", {}) or {}
     _metric_tiles(slide, es.get("metrics", []), Inches(0.55), Inches(1.2),
                   prs.slide_width - Inches(1.1), prs)
-    _bullets(slide, narrative.get("executive_summary", []),
-             Inches(0.55), Inches(2.75), prs.slide_width - Inches(1.1), Inches(4.0), size=15)
+    bullets = narrative.get("executive_summary", [])
+    # Keep the slide light: top 4 bullets on-slide, full detail in speaker notes.
+    _bullets(slide, bullets[:4], Inches(0.55), Inches(2.75),
+             prs.slide_width - Inches(1.1), Inches(3.8), size=15)
+    _notes(slide, bullets)
 
 
 def _slide_trends(prs, analytics):
@@ -200,20 +330,25 @@ def _slide_trends(prs, analytics):
     _header(slide, prs, 2, "Breakdown Trends")
     d = analytics.get("direction") or {}
     pct = d.get("pct")
-    trend_txt = ("Stable failure rate" if pct is None
-                 else f"Failures {'increasing' if d.get('direction') == 'up' else 'decreasing'} "
-                      f"{'+' if d.get('direction') == 'up' else ''}{pct}% (recent half: "
-                      f"{d.get('recent', 0)} vs prior half: {d.get('previous', 0)})")
-    _text(slide, Inches(0.55), Inches(1.2), prs.slide_width - Inches(1.1),
-          Inches(0.5), trend_txt, size=16, color=DARK, bold=True)
+    direction = d.get("direction")
+    # Big delta callout (left), trend chart (right).
+    delta = "—" if pct is None else f"{'+' if direction == 'up' else ''}{pct}%"
+    color = RED if direction == "up" else GREEN if direction == "down" else GREY
+    _text(slide, Inches(0.55), Inches(1.25), Inches(3.2), Inches(0.95),
+          delta, size=46, color=color, bold=True)
+    _text(slide, Inches(0.55), Inches(2.3), Inches(3.2), Inches(0.9),
+          f"failures vs prior half ({d.get('recent', 0)} vs {d.get('previous', 0)})",
+          size=12, color=GREY)
 
-    rows = [[t.get("period", "—"), t.get("failures", 0),
-             f"{t.get('avg_mttr', 0)} h"] for t in (analytics.get("trend") or [])]
-    if rows:
-        _table(slide, ["Period", "Failures", "Avg MTTR"], rows,
-               Inches(0.55), Inches(1.9), Inches(6.0))
+    trend = analytics.get("trend") or []
+    if trend:
+        cats = [t.get("period", "—") for t in trend]
+        fails = [t.get("failures", 0) for t in trend]
+        mttr = [t.get("avg_mttr", 0) for t in trend]
+        _line_chart(slide, Inches(4.0), Inches(1.15), Inches(8.85), Inches(5.5),
+                    cats, [("Failures", fails, TEAL), ("Avg MTTR (h)", mttr, PURPLE)])
     else:
-        _text(slide, Inches(0.55), Inches(1.9), Inches(6), Inches(0.5),
+        _text(slide, Inches(4.0), Inches(2.0), Inches(6), Inches(0.5),
               "No trend data for this period.", size=13, color=GREY)
 
 
@@ -222,29 +357,38 @@ def _slide_top_equipment(prs, analytics):
     _header(slide, prs, 3, "Top Problem Equipment")
     top = analytics.get("top")
     if top:
-        _text(slide, Inches(0.55), Inches(1.2), Inches(8), Inches(0.5),
-              f"{top['equipment_name']}  —  {top['failure_count']} failures",
-              size=18, color=RED, bold=True)
-        _text(slide, Inches(0.55), Inches(1.75), Inches(9), Inches(0.4),
-              f"Plant: {top.get('category', '—')}    |    Criticality: "
-              f"{top.get('criticality', '—')}    |    Avg MTTR: {top.get('avg_mttr', 0)} h",
-              size=12, color=GREY)
-    rows = [[f["equipment_name"], f["failure_count"], f.get("category", "—")]
-            for f in (analytics.get("freq") or [])[:10]]
-    if rows:
-        _table(slide, ["Equipment", "Failures", "Plant"], rows,
-               Inches(0.55), Inches(2.4), Inches(8.5))
+        _text(slide, Inches(0.55), Inches(1.15), Inches(9), Inches(0.5),
+              top["equipment_name"], size=20, color=DARK, bold=True)
+        _text(slide, Inches(0.55), Inches(1.7), Inches(9), Inches(0.4),
+              f"{top['failure_count']} failures   ·   {top.get('criticality', '—')} criticality"
+              f"   ·   Avg MTTR {top.get('avg_mttr', 0)} h", size=12, color=GREY)
+    freq = (analytics.get("freq") or [])[:8]
+    if freq:
+        # Horizontal bars read largest-on-top, so reverse for BAR_CLUSTERED.
+        cats = [f["equipment_name"] for f in freq][::-1]
+        vals = [f["failure_count"] for f in freq][::-1]
+        _bar_chart(slide, Inches(0.55), Inches(2.3), Inches(12.25), Inches(4.55),
+                   cats, vals, color=TEAL, horizontal=True)
+    else:
+        _text(slide, Inches(0.55), Inches(2.4), Inches(8), Inches(0.5),
+              "No failures recorded for this period.", size=13, color=GREY)
 
 
 def _slide_rca(prs, analytics, narrative):
     slide = _blank(prs)
     _header(slide, prs, 4, "Root Cause Analysis")
-    rows = [[r["category"], r["count"]] for r in (analytics.get("rootCause") or [])[:8]]
-    if rows:
-        _table(slide, ["Failure Category", "Count"], rows,
-               Inches(0.55), Inches(1.2), Inches(4.5))
-    _bullets(slide, narrative.get("root_cause_analysis", []),
-             Inches(5.4), Inches(1.2), prs.slide_width - Inches(6.0), Inches(4.5), size=14)
+    rc = analytics.get("rootCause") or []
+    if rc:
+        cats = [r["category"] for r in rc]
+        vals = [r["count"] for r in rc]
+        _doughnut(slide, Inches(0.55), Inches(1.25), Inches(5.7), Inches(5.4), cats, vals)
+    else:
+        _text(slide, Inches(0.55), Inches(1.4), Inches(5), Inches(0.5),
+              "No failure-type data recorded.", size=13, color=GREY)
+    bullets = narrative.get("root_cause_analysis", [])
+    _bullets(slide, bullets[:5], Inches(6.6), Inches(1.4),
+             prs.slide_width - Inches(7.1), Inches(5.0), size=14)
+    _notes(slide, bullets)
 
 
 def _slide_capa(prs, bundle):
@@ -252,19 +396,22 @@ def _slide_capa(prs, bundle):
     _header(slide, prs, 5, "CAPA Effectiveness")
     eff = bundle.get("capa_effectiveness") or []
     if eff:
-        rows = [[e["machine"], f"#{e['capa_id']}", e["before"], e["after"],
-                 f"{e['change_pct']}%", "Improved" if e["improved"] else "No change"]
-                for e in eff]
-        _table(slide, ["Equipment", "CAPA", "Before", "After", "Change", "Result"],
-               rows, Inches(0.55), Inches(1.3), Inches(9.0))
+        cats = [e["machine"] for e in eff]
+        before = [e["before"] for e in eff]
+        after = [e["after"] for e in eff]
+        _grouped_columns(slide, Inches(0.55), Inches(1.3), Inches(9.0), Inches(4.4),
+                         cats, [("Before CAPA", before, GREY), ("After CAPA", after, TEAL)])
+        _notes(slide, [f"{e['machine']} (CAPA #{e['capa_id']}): {e['before']} -> {e['after']} "
+                       f"breakdowns ({e['change_pct']}%) over {e['window_days']} days"
+                       for e in eff])
     else:
-        _text(slide, Inches(0.55), Inches(1.4), Inches(9), Inches(1.0),
+        _text(slide, Inches(0.55), Inches(1.4), Inches(11), Inches(1.0),
               "No completed CAPAs with a fully-elapsed comparison window yet. "
               "Effectiveness will populate as CAPAs are closed and time passes.",
               size=14, color=GREY)
     stats = bundle.get("capa_stats") or {}
     if stats.get("total"):
-        _text(slide, Inches(0.55), Inches(5.4), Inches(9), Inches(0.5),
+        _text(slide, Inches(0.55), Inches(6.1), Inches(11), Inches(0.5),
               f"CAPA compliance this period: {stats.get('compliance_pct', 0)}%  "
               f"({stats.get('completed', 0)}/{stats.get('total', 0)} completed, "
               f"{stats.get('overdue', 0)} overdue)", size=13, color=DARK, bold=True)
@@ -278,11 +425,19 @@ def _slide_risks(prs, bundle):
           size=11, color=GREY)
     risks = bundle.get("risk_alerts") or []
     if risks:
-        rows = [[r["machine"], r["risk_level"], r["failures"],
-                 r.get("criticality") or "—", "; ".join(r["reasons"][:2])]
-                for r in risks]
-        _table(slide, ["Equipment", "Risk", "Failures", "Criticality", "Why"],
-               rows, Inches(0.55), Inches(1.65), Inches(9.2))
+        # Bar of recent failures per at-risk asset, colored by risk level.
+        cats = [r["machine"] for r in risks][::-1]
+        vals = [r["failures"] for r in risks][::-1]
+        colors = [(RED if r["risk_level"] == "High" else AMBER) for r in risks][::-1]
+        _bar_chart(slide, Inches(0.55), Inches(1.7), Inches(8.6), Inches(4.9),
+                   cats, vals, colors=colors, horizontal=True)
+        # Legend chips for risk levels.
+        _text(slide, Inches(9.4), Inches(1.8), Inches(3.2), Inches(0.4),
+              "■ High risk", size=12, color=RED, bold=True)
+        _text(slide, Inches(9.4), Inches(2.2), Inches(3.2), Inches(0.4),
+              "■ Medium risk", size=12, color=AMBER, bold=True)
+        _notes(slide, [f"{r['machine']}: {r['risk_level']} risk — {'; '.join(r['reasons'][:3])}"
+                       for r in risks])
     else:
         _text(slide, Inches(0.55), Inches(1.8), Inches(9), Inches(0.5),
               "No elevated-risk assets detected this period.", size=14, color=GREEN, bold=True)
@@ -291,15 +446,19 @@ def _slide_risks(prs, bundle):
 def _slide_actions(prs, narrative):
     slide = _blank(prs)
     _header(slide, prs, 7, "Recommended Actions")
-    _bullets(slide, narrative.get("recommended_actions", []),
-             Inches(0.6), Inches(1.3), prs.slide_width - Inches(1.2), Inches(5.0), size=16)
+    items = narrative.get("recommended_actions", [])
+    _bullets(slide, items[:6], Inches(0.6), Inches(1.3),
+             prs.slide_width - Inches(1.2), Inches(5.0), size=16)
+    _notes(slide, items)
 
 
 def _slide_decisions(prs, narrative):
     slide = _blank(prs)
     _header(slide, prs, 8, "Management Decisions Required")
-    _bullets(slide, narrative.get("management_decisions", []),
-             Inches(0.6), Inches(1.3), prs.slide_width - Inches(1.2), Inches(5.0), size=16)
+    items = narrative.get("management_decisions", [])
+    _bullets(slide, items[:6], Inches(0.6), Inches(1.3),
+             prs.slide_width - Inches(1.2), Inches(5.0), size=16)
+    _notes(slide, items)
 
 
 # ── public API ───────────────────────────────────────────────────────────────

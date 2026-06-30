@@ -13,8 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Persist the SQLite DB and uploaded files outside the container layer
-VOLUME ["/app/plant_dashboard_v2.db", "/app/static/uploads"]
+# /app/data  → SQLite DB (plant_dashboard_v2.db) — mounted from /opt/rca_data/db on EC2
+# /app/static/uploads → user-uploaded PDFs — mounted from /opt/rca_data/uploads on EC2
+# Volume declarations are handled entirely by docker-compose.yml bind mounts.
+# Do NOT declare VOLUME here — it would create anonymous Docker volumes that
+# shadow the bind mounts defined in docker-compose.yml.
 
 EXPOSE 8080
 

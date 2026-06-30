@@ -36,7 +36,7 @@ def parse_csv_date(val):
     except Exception:
         return None
 
-def import_csv(csv_path):
+def import_csv(csv_path, replace=False):
     if not os.path.exists(csv_path):
         print(f"Error: File not found at {csv_path}")
         return
@@ -53,13 +53,16 @@ def import_csv(csv_path):
         db.close()
         return
 
-    print("Clearing previous data from database tables (BreakdownLog, CAPA, CAPATask, CAPAComment)...")
-    db.query(CAPATask).delete()
-    db.query(CAPAComment).delete()
-    db.query(CAPA).delete()
-    db.query(BreakdownLog).delete()
-    db.commit()
-    print("Database tables cleared.")
+    if replace:
+        print("--replace: clearing previous BreakdownLog/CAPA data...")
+        db.query(CAPATask).delete()
+        db.query(CAPAComment).delete()
+        db.query(CAPA).delete()
+        db.query(BreakdownLog).delete()
+        db.commit()
+        print("Database tables cleared.")
+    else:
+        print("Append mode: existing data is preserved; duplicate rows are skipped.")
 
     print(f"Reading and importing data from {csv_path}...")
 
@@ -68,14 +71,28 @@ def import_csv(csv_path):
 
     imported_logs_count = 0
     imported_capas_count = 0
+    skipped_count = 0
 
     def save_current_bd():
-        nonlocal imported_logs_count, imported_capas_count
+        nonlocal imported_logs_count, imported_capas_count, skipped_count
         if not current_bd:
             return
 
         # Fetch division user
         area_norm = current_bd["area"].replace("-", " ")
+
+        # Duplicate guard (append mode): skip if an equivalent breakdown already
+        # exists — same equipment, division and incident time. Prevents
+        # re-importing the same file from creating duplicates.
+        if not replace:
+            existing = db.query(BreakdownLog).filter(
+                BreakdownLog.machine_name == (current_bd["equipment"] or "Unknown Equipment"),
+                BreakdownLog.division == area_norm,
+                BreakdownLog.start_time == current_bd["date"],
+            ).first()
+            if existing:
+                skipped_count += 1
+                return
         division_user = db.query(User).filter(User.division == area_norm).first()
         author_id = division_user.id if division_user else admin_user.id
 
@@ -247,9 +264,21 @@ def import_csv(csv_path):
     print(f"Import process complete!")
     print(f"  Successfully imported: {imported_logs_count} breakdown logs")
     print(f"  Successfully imported: {imported_capas_count} CAPA items")
+    if not replace:
+        print(f"  Skipped (already present): {skipped_count} breakdown logs")
 
 if __name__ == "__main__":
-    csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "Pellet, BNFC, PGP - BD & RCA data.csv")
-    if len(sys.argv) > 1:
-        csv_file = sys.argv[1]
-    import_csv(csv_file)
+    # Usage:
+    #   python import_breakdowns.py [csv_path] [--replace]
+    # Default = APPEND to existing data (duplicates skipped).
+    # --replace = wipe BreakdownLog/CAPA tables first, then import.
+    args = [a for a in sys.argv[1:]]
+    replace = "--replace" in args
+    args = [a for a in args if a != "--replace"]
+
+    default_csv = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "data", "Pellet, BNFC, PGP - BD & RCA data.csv",
+    )
+    csv_file = args[0] if args else default_csv
+    import_csv(csv_file, replace=replace)

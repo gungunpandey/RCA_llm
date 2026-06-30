@@ -139,6 +139,37 @@ class EquipmentComponent(Base):
     equipment = relationship("Equipment", back_populates="components")
 
 
+class Conversation(Base):
+    """A ProdAI Assistant chat thread (ChatGPT-style library entry)."""
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    title = Column(String, default="New Chat")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    messages = relationship(
+        "ChatMessage", back_populates="conversation",
+        cascade="all, delete-orphan", order_by="ChatMessage.id",
+    )
+
+
+class ChatMessage(Base):
+    """A single message within a Conversation."""
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
+    role = Column(String)                       # 'user' | 'assistant'
+    content = Column(Text)
+    sources = Column(Text, nullable=True)       # JSON: {"manuals": [...], "web": [...]}
+    attachments = Column(Text, nullable=True)   # JSON: [{type, name, url}] for persisted uploads
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("Conversation", back_populates="messages")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

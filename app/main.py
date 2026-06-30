@@ -90,6 +90,11 @@ def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)
         return None
     return db.query(User).filter(User.email == email).first()
 
+def user_can_access_log(user: User, log: Optional[BreakdownLog]) -> bool:
+    if not log:
+        return False
+    return user.division == "Admin" or log.division == user.division
+
 
 # ── Startup: create tables + seed default users ───────────────────────────────
 
@@ -116,6 +121,17 @@ async def startup_event():
             print("Successfully added component_name column to breakdown_logs table.")
         except Exception as e:
             print(f"Error adding component_name column: {e}")
+
+    # Add chat_messages.attachments if missing (persisted chat upload refs).
+    try:
+        from sqlalchemy import text as _text
+        cols = [row[1] for row in db_conn.execute(_text("PRAGMA table_info(chat_messages);"))]
+        if cols and "attachments" not in cols:
+            db_conn.execute(_text("ALTER TABLE chat_messages ADD COLUMN attachments TEXT;"))
+            print("Successfully added attachments column to chat_messages table.")
+    except Exception as e:
+        print(f"Error checking/adding chat_messages.attachments: {e}")
+
     db_conn.close()
 
     db = SessionLocal()
@@ -475,6 +491,8 @@ async def log_breakdown_post(
     user = get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    if user.division != "Admin":
+        division = user.division
 
     doc_path = None
     if attached_doc and attached_doc.filename:
@@ -554,7 +572,7 @@ async def create_rca_page(
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     log = db.query(BreakdownLog).filter(BreakdownLog.id == log_id).first()
-    if not log:
+    if not user_can_access_log(user, log):
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
     # Determine saved RCA type
@@ -628,9 +646,11 @@ async def save_rca_post(
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     log = db.query(BreakdownLog).filter(BreakdownLog.id == log_id).first()
-    if log:
-        log.rca_data = rca_data
-        db.commit()
+    if not user_can_access_log(user, log):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    log.rca_data = rca_data
+    db.commit()
 
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
@@ -647,9 +667,11 @@ async def update_status(
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     log = db.query(BreakdownLog).filter(BreakdownLog.id == log_id).first()
-    if log:
-        log.status = new_status
-        db.commit()
+    if not user_can_access_log(user, log):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    log.status = new_status
+    db.commit()
 
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 

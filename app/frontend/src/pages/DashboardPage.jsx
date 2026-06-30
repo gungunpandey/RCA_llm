@@ -204,6 +204,10 @@ const DashboardPage = () => {
         }));
     }, [data?.topEquipment]);
 
+    const chartShowsEquipment = user?.role !== 'Admin' || Boolean(filters.plant);
+    const failureChartTitle = chartShowsEquipment ? 'Failures by Equipment' : 'Failures by Plant';
+    const failureChartData = chartShowsEquipment ? equipmentFailuresData : data?.failuresByAsset;
+
     if (!user) return null;
 
     const mttrLatest   = allMttrData.slice(-1)[0]?.avgMttr ?? null;
@@ -551,9 +555,9 @@ const DashboardPage = () => {
                     </section>
 
                     <section className="glass-card db-panel" style={{ position: 'relative' }}>
-                        <SectionTitle>{user.role === 'Admin' ? 'Failures by Plant' : 'Failures by Equipment'}</SectionTitle>
+                        <SectionTitle>{failureChartTitle}</SectionTitle>
                         {loading ? <Skeleton /> : (
-                            <FailuresPieChart data={user.role === 'Admin' ? data?.failuresByAsset : equipmentFailuresData} />
+                            <FailuresPieChart data={failureChartData} />
                         )}
                     </section>
                 </div>

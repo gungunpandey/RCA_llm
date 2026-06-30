@@ -19,10 +19,14 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from dateutil import parser as dateparser
 
-from database import SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment, EquipmentComponent
+from database import (
+    SessionLocal, User, BreakdownLog, CAPA, CAPATask, CAPAComment, Equipment,
+    EquipmentComponent, Conversation, ChatMessage,
+)
 from utils import normalize_full_owner_string, clean_equipment_name
 from insights_engine import compute_analysis_bundle, bundle_to_deterministic_insights
 from reliability_review import build_deck, deterministic_narrative
+from prodai_intelligence import compute_all as compute_prodai_intelligence
 
 # ── Config ─────────────────────────────────────────────────────────────────
 ALLOWED_PLANT_HEAD_ROLES = {
@@ -539,6 +543,8 @@ async def api_submit_breakdown(
         equipment_id = form.get("equipment_id")
         description = form.get("description", "")
         division = form.get("division", "Unknown")
+        if user.division != "Admin":
+            division = user.division
         machine_name = form.get("machine_name", "") or ""
         component_name = form.get("component_name")
         reported_at = form.get("reported_at")
@@ -1362,6 +1368,24 @@ async def api_analytics(
     return _compute_analytics(db, user, range, month, plant)
 
 
+@router.get("/prodai-intelligence")
+async def api_prodai_intelligence(
+    range: str = Query("3m"),
+    month: Optional[str] = None,
+    plant: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Top-of-page ProdAI features: reliability score, failure patterns, and a
+    prioritized action list — all computed from verified analytics."""
+    analytics = _compute_analytics(db, user, range, month, plant)
+    try:
+        bundle = compute_analysis_bundle(db, user, plant, None, range)
+    except Exception:
+        bundle = {}
+    return compute_prodai_intelligence(analytics, bundle)
+
+
 _RANGE_LABELS = {
     "30d": "Last 30 Days", "3m": "Last 3 Months",
     "6m": "Last 6 Months", "1y": "Last 1 Year",
@@ -1480,14 +1504,179 @@ class ChatRequestBody(BaseModel):
 
 @router.post("/chat")
 async def api_chat(body: ChatRequestBody, user: User = Depends(get_current_user)):
-    """Proxy conversation chat request to LLM backend."""
+    """Proxy conversation chat request to LLM backend (stateless; legacy)."""
+    data = await _call_llm_chat([msg.model_dump() for msg in body.messages])
+    return data
+
+
+# ── Conversation library (ChatGPT-style persistence) ─────────────────────────
+async def _call_llm_chat(messages: list, attachments: Optional[list] = None) -> dict:
+    """Forward a messages array (and optional attachments) to the LLM /chat."""
     llm_api_url = os.getenv("LLM_API_URL", "http://localhost:8000")
+    payload = {"messages": messages}
+    if attachments:
+        payload["attachments"] = attachments
     try:
-        payload = {"messages": [msg.model_dump() for msg in body.messages]}
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(f"{llm_api_url}/chat", json=payload)
             resp.raise_for_status()
             return resp.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to communicate with LLM backend: {e}")
+
+
+def _save_chat_attachments(attachments: Optional[list]) -> list:
+    """Persist uploaded files to static/uploads/chat/ and return [{type,name,url}]
+    refs so thumbnails survive reloads. Tolerates malformed entries."""
+    import base64
+    import uuid
+    refs = []
+    if not attachments:
+        return refs
+    dest_dir = os.path.join(os.path.dirname(__file__), "static", "uploads", "chat")
+    os.makedirs(dest_dir, exist_ok=True)
+    for a in attachments:
+        name = a.get("name") or "file"
+        data = a.get("data") or ""
+        if data.strip().startswith("data:") and "," in data:
+            data = data.split(",", 1)[1]
+        try:
+            raw = base64.b64decode(data)
+        except Exception:
+            continue
+        ext = os.path.splitext(name)[1] or (".pdf" if a.get("type") == "pdf" else ".png")
+        fname = f"{uuid.uuid4().hex}{ext}"
+        try:
+            with open(os.path.join(dest_dir, fname), "wb") as f:
+                f.write(raw)
+        except OSError:
+            continue
+        refs.append({"type": a.get("type"), "name": name, "url": f"/static/uploads/chat/{fname}"})
+    return refs
+
+
+def _delete_conversation_files(conv: Conversation) -> None:
+    """Remove uploaded attachment files for a conversation from disk. Only
+    touches files under static/uploads/chat/ for safety."""
+    static_root = os.path.join(os.path.dirname(__file__), "static")
+    safe_prefix = "/static/uploads/chat/"
+    for m in conv.messages:
+        if not m.attachments:
+            continue
+        try:
+            refs = json.loads(m.attachments)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for ref in refs:
+            url = ref.get("url", "")
+            if not url.startswith(safe_prefix):
+                continue
+            path = os.path.join(static_root, url[len("/static/"):].replace("/", os.sep))
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+
+def _get_owned_conversation(db: Session, user: User, conv_id: int) -> Conversation:
+    conv = db.query(Conversation).filter(
+        Conversation.id == conv_id, Conversation.user_id == user.id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conv
+
+
+@router.get("/conversations")
+async def api_list_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    convs = db.query(Conversation).filter(Conversation.user_id == user.id) \
+        .order_by(Conversation.updated_at.desc()).all()
+    return [{"id": c.id, "title": c.title, "updated_at": c.updated_at.isoformat() if c.updated_at else None}
+            for c in convs]
+
+
+@router.post("/conversations")
+async def api_create_conversation(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conv = Conversation(user_id=user.id, title="New Chat")
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+    return {"id": conv.id, "title": conv.title}
+
+
+@router.get("/conversations/{conv_id}")
+async def api_get_conversation(conv_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conv = _get_owned_conversation(db, user, conv_id)
+    messages = []
+    for m in conv.messages:
+        item = {"role": m.role, "content": m.content}
+        if m.sources:
+            try:
+                item["sources"] = json.loads(m.sources)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        if m.attachments:
+            try:
+                item["attachments"] = json.loads(m.attachments)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        messages.append(item)
+    return {"id": conv.id, "title": conv.title, "messages": messages}
+
+
+@router.delete("/conversations/{conv_id}")
+async def api_delete_conversation(conv_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conv = _get_owned_conversation(db, user, conv_id)
+    _delete_conversation_files(conv)   # cascade-clean uploaded files from disk
+    db.delete(conv)
+    db.commit()
+    return {"message": "deleted"}
+
+
+class ConvMessageBody(BaseModel):
+    content: str
+    attachments: Optional[list] = None   # [{type:'image'|'pdf', name, data(base64)|text}]
+
+
+@router.post("/conversations/{conv_id}/chat")
+async def api_conversation_chat(
+    conv_id: int,
+    body: ConvMessageBody,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Persist the user's message, call the LLM with full thread context, then
+    persist and return the assistant reply (with sources)."""
+    conv = _get_owned_conversation(db, user, conv_id)
+
+    # Persist uploaded files (so thumbnails survive reloads) and the user message.
+    attachment_refs = _save_chat_attachments(body.attachments)
+    db.add(ChatMessage(
+        conversation_id=conv.id, role="user", content=body.content,
+        attachments=json.dumps(attachment_refs) if attachment_refs else None,
+    ))
+
+    # Auto-title from the first user message.
+    if conv.title in (None, "", "New Chat"):
+        conv.title = (body.content.strip()[:48] + "…") if len(body.content.strip()) > 48 else body.content.strip() or "New Chat"
+
+    # Build the full thread for the LLM.
+    history = [{"role": m.role, "content": m.content} for m in conv.messages]
+    history.append({"role": "user", "content": body.content})
+
+    data = await _call_llm_chat(history, attachments=body.attachments)
+    reply = data.get("reply", "")
+    sources = data.get("sources", {"manuals": [], "web": []})
+
+    db.add(ChatMessage(
+        conversation_id=conv.id, role="assistant", content=reply,
+        sources=json.dumps(sources),
+    ))
+    conv.updated_at = datetime.utcnow()
+    db.commit()
+
+    return {"status": "success", "reply": reply, "sources": sources,
+            "has_rag_context": data.get("has_rag_context"),
+            "has_history_context": data.get("has_history_context"),
+            "title": conv.title}
 

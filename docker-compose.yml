@@ -1,20 +1,22 @@
 version: "3.9"
 
 services:
-  # ── Neo4j knowledge graph (port 7474 browser / 7687 bolt) ─────────────────
+  # ── Neo4j knowledge graph ──────────────────────────────────────────────────
+  # Ports NOT exposed to host — only accessible inside Docker network.
+  # To access Neo4j browser during debugging, use SSH tunnel:
+  #   ssh -L 7474:localhost:7474 -L 7687:localhost:7687 ubuntu@<ec2-ip>
+  #   Then open http://localhost:7474 in your local browser.
   neo4j:
     image: neo4j:5-community
-    ports:
-      - "7474:7474"   # Neo4j browser UI
-      - "7687:7687"   # Bolt protocol (Python driver)
     environment:
-      - NEO4J_AUTH=neo4j/rcapassword
-      # Conservative memory settings — safe for t2.small (2 GB) EC2
+      - NEO4J_AUTH=neo4j/rcapassword          # CHANGE before production deploy
+      # Conservative memory settings — safe for t3.medium (4 GB RAM)
       - NEO4J_server_memory_pagecache_size=256M
       - NEO4J_server_memory_heap_initial__size=256M
       - NEO4J_server_memory_heap_max__size=512M
     volumes:
-      - neo4j_data:/data
+      # Pinned to EC2 host path — data survives all container rebuilds
+      - /opt/rca_data/neo4j:/data
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7474"]
       interval: 30s
@@ -36,13 +38,13 @@ services:
       # Neo4j — uses internal Docker hostname (not localhost) when running in Docker
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=rcapassword
+      - NEO4J_PASSWORD=rcapassword             # CHANGE to match neo4j service above
     depends_on:
       neo4j:
         condition: service_healthy
     volumes:
-      - app_uploads:/app/static/uploads
-      - hf_cache:/root/.cache/huggingface   # sentence-transformers model persists across restarts
+      # HuggingFace model cache — avoids re-downloading on EC2 restarts
+      - hf_cache:/root/.cache/huggingface
     restart: unless-stopped
 
   # ── Web dashboard (port 8080) ──────────────────────────────────────────────
@@ -52,19 +54,20 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      # Lives on EC2 at /opt/rca_data/.env.production — never in Git.
+      # Contains: SECRET_KEY, DATABASE_URL, LLM_API_URL
+      - /opt/rca_data/.env.production
     environment:
-      - LLM_API_URL=http://54.91.201.119:8000   # browser calls this directly
       - APP_PORT=8080
-      - SECRET_KEY=change-me-in-production
-      - DATABASE_URL=sqlite:////app/data/plant_dashboard_v2.db
     volumes:
-      - app_data:/app/data
-      - app_uploads:/app/static/uploads
+      # Both paths pinned to EC2 host — data survives all container rebuilds
+      - /opt/rca_data/db:/app/data
+      - /opt/rca_data/uploads:/app/static/uploads
+      # Mount data_ingestion read-only so the app can read extracted_data.json
       - ./data_ingestion:/data_ingestion:ro
     restart: unless-stopped
 
 volumes:
-  app_data:
-  app_uploads:
-  neo4j_data:       # graph data persists across container restarts
-  hf_cache:         # HuggingFace model cache — avoids re-downloading on EC2 restarts
+  # hf_cache is still Docker-managed (HuggingFace models — safe to re-download)
+  hf_cache:

@@ -29,3 +29,9 @@ export const fetchDrillDown = ({ tag, range = '3m', month = '', plant = '' } = {
     if (plant) p.append('plant', plant);
     return authFetch(`/api/analytics/drilldown?${p}`);
 };
+
+export const fetchProdaiIntelligence = ({ range = '3m', month = '' } = {}) => {
+    const p = new URLSearchParams({ range });
+    if (month) p.append('month', month);
+    return authFetch(`/api/prodai-intelligence?${p}`);
+};

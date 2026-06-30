@@ -15,7 +15,7 @@ logs/
 node_modules/
 dist/
 
-# Data files
+# Data files (excluded from old structure — kept for compatibility)
 frontend/docs/
 llm/agent_docker/
 llm/docs/
@@ -30,11 +30,33 @@ RAG_april/
 history_data_original/
 llm/tools/output_quality_improved
 llm/chatbot plan.txt
+storage
 
-# App database & uploads
-app/plant_dashboard_v2.db
+# ── Confidential data — NEVER push to GitHub ──────────────────────────────
+
+# App database & user-uploaded files
+*.db
+app/data/
 app/static/uploads/
-new_design/plant_dashboard*.db
+
+# Historical RCA PDFs and raw data ingestion files
+data_ingestion/history/history_data/
+data_ingestion/pdfs/
+
+# Deployment & architecture docs (contain API keys + instance details)
+data_persistence_strategy.md
+
+# Production environment file (lives on EC2 only)
+.env.production
+
+# ── IDE / Tool local config ───────────────────────────────────────────────
+
+# Claude IDE local settings (machine-specific permissions, not for sharing)
+.claude/settings.local.json
+
+# ── OS files ─────────────────────────────────────────────────────────────
 
 # Windows reserved names
 nul
+Thumbs.db
+.DS_Store

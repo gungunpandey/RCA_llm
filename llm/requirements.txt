@@ -30,3 +30,6 @@ websockets
 neo4j>=5.14
 sentence-transformers>=3.0
 
+# PDF text extraction for chat attachments
+pypdf
+

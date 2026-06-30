@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import NavBar from '../components/NavBar';
-import { fetchAnalytics, fetchDrillDown } from '../api/analytics';
+import { fetchAnalytics, fetchDrillDown, fetchProdaiIntelligence } from '../api/analytics';
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     AreaChart, Area, Cell,
@@ -79,6 +79,8 @@ const HistoricalAnalyticsPage = () => {
     const [drillLoading, setDrillLoading] = useState(false);
     const [genLoading, setGenLoading] = useState(false);
     const [genError, setGenError] = useState('');
+    const [intel, setIntel] = useState(null);
+    const [intelLoading, setIntelLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -94,6 +96,17 @@ const HistoricalAnalyticsPage = () => {
     }, [range, specificMonth]);
 
     useEffect(() => { load(); }, [load]);
+
+    // ProdAI intelligence (reliability score, patterns, prioritized actions)
+    useEffect(() => {
+        let cancelled = false;
+        setIntelLoading(true);
+        fetchProdaiIntelligence({ range, month: specificMonth })
+            .then(r => { if (!cancelled) setIntel(r); })
+            .catch(() => { if (!cancelled) setIntel(null); })
+            .finally(() => { if (!cancelled) setIntelLoading(false); });
+        return () => { cancelled = true; };
+    }, [range, specificMonth]);
 
     const openDrill = async (tag, name) => {
         setDrillTag(tag);
@@ -199,28 +212,6 @@ const HistoricalAnalyticsPage = () => {
                         onChange={handleMonthChange}
                         title="Pick a specific month"
                     />
-                    <button
-                        onClick={generateReview}
-                        disabled={genLoading}
-                        className="btn"
-                        title="Generate an AI reliability-review PowerPoint for the selected period"
-                        style={{
-                            display:'flex', alignItems:'center', gap:7, padding:'7px 14px',
-                            borderRadius:9, border:'none', cursor: genLoading ? 'default' : 'pointer',
-                            fontSize:'0.82rem', fontWeight:700, fontFamily:'inherit', color:'#fff',
-                            background: genLoading ? 'rgba(51,177,176,0.6)' : ACCENT,
-                            boxShadow:'0 4px 12px rgba(51,177,176,0.25)', transition:'all 0.2s',
-                        }}
-                    >
-                        {genLoading ? (
-                            <>
-                                <span className="spinner" style={{ width:13, height:13, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.4)' }} />
-                                Generating…
-                            </>
-                        ) : (
-                            <>📊 Generate Reliability Review</>
-                        )}
-                    </button>
                 </div>
             </div>
 
@@ -239,6 +230,116 @@ const HistoricalAnalyticsPage = () => {
                 </div>
             ) : (
                 <div className="db-main fade-in">
+
+                    {/* ════ ProdAI Intelligence (top features) ════ */}
+                    {intelLoading && !intel ? (
+                        <div className="glass-card db-panel" style={{ textAlign:'center', padding:32, color:'var(--text-secondary)', fontSize:'0.85rem' }}>
+                            <span className="spinner" style={{ display:'inline-block', borderTopColor:ACCENT, borderColor:'rgba(51,177,176,0.2)', width:20, height:20, borderWidth:2, marginRight:8, verticalAlign:'middle' }} />
+                            Computing ProdAI intelligence…
+                        </div>
+                    ) : intel && (
+                        <>
+                            {/* Row A: Reliability Score + Generate PPT */}
+                            <div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:16 }}>
+                                {/* Reliability Score scorecard */}
+                                {(() => {
+                                    const r = intel.reliability || {};
+                                    const sc = r.score ?? 0;
+                                    const col = sc >= 85 ? '#16a34a' : sc >= 70 ? ACCENT : sc >= 50 ? '#f59e0b' : '#ef4444';
+                                    return (
+                                        <div className="glass-card db-panel">
+                                            <SectionTitle>🎯 Reliability Score</SectionTitle>
+                                            <div style={{ display:'flex', gap:20, alignItems:'center', flexWrap:'wrap' }}>
+                                                <div style={{ width:128, height:128, borderRadius:'50%', flexShrink:0,
+                                                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                                                    background:`conic-gradient(${col} ${sc*3.6}deg, rgba(60,61,63,0.08) 0deg)` }}>
+                                                    <div style={{ width:104, height:104, borderRadius:'50%', background:'#fff',
+                                                        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+                                                        <span style={{ fontSize:'2.2rem', fontWeight:800, color:col, lineHeight:1 }}>{sc}</span>
+                                                        <span style={{ fontSize:'0.7rem', color:'var(--text-secondary)' }}>/ 100</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:200 }}>
+                                                    <span style={{ display:'inline-block', padding:'3px 12px', borderRadius:99, fontSize:'0.78rem',
+                                                        fontWeight:700, color:col, background:`${col}1a`, marginBottom:8 }}>{r.grade}</span>
+                                                    <div style={{ fontSize:'0.78rem', color:'var(--text-secondary)', fontWeight:700, margin:'6px 0 3px' }}>KEY DRIVERS</div>
+                                                    <ul style={{ margin:0, paddingLeft:16, fontSize:'0.82rem', color:'var(--text-primary)' }}>
+                                                        {(r.drivers || []).slice(0,3).map((d,i) => <li key={i}>{d}</li>)}
+                                                    </ul>
+                                                    <div style={{ fontSize:'0.78rem', color:'var(--text-secondary)', fontWeight:700, margin:'8px 0 3px' }}>💡 IMPROVEMENT OPPORTUNITIES</div>
+                                                    <ul style={{ margin:0, paddingLeft:16, fontSize:'0.82rem', color:'var(--text-primary)' }}>
+                                                        {(r.opportunities || []).slice(0,3).map((o,i) => <li key={i}>{o}</li>)}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Generate Reliability Review (PPT) — clear dedicated card */}
+                                <div className="glass-card db-panel" style={{ display:'flex', flexDirection:'column', justifyContent:'center', textAlign:'center', gap:10 }}>
+                                    <div style={{ fontSize:'2.2rem' }}>📑</div>
+                                    <h3 style={{ margin:0, fontSize:'1.05rem', fontWeight:800, color:'var(--text-primary)' }}>AI Reliability Review</h3>
+                                    <p style={{ margin:0, fontSize:'0.82rem', color:'var(--text-secondary)', lineHeight:1.5 }}>
+                                        Generate a ready-to-present <strong>PowerPoint deck</strong> (charts, risks, CAPA effectiveness &amp; recommended actions) for the selected period.
+                                    </p>
+                                    <button onClick={generateReview} disabled={genLoading} className="btn"
+                                        style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, alignSelf:'center',
+                                            padding:'10px 20px', borderRadius:10, border:'none', cursor: genLoading ? 'default':'pointer',
+                                            fontSize:'0.88rem', fontWeight:700, fontFamily:'inherit', color:'#fff', marginTop:4,
+                                            background: genLoading ? 'rgba(51,177,176,0.6)' : ACCENT, boxShadow:'0 4px 14px rgba(51,177,176,0.3)' }}>
+                                        {genLoading ? (
+                                            <><span className="spinner" style={{ width:14, height:14, borderWidth:2, borderTopColor:'#fff', borderColor:'rgba(255,255,255,0.4)' }} /> Generating PPT…</>
+                                        ) : (<>⬇ Generate PowerPoint</>)}
+                                    </button>
+                                    {genError && <p style={{ color:'#ef4444', fontSize:'0.78rem', margin:0 }}>⚠️ {genError}</p>}
+                                </div>
+                            </div>
+
+                            {/* Row B: AI Action Prioritizer */}
+                            <div className="glass-card db-panel">
+                                <SectionTitle>⚡ AI Action Prioritizer</SectionTitle>
+                                <p style={{ fontSize:'0.75rem', color:'var(--text-secondary)', margin:'-8px 0 12px' }}>What to address first, ranked from failures, RCA &amp; CAPA status.</p>
+                                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                    {(intel.actions || []).map((a) => {
+                                        const pc = { Critical:'#ef4444', High:'#fb923c', Medium:'#f59e0b', Low:'#94a3b8' }[a.priority] || '#94a3b8';
+                                        return (
+                                            <div key={a.rank} style={{ display:'flex', gap:12, alignItems:'flex-start',
+                                                padding:'10px 14px', borderRadius:10, background:'rgba(51,177,176,0.04)', border:'1px solid rgba(51,177,176,0.12)' }}>
+                                                <span style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, background:ACCENT, color:'#fff',
+                                                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.78rem', fontWeight:800 }}>{a.rank}</span>
+                                                <div style={{ flex:1 }}>
+                                                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                                                        <span style={{ fontWeight:700, fontSize:'0.88rem', color:'var(--text-primary)' }}>{a.title}</span>
+                                                        <span style={{ fontSize:'0.66rem', fontWeight:700, color:pc, background:`${pc}1a`, padding:'1px 8px', borderRadius:99 }}>{a.priority}</span>
+                                                    </div>
+                                                    <p style={{ margin:'2px 0 0', fontSize:'0.8rem', color:'var(--text-secondary)' }}>{a.why}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Row C: Failure Pattern Explorer */}
+                            <div className="glass-card db-panel">
+                                <SectionTitle>🔍 Failure Pattern Explorer</SectionTitle>
+                                <p style={{ fontSize:'0.75rem', color:'var(--text-secondary)', margin:'-8px 0 12px' }}>Hidden patterns surfaced from historical data.</p>
+                                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12 }}>
+                                    {(intel.patterns || []).map((p, i) => {
+                                        const col = { danger:'#ef4444', warning:'#f59e0b', info:ACCENT, success:'#16a34a' }[p.type] || ACCENT;
+                                        return (
+                                            <div key={i} style={{ padding:'12px 14px', borderRadius:11, background:'#fff',
+                                                border:'1px solid rgba(148,163,184,0.18)', borderLeft:`3px solid ${col}` }}>
+                                                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text-primary)', marginBottom:3 }}>{p.icon} {p.title}</div>
+                                                <p style={{ margin:0, fontSize:'0.8rem', color:'var(--text-secondary)', lineHeight:1.45 }}>{p.text}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* ── Row 1: Top Problematic + Trend ── */}
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>

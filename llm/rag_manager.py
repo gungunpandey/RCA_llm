@@ -24,6 +24,29 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+# Question/filler words that add no retrieval signal for BM25 keyword search.
+_STOPWORDS = {
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "of",
+    "for", "to", "in", "on", "at", "by", "with", "and", "or", "but", "if", "as",
+    "what", "which", "who", "whom", "whose", "when", "where", "why", "how",
+    "do", "does", "did", "can", "could", "should", "would", "will", "shall",
+    "may", "might", "must", "i", "we", "you", "it", "this", "that", "these",
+    "those", "there", "here", "about", "into", "from", "over", "than", "then",
+    "correct", "proper", "right", "value", "values", "please", "tell", "me",
+    "give", "show", "find", "any", "some", "my", "our", "your", "have", "has",
+}
+
+
+def extract_query_keywords(text: str) -> str:
+    """Strip a natural-language question down to its meaningful keywords so BM25
+    focuses on the equipment/subject (e.g. 'What is the correct vibration limit
+    for a rotary kiln motor?' -> 'vibration limit rotary kiln motor')."""
+    import re
+    words = re.findall(r"[a-zA-Z0-9][a-zA-Z0-9\-]*", text.lower())
+    keys = [w for w in words if w not in _STOPWORDS and len(w) > 1]
+    return " ".join(keys) if keys else text.strip()
+
+
 @dataclass
 class Document:
     """Retrieved document from RAG."""
