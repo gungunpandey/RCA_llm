@@ -103,14 +103,20 @@ class RAGManager:
         weaviate_url = os.getenv("WEAVIATE_URL")
         weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
 
-        # ── Production path: env vars present → build config dict directly ──
-        # BM25-only retrieval: no embedding / HuggingFace config needed.
-        if weaviate_url and weaviate_api_key:
-            logger.info("Weaviate config loaded from environment variables")
+        # ── Production path: WEAVIATE_URL is enough to proceed ──────────────
+        # API key is optional — not needed when Weaviate runs on a private VPC
+        # and access is controlled by AWS Security Groups instead.
+        # If WEAVIATE_API_KEY is set, it will be used (cloud / public endpoint).
+        # If not set, the connection proceeds without auth (private EC2 setup).
+        if weaviate_url:
+            logger.info(
+                "Weaviate config loaded from environment variables "
+                + ("(with API key)" if weaviate_api_key else "(no API key — private VPC mode)")
+            )
             return {
                 "weaviate": {
                     "url": weaviate_url,
-                    "api_key": weaviate_api_key,
+                    "api_key": weaviate_api_key,  # may be None — that's fine
                 },
                 "collection": {
                     "name": os.getenv("WEAVIATE_COLLECTION", "Rca"),
@@ -171,6 +177,7 @@ class RAGManager:
                 grpc_host=grpc_host,
                 grpc_port=grpc_port,
                 grpc_secure=grpc_secure,
+                # auth_credentials is None when no API key is set (private VPC mode)
                 auth_credentials=Auth.api_key(api_key) if api_key else None,
                 skip_init_checks=True,
                 additional_config=AdditionalConfig(
