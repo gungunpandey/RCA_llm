@@ -17,11 +17,18 @@ RUN apt-get update && apt-get install -y \
 # Copy and install Python dependencies
 COPY requirements.txt .
 
-# Install CPU-only PyTorch first
+# Install CPU torch
 RUN pip install --no-cache-dir \
-    torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cpu
-    
+    torch==2.5.1 \
+    torchvision==0.20.1 \
+    torchaudio==2.5.1
+
+# Install sentence-transformers but DO NOT allow dependency resolution
+RUN pip install --no-cache-dir \
+    --no-deps \
+    sentence-transformers==3.0.1
+
+# Install everything else
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy entire backend code

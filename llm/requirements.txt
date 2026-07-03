@@ -28,10 +28,6 @@ websockets
 
 # Knowledge graph — historical incident similarity search
 neo4j>=5.14
-# Force CPU torch
-torch==2.7.1
-sentence-transformers>=3.0
 
 # PDF text extraction for chat attachments
 pypdf
-
