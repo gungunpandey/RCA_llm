@@ -55,6 +55,35 @@ integrated_rca: IntegratedRCATool = None
 llm_adapter = None
 
 
+# ── Uploads ──
+# Shared uploads volume (see docker-compose.yml). Falls back to the app's
+# static/uploads dir for local (non-Docker) development.
+_DEFAULT_UPLOADS = (
+    "/app/static/uploads"
+    if os.path.isdir("/app/static/uploads")
+    else os.path.join(LLM_DIR, "..", "app", "static", "uploads")
+)
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", _DEFAULT_UPLOADS)
+
+
+def resolve_uploaded_image(image_name: Optional[str]) -> Optional[str]:
+    """Resolve an uploaded image filename to a path inside UPLOADS_DIR.
+
+    Any directory components are stripped, so clients can only reference
+    files that live in the uploads directory — never arbitrary paths.
+    """
+    if not image_name:
+        return None
+    name = os.path.basename(image_name.replace("\\", "/"))
+    if not name:
+        return None
+    path = os.path.join(UPLOADS_DIR, name)
+    if not os.path.isfile(path):
+        logger.warning(f"Uploaded image not found in uploads dir: {name}")
+        return None
+    return path
+
+
 # ── Request / Response schemas ──
 
 class AnalyzeRequest(BaseModel):
@@ -73,7 +102,7 @@ class AnalyzeRequest(BaseModel):
     symptoms: List[str] = Field(default_factory=list)
     error_codes: List[str] = Field(default_factory=list)
     operator_observations: Optional[str] = None
-    image_path: Optional[str] = None   # absolute path to uploaded image
+    image_name: Optional[str] = None   # filename of uploaded image (resolved inside UPLOADS_DIR)
     image_desc: Optional[str] = None   # user description of image
     pdf_text: Optional[str] = None     # extracted text from uploaded PDF document
     skip_history: bool = False         # if True, skip the historical incident lookup
@@ -377,7 +406,7 @@ async def analyze_prepare_stream(req: AnalyzeRequest):
                 equipment_name=req.equipment_name,
                 symptoms=req.symptoms if req.symptoms else ["unspecified"],
                 status_callback=_status_callback,
-                image_path=req.image_path,
+                image_path=resolve_uploaded_image(req.image_name),
                 image_desc=req.image_desc,
                 skip_history=req.skip_history,
             )

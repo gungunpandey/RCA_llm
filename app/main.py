@@ -1,5 +1,7 @@
 import os
+import re
 import json
+import uuid
 import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
@@ -497,7 +499,12 @@ async def log_breakdown_post(
     doc_path = None
     if attached_doc and attached_doc.filename:
         os.makedirs("static/uploads", exist_ok=True)
-        file_location = f"static/uploads/{attached_doc.filename}"
+        # Strip any client-supplied directory parts and unsafe characters;
+        # prefix with a short uuid so uploads can never overwrite each other.
+        safe_name = os.path.basename(attached_doc.filename.replace("\\", "/"))
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", safe_name)
+        safe_name = f"{uuid.uuid4().hex[:8]}_{safe_name}"
+        file_location = f"static/uploads/{safe_name}"
         with open(file_location, "wb+") as f:
             f.write(attached_doc.file.read())
         doc_path = file_location
@@ -597,16 +604,16 @@ async def create_rca_page(
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
     pdf_extensions = {'.pdf'}
     attached_image_url = None
-    attached_image_path = None
+    attached_image_name = None
     attached_pdf_text = None
     if log.attached_doc:
         ext = os.path.splitext(log.attached_doc)[1].lower()
         if ext in image_extensions:
             attached_image_url = "/" + log.attached_doc.replace("\\", "/")
-            # Absolute path for backend image analysis
-            attached_image_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                log.attached_doc
+            # Bare filename only — the LLM service resolves it inside its
+            # own uploads dir (shared volume), never a client-supplied path.
+            attached_image_name = os.path.basename(
+                log.attached_doc.replace("\\", "/")
             )
         elif ext in pdf_extensions:
             # Extract text from uploaded PDF
@@ -627,7 +634,7 @@ async def create_rca_page(
         "start_iso":     start_iso,
         "end_iso":       end_iso,
         "attached_image_url": attached_image_url,
-        "attached_image_path": attached_image_path,
+        "attached_image_name": attached_image_name,
         "image_description": log.doc_description or "",
         "attached_pdf_text": attached_pdf_text or "",
         "active_page": "",

@@ -993,7 +993,7 @@
 <input type="hidden" id="hid-downtime"   value="{{ log.downtime_minutes or 0 }}">
 <input type="hidden" id="hid-revenue"    value="{{ log.revenue_loss or 0 }}">
 <input type="hidden" id="hid-logid"      value="{{ log.id }}">
-<input type="hidden" id="hid-image-path"  value="{{ attached_image_path or '' }}">
+<input type="hidden" id="hid-image-name"  value="{{ attached_image_name or '' }}">
 <input type="hidden" id="hid-image-url"   value="{{ attached_image_url or '' }}">
 <input type="hidden" id="hid-image-desc"  value="{{ image_description or '' }}">
 <input type="hidden" id="hid-pdf-text"   value="{{ attached_pdf_text or '' }}">
@@ -1389,7 +1389,7 @@
             impact_top_line:     document.getElementById('hid-description').value,
             symptoms:            [],
             operator_observations: document.getElementById('operator-obs').value || null,
-            image_path:          document.getElementById('hid-image-path').value || null,
+            image_name:          document.getElementById('hid-image-name').value || null,
             image_desc:          document.getElementById('hid-image-desc').value || null,
             pdf_text:            document.getElementById('hid-pdf-text').value || null,
             skip_history:        !document.getElementById('search-history-toggle').checked

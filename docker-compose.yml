@@ -45,6 +45,8 @@ services:
     volumes:
       # HuggingFace model cache — avoids re-downloading on EC2 restarts
       - hf_cache:/root/.cache/huggingface
+      - /opt/rca_data/uploads:/app/static/uploads
+
     restart: unless-stopped
 
   # ── Web dashboard (port 8080) ──────────────────────────────────────────────
