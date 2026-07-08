@@ -45,7 +45,12 @@ services:
     volumes:
       # HuggingFace model cache — avoids re-downloading on EC2 restarts
       - hf_cache:/root/.cache/huggingface
+
+      # Uploaded images/PDFs
       - /opt/rca_data/uploads:/app/static/uploads
+
+      # History knowledge graph source files
+      - ./data_ingestion:/app/data_ingestion:ro
 
     restart: unless-stopped
 
