@@ -23,12 +23,15 @@ RUN pip install --no-cache-dir \
     torchvision==0.20.1 \
     torchaudio==2.5.1
 
-# Install sentence-transformers but DO NOT allow dependency resolution
-RUN pip install --no-cache-dir \
-    --no-deps \
-    sentence-transformers==3.0.1
+# Install sentence-transformers without letting it pull in a conflicting
+# torch build, then explicitly install its transformers dependency with
+# normal resolution so tokenizers/safetensors/huggingface-hub come along too.
+RUN pip install --no-cache-dir --no-deps sentence-transformers==3.0.1 \
+    && pip install --no-cache-dir transformers==4.46.3
 
-# Install everything else
+# Install everything else (normal dependency resolution — required for
+# fastapi/openai/google-genai/weaviate-client, whose transitive deps are
+# not pinned above)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy entire backend code
